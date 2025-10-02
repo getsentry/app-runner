@@ -1,33 +1,33 @@
-function Connect-Console {
+function Connect-Device {
     <#
     .SYNOPSIS
-    Establishes a connection to a console devkit by platform.
+    Establishes a connection to a device devkit by platform.
 
     .DESCRIPTION
-    Connects to a console devkit for the specified platform. The target manager
+    Connects to a device devkit for the specified platform. The target manager
     automatically handles devkit selection and IP address resolution.
 
     .PARAMETER Platform
-    The console platform to connect to. Valid values: Xbox, PlayStation5, Switch
+    The platform to connect to. Valid values: Xbox, PlayStation5, Switch
 
     .PARAMETER Target
     For Xbox platform, specifies the target to connect to. Can be either a name or IP address.
     If not specified, the system will auto-discover an available Xbox target.
 
     .EXAMPLE
-    Connect-Console -Platform "Xbox"
+    Connect-Device -Platform "Xbox"
     # Auto-discovers an available Xbox devkit
 
     .EXAMPLE
-    Connect-Console -Platform "Xbox" -Target "192.168.1.100"
+    Connect-Device -Platform "Xbox" -Target "192.168.1.100"
     # Connects to a specific Xbox target by IP
 
     .EXAMPLE
-    Connect-Console -Platform "Xbox" -Target "NetHostName"
+    Connect-Device -Platform "Xbox" -Target "NetHostName"
     # Connects to a specific Xbox target by name
 
     .EXAMPLE
-    Connect-Console -Platform "PlayStation5"
+    Connect-Device -Platform "PlayStation5"
     # Auto-discovers an available PS5 devkit
     #>
     [CmdletBinding()]
@@ -40,21 +40,21 @@ function Connect-Console {
         [string]$Target
     )
 
-    Write-Debug "Connecting to console platform: $Platform"
+    Write-Debug "Connecting to device platform: $Platform"
 
     # Validate platform is supported
-    if (-not [ConsoleProviderFactory]::IsPlatformSupported($Platform)) {
-        throw "Unsupported console platform: $Platform. Supported platforms: $([ConsoleProviderFactory]::GetSupportedPlatforms() -join ', ')"
+    if (-not [DeviceProviderFactory]::IsPlatformSupported($Platform)) {
+        throw "Unsupported platform: $Platform. Supported platforms: $([DeviceProviderFactory]::GetSupportedPlatforms() -join ', ')"
     }
 
     # Disconnect existing session if present
     if ($script:CurrentSession) {
         Write-Warning "Disconnecting from existing session: $($script:CurrentSession.Platform)"
-        Disconnect-Console
+        Disconnect-Device
     }
 
     # Create provider for the specified platform
-    $provider = [ConsoleProviderFactory]::CreateProvider($Platform)
+    $provider = [DeviceProviderFactory]::CreateProvider($Platform)
 
     # Connect using the provider
     if ($Platform -eq "Xbox" -and $Target) {
@@ -67,7 +67,7 @@ function Connect-Console {
     $script:CurrentSession = $sessionInfo
     $script:CurrentSession.Provider = $provider
 
-    Write-Debug "Successfully connected to $Platform console (Console: $($script:CurrentSession.Identifier))"
+    Write-Debug "Successfully connected to $Platform device (Device: $($script:CurrentSession.Identifier))"
 
     return $script:CurrentSession
 }

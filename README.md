@@ -24,7 +24,7 @@ Future support planned:
 
 ### Platform-Specific Prerequisites
 
-**Important:** Using this toolkit to run applications on game consoles requires:
+**Important:** Using this toolkit to run applications on target platforms requires:
 
 1. **Valid development agreements** with the respective platform holders (Microsoft, Sony, Nintendo, Apple, Google, etc.)
 2. **Licensed access to platform SDKs** and development tools

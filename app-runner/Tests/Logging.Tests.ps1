@@ -5,27 +5,27 @@ BeforeAll {
     Import-Module $ModulePath -Force
 
     # Clear any existing session before tests
-    if (Get-ConsoleSession) {
-        Disconnect-Console
+    if (Get-DeviceSession) {
+        Disconnect-Device
     }
 }
 
 AfterAll {
     # Clean up any remaining session
-    if (Get-ConsoleSession) {
-        Disconnect-Console
+    if (Get-DeviceSession) {
+        Disconnect-Device
     }
     Remove-Module SentryAppRunner -Force -ErrorAction SilentlyContinue
 }
 
-Context 'Get-ConsoleLogs' {
-    It 'Should require console session' {
-        Disconnect-Console
-        { Get-ConsoleLogs } | Should -Throw '*No active console session*'
+Context 'Get-DeviceLogs' {
+    It 'Should require device session' {
+        Disconnect-Device
+        { Get-DeviceLogs } | Should -Throw '*No active device session*'
     }
 
     It 'Should validate LogType parameter' {
-        $Function = Get-Command Get-ConsoleLogs
+        $Function = Get-Command Get-DeviceLogs
         $LogTypeParam = $Function.Parameters['LogType']
         $LogTypeParam.Attributes.ValidValues | Should -Contain 'System'
         $LogTypeParam.Attributes.ValidValues | Should -Contain 'Application'
@@ -34,13 +34,13 @@ Context 'Get-ConsoleLogs' {
     }
 
     It 'Should work with active session' {
-        Connect-Console -Platform 'Mock'
-        { Get-ConsoleLogs } | Should -Not -Throw
+        Connect-Device -Platform 'Mock'
+        { Get-DeviceLogs } | Should -Not -Throw
     }
 
     It 'Should return log objects with expected properties' {
-        Connect-Console -Platform 'Mock'
-        $logs = Get-ConsoleLogs -LogType 'Error' -MaxEntries 3
+        Connect-Device -Platform 'Mock'
+        $logs = Get-DeviceLogs -LogType 'Error' -MaxEntries 3
         $logs | Should -Not -Be $null
         $logs.Error.Count | Should -BeGreaterThan 0
         foreach ($log in $logs.Error) {

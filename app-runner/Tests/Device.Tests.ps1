@@ -1,5 +1,5 @@
 # Provider Public API Tests
-# Tests the PowerShell module's public API against all real console providers
+# Tests the PowerShell module's public API against all real device providers
 # Ensures consistent behavior across Xbox, PlayStation5, and Switch
 $ErrorActionPreference = 'Stop'
 
@@ -47,101 +47,101 @@ BeforeAll {
     # Helper function for cleanup
     function Invoke-TestCleanup {
         try {
-            if (Get-ConsoleSession) {
-                Disconnect-Console
+            if (Get-DeviceSession) {
+                Disconnect-Device
             }
         } catch {
             # Ignore cleanup errors
         }
     }
 
-    # Helper function to connect to console with proper parameters
-    function Connect-TestConsole {
+    # Helper function to connect to device with proper parameters
+    function Connect-TestDevice {
         param(
             [string]$Platform,
             [string]$Target
         )
 
         if ($Target) {
-            Connect-Console -Platform $Platform -Target $Target
+            Connect-Device -Platform $Platform -Target $Target
         } else {
-            Connect-Console -Platform $Platform
+            Connect-Device -Platform $Platform
         }
     }
 }
 
-Describe '<TargetName>' -Tag 'RequiresConsole' -ForEach $TestTargets {
+Describe '<TargetName>' -Tag 'RequiresDevice' -ForEach $TestTargets {
     Context 'Session State Consistency' -Tag $TargetName {
         It 'Session state remains consistent across operations' {
             # Initial connection
-            $initialSession = Connect-TestConsole -Platform $Platform -Target $Target
+            $initialSession = Connect-TestDevice -Platform $Platform -Target $Target
 
-            Get-ConsoleStatus | Out-Null
-            $sessionAfterStatus = Get-ConsoleSession
+            Get-DeviceStatus | Out-Null
+            $sessionAfterStatus = Get-DeviceSession
             $sessionAfterStatus.SessionId | Should -Be $initialSession.SessionId
 
-            Get-ConsoleDiagnostics | Out-Null
-            $sessionAfterDiagnostics = Get-ConsoleSession
+            Get-DeviceDiagnostics | Out-Null
+            $sessionAfterDiagnostics = Get-DeviceSession
             $sessionAfterDiagnostics.SessionId | Should -Be $initialSession.SessionId
         }
     }
 
-    Context 'Console Connection Management' -Tag $TargetName {
+    Context 'Device Connection Management' -Tag $TargetName {
         AfterEach {
             Invoke-TestCleanup
         }
 
-        It 'Connect-Console establishes valid session' {
-            { Connect-TestConsole -Platform $Platform -Target $Target } | Should -Not -Throw
+        It 'Connect-Device establishes valid session' {
+            { Connect-TestDevice -Platform $Platform -Target $Target } | Should -Not -Throw
 
-            $session = Get-ConsoleSession
+            $session = Get-DeviceSession
             $session | Should -Not -BeNullOrEmpty
             $session.Platform | Should -Be $Platform
             $session.Identifier | Should -Not -BeNullOrEmpty
             $session.IsConnected | Should -BeTrue
         }
 
-        It 'Test-ConsoleConnection returns true when connected' {
-            Connect-TestConsole -Platform $Platform -Target $Target
-            Test-ConsoleConnection | Should -Be $true
+        It 'Test-DeviceConnection returns true when connected' {
+            Connect-TestDevice -Platform $Platform -Target $Target
+            Test-DeviceConnection | Should -Be $true
         }
 
-        It 'Test-ConsoleConnection returns false when not connected' {
+        It 'Test-DeviceConnection returns false when not connected' {
             # Ensure no active session
-            try { Disconnect-Console } catch { }
+            try { Disconnect-Device } catch { }
 
-            Test-ConsoleConnection | Should -Be $false
+            Test-DeviceConnection | Should -Be $false
         }
 
-        It 'Disconnect-Console cleans up session' {
-            Connect-TestConsole -Platform $Platform -Target $Target
-            { Disconnect-Console } | Should -Not -Throw
+        It 'Disconnect-Device cleans up session' {
+            Connect-TestDevice -Platform $Platform -Target $Target
+            { Disconnect-Device } | Should -Not -Throw
 
-            Get-ConsoleSession | Should -BeNullOrEmpty
-            Test-ConsoleConnection | Should -Be $false
+            Get-DeviceSession | Should -BeNullOrEmpty
+            Test-DeviceConnection | Should -Be $false
         }
 
-        It 'Multiple Connect-Console calls replace session' {
-            Connect-TestConsole -Platform $Platform -Target $Target
-            $firstConnectTime = (Get-ConsoleSession).ConnectedAt
+        It 'Multiple Connect-Device calls replace session' {
+            Connect-TestDevice -Platform $Platform -Target $Target
+            $firstConnectTime = (Get-DeviceSession).ConnectedAt
 
             Start-Sleep -Milliseconds 100
-            Connect-TestConsole -Platform $Platform -Target $Target
-            $secondConnectTime = (Get-ConsoleSession).ConnectedAt
+            Connect-TestDevice -Platform $Platform -Target $Target
+            $secondConnectTime = (Get-DeviceSession).ConnectedAt
 
             $secondConnectTime | Should -BeGreaterThan $firstConnectTime
         }
     }
 
-    Context 'Console Lifecycle Management' -Tag $TargetName {
+    Context 'Device Lifecycle Management' -Tag $TargetName {
         AfterEach {
             Invoke-TestCleanup
         }
 
-        It 'Get-ConsoleStatus returns status information' {
-            Connect-TestConsole -Platform $Platform -Target $Target
+        It 'Get-DeviceStatus returns status information' {
+            Connect-TestDevice -Platform $Platform -Target $Target
 
-            $status = Get-ConsoleStatus
+            $status = Get-DeviceStatus
             $status | Should -Not -BeNullOrEmpty
             $status | Should -BeOfType [hashtable]
             $status.Keys | Should -Contain 'StatusData'
@@ -172,15 +172,15 @@ Describe '<TargetName>' -Tag 'RequiresConsole' -ForEach $TestTargets {
         }
 
         BeforeAll {
-            Connect-TestConsole -Platform $Platform -Target $Target
+            Connect-TestDevice -Platform $Platform -Target $Target
         }
 
         AfterAll {
             Invoke-TestCleanup
         }
 
-        It 'Invoke-ConsoleApp executes application' -Skip:$shouldSkip {
-            $result = Invoke-ConsoleApp -ExecutablePath $testApp -Arguments ''
+        It 'Invoke-DeviceApp executes application' -Skip:$shouldSkip {
+            $result = Invoke-DeviceApp -ExecutablePath $testApp -Arguments ''
             $result | Should -Not -BeNullOrEmpty
             $result | Should -BeOfType [hashtable]
             $result.Keys | Should -Contain 'Output'
@@ -188,8 +188,8 @@ Describe '<TargetName>' -Tag 'RequiresConsole' -ForEach $TestTargets {
             $result.ExitCode | Should -Be 0
         }
 
-        It 'Invoke-ConsoleApp with arguments works' -Skip:$shouldSkip {
-            $result = Invoke-ConsoleApp -ExecutablePath $testApp -Arguments 'error'
+        It 'Invoke-DeviceApp with arguments works' -Skip:$shouldSkip {
+            $result = Invoke-DeviceApp -ExecutablePath $testApp -Arguments 'error'
             $result | Should -Not -BeNullOrEmpty
             $result.Output | Should -Contain 'Sample: ERROR'
             if ($Platform -ne 'Switch') {
@@ -203,32 +203,32 @@ Describe '<TargetName>' -Tag 'RequiresConsole' -ForEach $TestTargets {
 
     Context 'Diagnostics and Monitoring' -Tag $TargetName {
         BeforeAll {
-            Connect-TestConsole -Platform $Platform -Target $Target
+            Connect-TestDevice -Platform $Platform -Target $Target
         }
 
         AfterAll {
             Invoke-TestCleanup
         }
 
-        It 'Test-ConsoleInternetConnection returns boolean when connected' {
-            $result = Test-ConsoleInternetConnection
+        It 'Test-DeviceInternetConnection returns boolean when connected' {
+            $result = Test-DeviceInternetConnection
             $result | Should -BeOfType [bool]
 
             # For Switch, we expect this to work and return true/false based on actual connectivity
             # For other platforms, it should return false with a warning (not implemented)
             if ($Platform -eq 'Switch') {
-                # The actual result depends on the console's internet connectivity
+                # The actual result depends on the device's internet connectivity
                 Write-Host "Internet connection test for $Platform returned: $result"
             } else {
-                Test-ConsoleInternetConnection | Should -BeFalse
+                Test-DeviceInternetConnection | Should -BeFalse
             }
         }
 
-        It 'Get-ConsoleScreenshot captures screenshot' {
+        It 'Get-DeviceScreenshot captures screenshot' {
             $outputPath = Join-Path $env:TEMP "test_screenshot_$Platform.png"
 
             try {
-                { Get-ConsoleScreenshot -OutputPath $outputPath } | Should -Not -Throw
+                { Get-DeviceScreenshot -OutputPath $outputPath } | Should -Not -Throw
 
                 Test-Path $outputPath | Should -Be $true
                 $fileInfo = Get-Item $outputPath
@@ -244,8 +244,8 @@ Describe '<TargetName>' -Tag 'RequiresConsole' -ForEach $TestTargets {
             }
         }
 
-        It 'Get-ConsoleLogs retrieves log data' -Skip:($Platform -eq 'Xbox') {
-            $logs = Get-ConsoleLogs
+        It 'Get-DeviceLogs retrieves log data' -Skip:($Platform -eq 'Xbox') {
+            $logs = Get-DeviceLogs
             $logs | Should -Not -BeNullOrEmpty
             $logs | Should -BeOfType [hashtable]
 
@@ -254,8 +254,8 @@ Describe '<TargetName>' -Tag 'RequiresConsole' -ForEach $TestTargets {
             $logs['System'][0].Keys | Should -Contain 'Message'
         }
 
-        It 'Get-ConsoleLogs with parameters works' -Skip:($Platform -eq 'Xbox') {
-            $logs = Get-ConsoleLogs -LogType 'System' -MaxEntries 10
+        It 'Get-DeviceLogs with parameters works' -Skip:($Platform -eq 'Xbox') {
+            $logs = Get-DeviceLogs -LogType 'System' -MaxEntries 10
             $logs | Should -Not -BeNullOrEmpty
             $logs.Count | Should -BeLessOrEqual 10
         }
@@ -268,24 +268,24 @@ Describe '<TargetName>' -Tag 'RequiresConsole' -ForEach $TestTargets {
 
         It 'Commands fail gracefully when no session exists' {
             # Ensure no active session
-            try { Disconnect-Console } catch { }
+            try { Disconnect-Device } catch { }
 
-            { Get-ConsoleStatus } | Should -Throw '*No active console session*'
-            { Invoke-ConsoleApp -ExecutablePath 'test.exe' } | Should -Throw '*No active console session*'
-            { Get-ConsoleDiagnostics } | Should -Throw '*No active console session*'
-            { Test-ConsoleInternetConnection } | Should -Throw '*No active console session*'
+            { Get-DeviceStatus } | Should -Throw '*No active device session*'
+            { Invoke-DeviceApp -ExecutablePath 'test.exe' } | Should -Throw '*No active device session*'
+            { Get-DeviceDiagnostics } | Should -Throw '*No active device session*'
+            { Test-DeviceInternetConnection } | Should -Throw '*No active device session*'
         }
 
         It 'Invalid parameters are handled consistently' {
-            Connect-TestConsole -Platform $Platform -Target $Target
+            Connect-TestDevice -Platform $Platform -Target $Target
 
             # Test invalid file paths
-            { Get-ConsoleScreenshot -OutputPath '' } | Should -Throw
-            { Invoke-ConsoleApp -ExecutablePath '' } | Should -Throw
+            { Get-DeviceScreenshot -OutputPath '' } | Should -Throw
+            { Invoke-DeviceApp -ExecutablePath '' } | Should -Throw
 
             # Test invalid log parameters
-            { Get-ConsoleLogs -MaxEntries -1 } | Should -Throw
-            { Get-ConsoleLogs -MaxEntries 0 } | Should -Throw
+            { Get-DeviceLogs -MaxEntries -1 } | Should -Throw
+            { Get-DeviceLogs -MaxEntries 0 } | Should -Throw
         }
     }
 }

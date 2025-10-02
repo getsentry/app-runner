@@ -1,32 +1,32 @@
 # Session Management Functions
-# Handles console connection state and session management
+# Handles device connection state and session management
 
 
 # Module-level variable to store current session
 $script:CurrentSession = $null
 
-function Assert-ConsoleSession {
+function Assert-DeviceSession {
     <#
     .SYNOPSIS
-    Internal function to validate that a console session is active.
+    Internal function to validate that a device session is active.
 
     .DESCRIPTION
-    Throws an error if no console session is active. Used by other functions
+    Throws an error if no device session is active. Used by other functions
     to ensure they have a valid session before executing.
 
     .EXAMPLE
-    Assert-ConsoleSession
+    Assert-DeviceSession
     #>
     [CmdletBinding()]
     param()
 
     if (-not $script:CurrentSession) {
-        throw "No active console session. Use Connect-Console to establish a connection first."
+        throw "No active device session. Use Connect-Device to establish a connection first."
     }
 
-    if (-not (Test-ConsoleConnection)) {
-        throw "Console session is not healthy. Please reconnect using Connect-Console."
+    if (-not (Test-DeviceConnection)) {
+        throw "Device session is not healthy. Please reconnect using Connect-Device."
     }
 
-    Write-Debug "Console session validation passed"
+    Write-Debug "Device session validation passed"
 }

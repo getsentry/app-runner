@@ -1,21 +1,21 @@
 $ErrorActionPreference = 'Stop'
 $PSNativeCommandUseErrorActionPreference = $true
 
-# Import console providers in the correct order (base provider first, then implementations, then factory)
+# Import device providers in the correct order (base provider first, then implementations, then factory)
 $ProviderFiles = @(
-    "$PSScriptRoot\Private\ConsoleProviders\ConsoleProvider.ps1",
-    "$PSScriptRoot\Private\ConsoleProviders\XboxProvider.ps1",
-    "$PSScriptRoot\Private\ConsoleProviders\PlayStation5Provider.ps1",
-    "$PSScriptRoot\Private\ConsoleProviders\SwitchProvider.ps1",
-    "$PSScriptRoot\Private\ConsoleProviders\MockConsoleProvider.ps1",
-    "$PSScriptRoot\Private\ConsoleProviders\ConsoleProviderFactory.ps1"
+    "$PSScriptRoot\Private\DeviceProviders\DeviceProvider.ps1",
+    "$PSScriptRoot\Private\DeviceProviders\XboxProvider.ps1",
+    "$PSScriptRoot\Private\DeviceProviders\PlayStation5Provider.ps1",
+    "$PSScriptRoot\Private\DeviceProviders\SwitchProvider.ps1",
+    "$PSScriptRoot\Private\DeviceProviders\MockDeviceProvider.ps1",
+    "$PSScriptRoot\Private\DeviceProviders\DeviceProviderFactory.ps1"
 )
 
 foreach ($import in $ProviderFiles) {
     if (Test-Path $import) {
         try {
             . $import
-            Write-Debug "Imported console provider: $(Split-Path -Leaf $import)"
+            Write-Debug "Imported device provider: $(Split-Path -Leaf $import)"
         } catch {
             Write-Error "Failed to import provider $import`: $($_.Exception.Message)"
         }
@@ -47,21 +47,21 @@ foreach ($import in $Public) {
 # Export public functions
 Export-ModuleMember -Function @(
     # Session Management
-    'Connect-Console',
-    'Disconnect-Console',
-    'Get-ConsoleSession',
-    'Test-ConsoleConnection',
-    'Test-ConsoleInternetConnection',
-    'Invoke-ConsoleApp',
+    'Connect-Device',
+    'Disconnect-Device',
+    'Get-DeviceSession',
+    'Test-DeviceConnection',
+    'Test-DeviceInternetConnection',
+    'Invoke-DeviceApp',
 
-    # Console Lifecycle
-    'Start-Console',
-    'Stop-Console',
-    'Restart-Console',
-    'Get-ConsoleStatus',
+    # Device Lifecycle
+    'Start-Device',
+    'Stop-Device',
+    'Restart-Device',
+    'Get-DeviceStatus',
 
     # Diagnostics & Monitoring
-    'Get-ConsoleLogs',
-    'Get-ConsoleScreenshot',
-    'Get-ConsoleDiagnostics'
+    'Get-DeviceLogs',
+    'Get-DeviceScreenshot',
+    'Get-DeviceDiagnostics'
 )

@@ -1,19 +1,19 @@
-function Get-ConsoleSession {
+function Get-DeviceSession {
     <#
     .SYNOPSIS
-    Gets information about the current console session.
+    Gets information about the current device session.
 
     .DESCRIPTION
-    Returns details about the currently active console session, or null if no session is active.
+    Returns details about the currently active device session, or null if no session is active.
 
     .EXAMPLE
-    Get-ConsoleSession
+    Get-DeviceSession
     #>
     [CmdletBinding()]
     param()
 
     if (-not $script:CurrentSession) {
-        Write-Debug "No active console session"
+        Write-Debug "No active device session"
         return $null
     }
 

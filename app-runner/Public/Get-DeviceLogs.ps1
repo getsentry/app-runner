@@ -1,11 +1,11 @@
-function Get-ConsoleLogs {
+function Get-DeviceLogs {
     <#
     .SYNOPSIS
-    Retrieves logs from the console.
+    Retrieves logs from the device.
 
     .DESCRIPTION
-    This function collects various types of logs from the console including system logs, application logs, and error logs.
-    Uses the current console session.
+    This function collects various types of logs from the device including system logs, application logs, and error logs.
+    Uses the current device session.
 
     .PARAMETER LogType
     Type of logs to collect (System, Application, Error, All).
@@ -23,8 +23,8 @@ function Get-ConsoleLogs {
     Maximum number of log entries to retrieve (default: 1000).
 
     .EXAMPLE
-    Connect-Console -Platform "Xbox"
-    Get-ConsoleLogs -LogType "Error"
+    Connect-Device -Platform "Xbox"
+    Get-DeviceLogs -LogType "Error"
     #>
     [CmdletBinding()]
     param(
@@ -46,22 +46,22 @@ function Get-ConsoleLogs {
         [int]$MaxEntries = 1000
     )
 
-    Assert-ConsoleSession
+    Assert-DeviceSession
 
-    Write-Debug "Collecting logs for console: $($script:CurrentSession.Platform)"
+    Write-Debug "Collecting logs for device: $($script:CurrentSession.Platform)"
     Write-Debug "Log type: $LogType, Start: $StartTime, End: $EndTime"
     Write-Debug "Max entries: $MaxEntries"
     if ($OutputPath) {
         Write-Debug "Output path: $OutputPath"
     }
-    # Use the provider to get console logs
+    # Use the provider to get device logs
     $provider = $script:CurrentSession.Provider
-    $logs = $provider.GetConsoleLogs($LogType, $MaxEntries)
+    $logs = $provider.GetDeviceLogs($LogType, $MaxEntries)
 
     # Save to file if output path is specified
     if ($OutputPath) {
         $logs | ConvertTo-Json -Depth 10 | Out-File -FilePath $OutputPath -Encoding UTF8
-        Write-Debug "Console logs saved to: $OutputPath"
+        Write-Debug "Device logs saved to: $OutputPath"
     }
 
     return $logs

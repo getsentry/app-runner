@@ -1,19 +1,19 @@
-# Xbox Console Provider Implementation
+# Xbox Device Provider Implementation
 # Unified provider for Xbox One and Xbox Series X/S development kits
 
 
 # Load the base provider
-. "$PSScriptRoot\ConsoleProvider.ps1"
+. "$PSScriptRoot\DeviceProvider.ps1"
 
 <#
 .SYNOPSIS
-Console provider for Xbox development kits (Xbox One and Xbox Series X/S).
+Device provider for Xbox development kits (Xbox One and Xbox Series X/S).
 
 .DESCRIPTION
-This provider implements Xbox specific console operations using the Xbox development CLI tools.
+This provider implements Xbox specific device operations using the Xbox development CLI tools.
 It supports both Xbox One and Xbox Series X/S development kits through the same interface.
 #>
-class XboxProvider : ConsoleProvider {
+class XboxProvider : DeviceProvider {
     [string]$ConnectTool = 'xbconnect.exe'
     [string]$PowerTool = 'xbreboot.exe'
 
@@ -69,33 +69,33 @@ class XboxProvider : ConsoleProvider {
         }
 
         if (-not $success) {
-            throw "Failed to power on console after $maxRetries attempts"
+            throw "Failed to power on device after $maxRetries attempts"
         }
     }
 
     [hashtable] Connect() {
-        Write-Debug "$($this.Platform): Connecting to console"
-        $this.InvokePowerOn() # Wakes up the console - needs to run before connect.
+        Write-Debug "$($this.Platform): Connecting to device"
+        $this.InvokePowerOn() # Wakes up the device - needs to run before connect.
         $this.InvokeCommand('connect', @())
         return $this.CreateSessionInfo()
     }
 
     # Override Connect to support target parameter
     [hashtable] Connect([string]$target) {
-        Write-Debug "$($this.Platform): Setting target console: $target"
+        Write-Debug "$($this.Platform): Setting target device: $target"
         $this.InvokeCommand('setTarget', @($target))
         return $this.Connect()
     }
 
-    # Override StartConsole to use retry logic for connected standby
-    [void] StartConsole() {
-        Write-Debug "$($this.Platform): Starting console"
+    # Override StartDevice to use retry logic for connected standby
+    [void] StartDevice() {
+        Write-Debug "$($this.Platform): Starting device"
         $this.InvokePowerOn()
     }
 
-    # Override GetConsoleLogs to provide Switch specific log retrieval
-    [hashtable] GetConsoleLogs([string]$LogType, [int]$MaxEntries) {
-        Write-Warning 'GetConsoleLogs is not available for Xbox consoles.'
+    # Override GetDeviceLogs to provide Xbox specific log retrieval
+    [hashtable] GetDeviceLogs([string]$LogType, [int]$MaxEntries) {
+        Write-Warning 'GetDeviceLogs is not available for Xbox devices.'
         return @{}
     }
 
@@ -112,8 +112,8 @@ class XboxProvider : ConsoleProvider {
         return $this.InvokeApplicationCommand($command, $appExecutableName, $Arguments)
     }
 
-    [string] GetConsoleIdentifier() {
-        $status = $this.GetConsoleStatus()
+    [string] GetDeviceIdentifier() {
+        $status = $this.GetDeviceStatus()
         $statusData = $status.StatusData
 
         # parse IP address or host name from:
@@ -122,7 +122,7 @@ class XboxProvider : ConsoleProvider {
         if ($matchingLine) {
             return $matches[1]
         } else {
-            Write-Warning 'Could not parse console identifier from status data.'
+            Write-Warning 'Could not parse device identifier from status data.'
             return 'Unknown'
         }
     }

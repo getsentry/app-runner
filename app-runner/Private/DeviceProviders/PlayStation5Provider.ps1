@@ -1,19 +1,19 @@
-# PlayStation5 Console Provider Implementation
-# Implements console operations for PlayStation 5 development kits
+# PlayStation5 Device Provider Implementation
+# Implements device operations for PlayStation 5 development kits
 
 
 # Load the base provider
-. "$PSScriptRoot\ConsoleProvider.ps1"
+. "$PSScriptRoot\DeviceProvider.ps1"
 
 <#
 .SYNOPSIS
-Console provider for PlayStation 5 development kits.
+Device provider for PlayStation 5 development kits.
 
 .DESCRIPTION
-This provider implements PlayStation 5 specific console operations using the PlayStation 5 development CLI tools.
-It handles connection management, console lifecycle operations, and application management.
+This provider implements PlayStation 5 specific device operations using the PlayStation 5 development CLI tools.
+It handles connection management, device lifecycle operations, and application management.
 #>
-class PlayStation5Provider : ConsoleProvider {
+class PlayStation5Provider : DeviceProvider {
     [string]$TargetControlTool = "prospero-ctrl.exe"
     [string]$ApplicationRunnerTool = "prospero-run.exe"
 
@@ -43,8 +43,8 @@ class PlayStation5Provider : ConsoleProvider {
         }
     }
 
-    # override GetConsoleLogs to provide Switch specific log retrieval
-    [hashtable] GetConsoleLogs([string]$LogType, [int]$MaxEntries) {
+    # override GetDeviceLogs to provide PlayStation 5 specific log retrieval
+    [hashtable] GetDeviceLogs([string]$LogType, [int]$MaxEntries) {
         $result = @{}
         if ($LogType -eq 'System' -or $LogType -eq 'All') {
             # prospero-ctrl target console waits for ctrl+c to exit so we run it as a job and stop it after an arbitrary timeout
@@ -86,8 +86,8 @@ class PlayStation5Provider : ConsoleProvider {
         return $result
     }
 
-    [string] GetConsoleIdentifier() {
-        $status = $this.GetConsoleStatus()
+    [string] GetDeviceIdentifier() {
+        $status = $this.GetDeviceStatus()
         $statusData = $status.StatusData
 
         # Try to extract GameLanIpAddress from PS5 status text

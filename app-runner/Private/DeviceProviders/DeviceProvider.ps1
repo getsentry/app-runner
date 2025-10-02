@@ -1,24 +1,24 @@
-# Console Provider Base Class
-# Provides shared functionality for all console providers
+# Device Provider Base Class
+# Provides shared functionality for all device providers
 
 
 <#
 .SYNOPSIS
-Base console provider with shared implementation for all platforms.
+Base device provider with shared implementation for all platforms.
 
 .DESCRIPTION
-This base class implements common patterns shared across all console providers,
+This base class implements common patterns shared across all device providers,
 reducing code duplication and providing consistent behavior. Platform-specific
 providers inherit from this base and override only what's different.
 #>
-class ConsoleProvider {
+class DeviceProvider {
     # Platform identification
     [string]$Platform
 
     [hashtable]$Commands
     [string]$SdkPath
 
-    ConsoleProvider() {
+    DeviceProvider() {
         $this.Commands = @{}
         $this.SdkPath = $null
     }
@@ -88,12 +88,12 @@ class ConsoleProvider {
     }
 
     [hashtable] CreateSessionInfo() {
-        $status = $this.GetConsoleStatus()
+        $status = $this.GetDeviceStatus()
         return @{
             Provider    = $this
             Platform    = $this.Platform
             ConnectedAt = Get-Date
-            Identifier  = $this.GetConsoleIdentifier()
+            Identifier  = $this.GetDeviceIdentifier()
             IsConnected = $true
             StatusData  = $status.StatusData
         }
@@ -101,7 +101,7 @@ class ConsoleProvider {
 
     # Connection management (shared implementation)
     [hashtable] Connect() {
-        Write-Debug "$($this.Platform): Connecting to console"
+        Write-Debug "$($this.Platform): Connecting to device"
 
         $this.InvokeCommand('connect', @())
         $this.InvokeCommand('poweron', @())
@@ -109,46 +109,46 @@ class ConsoleProvider {
     }
 
     [hashtable] Connect([string]$target) {
-        Write-Debug "$($this.Platform): Connecting to console with target: $target"
+        Write-Debug "$($this.Platform): Connecting to device with target: $target"
 
         # Default implementation just calls Connect() - platforms that support targets should override
         return $this.Connect()
     }
 
     [void] Disconnect() {
-        Write-Debug "$($this.Platform): Disconnecting from console"
+        Write-Debug "$($this.Platform): Disconnecting from device"
 
         $this.InvokeCommand('disconnect', @())
     }
 
     [bool] TestConnection() {
-        Write-Debug "$($this.Platform): Testing connection to console"
+        Write-Debug "$($this.Platform): Testing connection to device"
 
         $this.InvokeCommand('getstatus', @())
         return $true
     }
 
-    # Console lifecycle management (shared implementation)
-    [void] StartConsole() {
-        Write-Debug "$($this.Platform): Starting console"
+    # Device lifecycle management (shared implementation)
+    [void] StartDevice() {
+        Write-Debug "$($this.Platform): Starting device"
 
         $this.InvokeCommand('poweron', @())
     }
 
-    [void] StopConsole() {
-        Write-Debug "$($this.Platform): Stopping console"
+    [void] StopDevice() {
+        Write-Debug "$($this.Platform): Stopping device"
 
         Write-Output $this.InvokeCommand('poweroff', @())
     }
 
-    [void] RestartConsole() {
-        Write-Debug "$($this.Platform): Restarting console"
+    [void] RestartDevice() {
+        Write-Debug "$($this.Platform): Restarting device"
 
         $this.InvokeCommand('reset', @())
     }
 
-    [hashtable] GetConsoleStatus() {
-        Write-Debug "$($this.Platform): Getting console status"
+    [hashtable] GetDeviceStatus() {
+        Write-Debug "$($this.Platform): Getting device status"
 
         $result = $this.InvokeCommand('getstatus', @())
         return @{
@@ -225,8 +225,8 @@ class ConsoleProvider {
         return @{}
     }
 
-    [string] GetConsoleIdentifier() {
-        $status = $this.GetConsoleStatus()
+    [string] GetDeviceIdentifier() {
+        $status = $this.GetDeviceStatus()
         $statusData = $status.StatusData
 
         # Handle null or empty status data
@@ -239,7 +239,7 @@ class ConsoleProvider {
             return $matches[0]
         }
 
-        # Try to extract console name/ID from status text
+        # Try to extract device name/ID from status text
         if ($statusData -match '(?:Target|Console|Name|DevKit):\s*(\w+)' -and $matches -and $matches[1]) {
             return $matches[1]
         }

@@ -1,19 +1,19 @@
-# Switch Console Provider Implementation
-# Implements console operations for Nintendo Switch development units
+# Switch Device Provider Implementation
+# Implements device operations for Nintendo Switch development units
 
 
 # Load the base provider
-. "$PSScriptRoot\ConsoleProvider.ps1"
+. "$PSScriptRoot\DeviceProvider.ps1"
 
 <#
 .SYNOPSIS
-Console provider for Nintendo Switch development units.
+Device provider for Nintendo Switch development units.
 
 .DESCRIPTION
-This provider implements Nintendo Switch specific console operations using the Nintendo Switch development CLI tools.
-It handles connection management, console lifecycle operations, and application management.
+This provider implements Nintendo Switch specific device operations using the Nintendo Switch development CLI tools.
+It handles connection management, device lifecycle operations, and application management.
 #>
-class SwitchProvider : ConsoleProvider {
+class SwitchProvider : DeviceProvider {
     [string]$TargetControlTool = 'ControlTarget.exe'
     [string]$ApplicationRunnerTool = 'RunOnTarget.exe'
 
@@ -44,15 +44,15 @@ class SwitchProvider : ConsoleProvider {
         }
     }
 
-    # Override GetConsoleStatus to provide Switch specific wakeup
-    [hashtable] GetConsoleStatus() {
-        $status = ([ConsoleProvider] $this).GetConsoleStatus()
+    # Override GetDeviceStatus to provide Switch specific wakeup
+    [hashtable] GetDeviceStatus() {
+        $status = ([DeviceProvider] $this).GetDeviceStatus()
         $status.StatusData = $status.StatusData | ConvertFrom-Json
         return $status
     }
 
-    [string] GetConsoleIdentifier() {
-        $status = $this.GetConsoleStatus()
+    [string] GetDeviceIdentifier() {
+        $status = $this.GetDeviceStatus()
         $statusData = $status.StatusData
         return $statusData.IpAddress
     }
@@ -69,8 +69,8 @@ class SwitchProvider : ConsoleProvider {
         for ($i = 0; $i -le 3; $i++) {
             $jobStatus = Wait-Job $job -Timeout 20
 
-            # Get console status using base class method
-            $info = $this.GetConsoleStatus().StatusData
+            # Get device status using base class method
+            $info = $this.GetDeviceStatus().StatusData
 
             if ($jobStatus -ne $null) {
                 if (("$($info.Status)" -eq 'Asleep') -and ($i -ne 0)) {
@@ -90,7 +90,7 @@ class SwitchProvider : ConsoleProvider {
                 }
                 1 {
                     Write-Warning 'Attempting to start the Devkit...'
-                    $this.StartConsole(20)
+                    $this.StartDevice(20)
                 }
                 2 {
                     Write-Warning 'Attempting to reboot the Devkit...'
@@ -120,15 +120,15 @@ class SwitchProvider : ConsoleProvider {
         return $this.CreateSessionInfo()
     }
 
-    # override StopConsole because it exits immediately but actually takes a while to finish
-    [void] StopConsole() {
-        ([ConsoleProvider] $this).StopConsole();
+    # override StopDevice because it exits immediately but actually takes a while to finish
+    [void] StopDevice() {
+        ([DeviceProvider] $this).StopDevice();
         Start-Sleep -Seconds 3
     }
 
-    # override GetConsoleLogs to provide Switch specific log retrieval
-    [hashtable] GetConsoleLogs([string]$LogType, [int]$MaxEntries) {
-        $session = Get-ConsoleSession
+    # override GetDeviceLogs to provide Switch specific log retrieval
+    [hashtable] GetDeviceLogs([string]$LogType, [int]$MaxEntries) {
+        $session = Get-DeviceSession
 
         $result = @{}
         if ($LogType -eq 'System' -or $LogType -eq 'All') {

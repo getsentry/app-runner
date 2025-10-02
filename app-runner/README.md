@@ -1,6 +1,6 @@
 # SentryAppRunner PowerShell Module
 
-PowerShell module for automating console lifecycle management, game/app deployment, and diagnostics collection for Sentry SDK testing on game consoles (Xbox, PlayStation 5, Nintendo Switch).
+PowerShell module for automating device lifecycle management, app deployment, and diagnostics collection for Sentry SDK testing across multiple platforms (Xbox, PlayStation 5, Nintendo Switch, mobile, desktop).
 
 ## Installation
 
@@ -11,18 +11,18 @@ Import-Module ./SentryAppRunner.psd1
 ## Quick Start
 
 ```powershell
-# Connect to console
-Connect-Console -Platform "Xbox" -Target "192.168.1.100"
+# Connect to device
+Connect-Device -Platform "Xbox" -Target "192.168.1.100"
 
 # Run application
-Invoke-ConsoleApp -ExecutablePath "MyGame.exe" -Arguments "--debug --level=verbose"
+Invoke-DeviceApp -ExecutablePath "MyGame.exe" -Arguments "--debug --level=verbose"
 
 # Collect diagnostics
-Get-ConsoleLogs -LogType "Error"
-Get-ConsoleScreenshot -OutputPath "screenshot.png"
+Get-DeviceLogs -LogType "Error"
+Get-DeviceScreenshot -OutputPath "screenshot.png"
 
 # Disconnect
-Disconnect-Console
+Disconnect-Device
 ```
 
 ## Supported Platforms
@@ -34,36 +34,36 @@ Disconnect-Console
 ## Functions
 
 ### Session Management
-- `Connect-Console` - Connect to console (auto-discovery or specific target)
-- `Disconnect-Console` - Disconnect from console
-- `Get-ConsoleSession` - Get current session info
-- `Test-ConsoleConnection` - Verify connection health
+- `Connect-Device` - Connect to device (auto-discovery or specific target)
+- `Disconnect-Device` - Disconnect from device
+- `Get-DeviceSession` - Get current session info
+- `Test-DeviceConnection` - Verify connection health
 
 ### App Execution
-- `Invoke-ConsoleApp` - Install and run application (unified command)
+- `Invoke-DeviceApp` - Install and run application (unified command)
 
-### Console Lifecycle
-- `Start-Console` - Power on console
-- `Stop-Console` - Power off console
-- `Restart-Console` - Restart console
-- `Get-ConsoleStatus` - Check console status
-- `Test-ConsoleInternetConnection` - Test console's internet connectivity
+### Device Lifecycle
+- `Start-Device` - Power on device
+- `Stop-Device` - Power off device
+- `Restart-Device` - Restart device
+- `Get-DeviceStatus` - Check device status
+- `Test-DeviceInternetConnection` - Test device's internet connectivity
 
 ### Diagnostics
-- `Get-ConsoleLogs` - Retrieve console logs
-- `Get-ConsoleScreenshot` - Capture screenshot
-- `Get-ConsoleDiagnostics` - Collect diagnostics and performance metrics
+- `Get-DeviceLogs` - Retrieve device logs
+- `Get-DeviceScreenshot` - Capture screenshot
+- `Get-DeviceDiagnostics` - Collect diagnostics and performance metrics
 
 ## Architecture
 
-Session-based workflow where all operations use an active console session:
+Session-based workflow where all operations use an active device session:
 
 ```powershell
-Connect-Console -Platform "PlayStation5"
-Start-Console
-Invoke-ConsoleApp -ExecutablePath "MyGame.exe" -Arguments "--profile"
-Get-ConsoleLogs -LogType "Error" -MaxEntries 500
-Disconnect-Console
+Connect-Device -Platform "PlayStation5"
+Start-Device
+Invoke-DeviceApp -ExecutablePath "MyGame.exe" -Arguments "--profile"
+Get-DeviceLogs -LogType "Error" -MaxEntries 500
+Disconnect-Device
 ```
 
 ## Development
@@ -77,11 +77,11 @@ Invoke-Pester -Path ./Tests/ -Output Detailed
 # Run specific test file
 Invoke-Pester -Path ./Tests/SessionManagement.Tests.ps1 -Output Detailed
 
-# Run tests on game consoles
-Invoke-Pester -Path ./Tests/GameConsole.Tests.ps1 -Output Detailed
+# Run tests on devices
+Invoke-Pester -Path ./Tests/Device.Tests.ps1 -Output Detailed
 
 # Run tests for specific platform
-Invoke-Pester -Path ./Tests/GameConsole.Tests.ps1 -TagFilter 'Xbox' -Output Detailed
+Invoke-Pester -Path ./Tests/Device.Tests.ps1 -TagFilter 'Xbox' -Output Detailed
 ```
 
 ### Code Analysis

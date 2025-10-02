@@ -22,26 +22,26 @@
     Copyright            = '(c) Sentry. All rights reserved.'
 
     # Description of the functionality provided by this module
-    Description          = 'PowerShell module for automating console lifecycle management, game/app deployment, and diagnostics collection for Sentry SDK testing.'
+    Description          = 'PowerShell module for automating device lifecycle management, app deployment, and diagnostics collection for Sentry SDK testing across multiple platforms.'
 
     # Minimum version of the PowerShell engine required by this module
     PowerShellVersion    = '5.1'
 
     # Functions to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no functions to export.
     FunctionsToExport    = @(
-        'Connect-Console',
-        'Disconnect-Console',
-        'Get-ConsoleDiagnostics',
-        'Get-ConsoleLogs',
-        'Get-ConsoleScreenshot',
-        'Get-ConsoleSession',
-        'Get-ConsoleStatus',
-        'Invoke-ConsoleApp',
-        'Restart-Console',
-        'Start-Console',
-        'Stop-Console',
-        'Test-ConsoleConnection',
-        'Test-ConsoleInternetConnection'
+        'Connect-Device',
+        'Disconnect-Device',
+        'Get-DeviceDiagnostics',
+        'Get-DeviceLogs',
+        'Get-DeviceScreenshot',
+        'Get-DeviceSession',
+        'Get-DeviceStatus',
+        'Invoke-DeviceApp',
+        'Restart-Device',
+        'Start-Device',
+        'Stop-Device',
+        'Test-DeviceConnection',
+        'Test-DeviceInternetConnection'
     )
 
     # Cmdlets to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no cmdlets to export.
@@ -60,7 +60,7 @@
     PrivateData          = @{
         PSData = @{
             # Tags applied to this module. These help with module discovery in online galleries.
-            Tags         = @('Sentry', 'Console', 'Gaming', 'Automation', 'Testing', 'PSEdition_Core', 'Windows')
+            Tags         = @('Sentry', 'Device', 'Platform', 'Automation', 'Testing', 'PSEdition_Core', 'Windows', 'Mobile', 'Desktop')
 
             # A URL to the license for this module.
             LicenseUri   = 'https://raw.githubusercontent.com/getsentry/app-runner/main/LICENSE'

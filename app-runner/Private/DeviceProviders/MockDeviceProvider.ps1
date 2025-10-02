@@ -1,23 +1,23 @@
-# Mock Console Provider Implementation
+# Mock Device Provider Implementation
 # Provides predictable mock responses for testing
 
 
 # Load the base provider
-. "$PSScriptRoot\ConsoleProvider.ps1"
+. "$PSScriptRoot\DeviceProvider.ps1"
 
 <#
 .SYNOPSIS
-Mock console provider for testing.
+Mock device provider for testing.
 
 .DESCRIPTION
 This provider implements predictable mock responses for testing the SentryAppRunner module.
-It simulates console operations without requiring actual hardware.
+It simulates device operations without requiring actual hardware.
 #>
-class MockConsoleProvider : ConsoleProvider {
+class MockDeviceProvider : DeviceProvider {
     [bool]$IsConnected = $false
     [hashtable]$MockConfig = @{}
 
-    MockConsoleProvider() {
+    MockDeviceProvider() {
         $this.Platform = "Mock"
 
         # Mock commands don't need real CLI tools - just use echo for simulation
@@ -54,7 +54,7 @@ class MockConsoleProvider : ConsoleProvider {
 
     # Override methods to provide realistic mock behavior
     [hashtable] Connect() {
-        Write-Debug "Mock: Connecting to mock console"
+        Write-Debug "Mock: Connecting to mock device"
 
         if ($this.MockConfig.ShouldFailConnection) {
             throw "Mock connection failed"
@@ -66,7 +66,7 @@ class MockConsoleProvider : ConsoleProvider {
     }
 
     [void] Disconnect() {
-        Write-Debug "Mock: Disconnecting from mock console"
+        Write-Debug "Mock: Disconnecting from mock device"
         $this.IsConnected = $false
     }
 
@@ -75,25 +75,25 @@ class MockConsoleProvider : ConsoleProvider {
         return $this.IsConnected
     }
 
-    [void] StartConsole() {
-        Write-Debug "Mock: Starting console"
+    [void] StartDevice() {
+        Write-Debug "Mock: Starting device"
         $this.MockConfig.PowerState = "On"
     }
 
-    [void] StopConsole() {
-        Write-Debug "Mock: Stopping console"
+    [void] StopDevice() {
+        Write-Debug "Mock: Stopping device"
         $this.MockConfig.PowerState = "Off"
         $this.MockConfig.AppRunning = $false
     }
 
-    [void] RestartConsole() {
-        Write-Debug "Mock: Restarting console"
+    [void] RestartDevice() {
+        Write-Debug "Mock: Restarting device"
         $this.MockConfig.PowerState = "On"
         $this.MockConfig.AppRunning = $false
     }
 
-    [hashtable] GetConsoleStatus() {
-        Write-Debug "Mock: Getting console status"
+    [hashtable] GetDeviceStatus() {
+        Write-Debug "Mock: Getting device status"
         return @{
             Platform   = $this.Platform
             PowerState = $this.MockConfig.PowerState
@@ -119,15 +119,15 @@ class MockConsoleProvider : ConsoleProvider {
     }
 
 
-    [hashtable] GetConsoleLogs([string]$LogType, [int]$MaxEntries) {
-        Write-Debug "Mock: Getting console logs (type: $LogType, max: $MaxEntries)"
+    [hashtable] GetDeviceLogs([string]$LogType, [int]$MaxEntries) {
+        Write-Debug "Mock: Getting device logs (type: $LogType, max: $MaxEntries)"
 
         $logs = @{$LogType = @() }
         for ($i = 0; $i -lt $MaxEntries; $i++) {
             $logs[$LogType] += @{
                 Level     = @("Info", "Warning", "Error")[$i % 3]
                 Message   = "Mock log entry $i for $($this.Platform)"
-                Source    = "MockConsole"
+                Source    = "MockDevice"
                 Timestamp = (Get-Date).AddSeconds(-$i)
             }
         }
@@ -186,7 +186,7 @@ class MockConsoleProvider : ConsoleProvider {
         return $this.MockConfig.Clone()
     }
 
-    [string] GetConsoleIdentifier() {
+    [string] GetDeviceIdentifier() {
         return "Mock-$($this.Platform)-192.168.1.100"
     }
 }

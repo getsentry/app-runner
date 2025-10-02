@@ -11,13 +11,13 @@
 
 ### Error Handling
 
-- Always use `Assert-ConsoleSession` before console operations
-- Use consistent error messages: "No active console session" for session validation failures
+- Always use `Assert-DeviceSession` before device operations
+- Use consistent error messages: "No active device session" for session validation failures
 - Mark unimplemented features with `# TODO: Implement <functionality>`
 
 ### Session Management
 
-- Only one console session active at a time
+- Only one device session active at a time
 - Auto-disconnect when connecting to a new platform
 - All functions must validate session before executing
 
@@ -29,11 +29,11 @@ Run tests before committing:
 # Run all tests
 Invoke-Pester -Path ./app-runner/Tests/ -Output Detailed
 
-# Run tests excluding game console tests
-Invoke-Pester -Path ./app-runner/Tests/ -ExcludeTag 'RequiresConsole' -Output Detailed
+# Run tests excluding device tests
+Invoke-Pester -Path ./app-runner/Tests/ -ExcludeTag 'RequiresDevice' -Output Detailed
 
-# Run game console tests for specific platform
-Invoke-Pester -Path ./app-runner/Tests/GameConsole.Tests.ps1 -TagFilter 'Xbox' -Output Detailed
+# Run device tests for specific platform
+Invoke-Pester -Path ./app-runner/Tests/Device.Tests.ps1 -TagFilter 'Xbox' -Output Detailed
 ```
 
 **All tests must pass before committing.**

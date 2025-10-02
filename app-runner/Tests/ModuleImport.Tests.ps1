@@ -5,15 +5,15 @@ BeforeAll {
     Import-Module $ModulePath -Force
 
     # Clear any existing session before tests
-    if (Get-ConsoleSession) {
-        Disconnect-Console
+    if (Get-DeviceSession) {
+        Disconnect-Device
     }
 }
 
 AfterAll {
     # Clean up any remaining session
-    if (Get-ConsoleSession) {
-        Disconnect-Console
+    if (Get-DeviceSession) {
+        Disconnect-Device
     }
     Remove-Module SentryAppRunner -Force -ErrorAction SilentlyContinue
 }
@@ -27,23 +27,23 @@ Context 'Module Loading' {
         $ExportedFunctions = Get-Command -Module SentryAppRunner
         $ExpectedFunctions = @(
             # Session Management
-            'Connect-Console',
-            'Disconnect-Console',
-            'Get-ConsoleSession',
-            'Test-ConsoleConnection',
-            'Test-ConsoleInternetConnection',
-            'Invoke-ConsoleApp',
+            'Connect-Device',
+            'Disconnect-Device',
+            'Get-DeviceSession',
+            'Test-DeviceConnection',
+            'Test-DeviceInternetConnection',
+            'Invoke-DeviceApp',
 
-            # Console Lifecycle
-            'Start-Console',
-            'Stop-Console',
-            'Restart-Console',
-            'Get-ConsoleStatus',
+            # Device Lifecycle
+            'Start-Device',
+            'Stop-Device',
+            'Restart-Device',
+            'Get-DeviceStatus',
 
             # Diagnostics & Monitoring
-            'Get-ConsoleLogs',
-            'Get-ConsoleScreenshot',
-            'Get-ConsoleDiagnostics'
+            'Get-DeviceLogs',
+            'Get-DeviceScreenshot',
+            'Get-DeviceDiagnostics'
         )
 
         foreach ($Function in $ExpectedFunctions) {
