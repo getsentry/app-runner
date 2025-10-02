@@ -25,16 +25,65 @@ BeforeDiscovery {
         }
     }
 
-    $TestTargets = @(
-        New-TestTarget -Platform 'Switch'
-        New-TestTarget -Platform 'PlayStation5'
-    )
+    # Helper to check if a platform SDK is available
+    function Test-PlatformSdkAvailable {
+        param([string]$Platform)
 
-    if ($env:CI -eq 'true') {
-        $TestTargets += New-TestTarget -Platform 'Xbox' -Target $env:DEVKIT_XBOXONE_IP
-        $TestTargets += New-TestTarget -Platform 'Xbox' -Target $env:DEVKIT_SCARLETT_IP
-    } else {
-        $TestTargets += New-TestTarget -Platform 'Xbox'
+        switch ($Platform) {
+            'Xbox' {
+                # Check for Xbox GDK environment variable or xbconnect.exe in PATH
+                if ($env:GameDK) { return $true }
+                return $null -ne (Get-Command 'xbconnect.exe' -ErrorAction SilentlyContinue)
+            }
+            'PlayStation5' {
+                # Check for PlayStation SDK environment variable or prospero-ctrl.exe in PATH
+                if ($env:SCE_ROOT_DIR) { return $true }
+                return $null -ne (Get-Command 'prospero-ctrl.exe' -ErrorAction SilentlyContinue)
+            }
+            'Switch' {
+                # Check for Nintendo SDK environment variable or ControlTarget.exe in PATH
+                if ($env:NINTENDO_SDK_ROOT) { return $true }
+                return $null -ne (Get-Command 'ControlTarget.exe' -ErrorAction SilentlyContinue)
+            }
+            default {
+                return $true
+            }
+        }
+    }
+
+    # Conditionally add test targets based on SDK availability
+    $TestTargets = @()
+
+    if (Test-PlatformSdkAvailable -Platform 'Switch') {
+        $TestTargets += New-TestTarget -Platform 'Switch'
+    }
+
+    if (Test-PlatformSdkAvailable -Platform 'PlayStation5') {
+        $TestTargets += New-TestTarget -Platform 'PlayStation5'
+    }
+
+    if (Test-PlatformSdkAvailable -Platform 'Xbox') {
+        if ($env:CI -eq 'true') {
+            # In CI, use specific devkit IPs if provided
+            if ($env:DEVKIT_XBOXONE_IP) {
+                $TestTargets += New-TestTarget -Platform 'Xbox' -Target $env:DEVKIT_XBOXONE_IP
+            }
+            if ($env:DEVKIT_SCARLETT_IP) {
+                $TestTargets += New-TestTarget -Platform 'Xbox' -Target $env:DEVKIT_SCARLETT_IP
+            }
+        } else {
+            # Locally, use default Xbox connection
+            $TestTargets += New-TestTarget -Platform 'Xbox'
+        }
+    }
+
+    # Inform user if no platforms are available
+    if ($TestTargets.Count -eq 0) {
+        Write-Warning "No platform SDKs detected. Device integration tests will be skipped."
+        Write-Warning "To run device tests, install at least one platform SDK:"
+        Write-Warning "  - Xbox: Set `$env:GameDK or add xbconnect.exe to PATH"
+        Write-Warning "  - PlayStation5: Set `$env:SCE_ROOT_DIR or add prospero-ctrl.exe to PATH"
+        Write-Warning "  - Switch: Set `$env:NINTENDO_SDK_ROOT or add ControlTarget.exe to PATH"
     }
 
     $global:DebugPreference = 'Continue'

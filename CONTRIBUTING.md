@@ -26,15 +26,29 @@
 Run tests before committing (needs to run in a new shell to avoid caching the module):
 
 ```powershell
-# Run all tests
+# Run all tests (device tests automatically skip if SDKs not available)
 pwsh -c 'Invoke-Pester -Path ./app-runner/Tests/ -Output Detailed'
 
-# Run tests excluding device tests
+# Run only unit tests (excluding device integration tests)
 pwsh -c 'Invoke-Pester -Path ./app-runner/Tests/ -ExcludeTag "RequiresDevice" -Output Detailed'
 
-# Run device tests for specific platform
+# Run device tests for specific platform (requires SDK installed)
 pwsh -c 'Invoke-Pester -Path ./app-runner/Tests/Device.Tests.ps1 -TagFilter "Xbox" -Output Detailed'
 ```
+
+### Device Integration Tests
+
+Device integration tests (`Device.Tests.ps1`) automatically detect SDK availability:
+
+- **Xbox**: Requires `$env:GameDK` set or `xbconnect.exe` in PATH
+- **PlayStation5**: Requires `$env:SCE_ROOT_DIR` set or `prospero-ctrl.exe` in PATH
+- **Switch**: Requires `$env:NINTENDO_SDK_ROOT` set or `ControlTarget.exe` in PATH
+
+If no SDKs are detected, device tests are automatically skipped with a warning. This allows:
+
+- CI to run without platform SDKs installed
+- Developers to run tests locally with only the SDKs they have access to
+- Full platform coverage when all SDKs are available
 
 **All tests must pass before committing.**
 

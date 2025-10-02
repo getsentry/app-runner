@@ -15,5 +15,4 @@ jobs:
       module-name: SentryAppRunner
       module-path: app-runner
       test-path: Tests
-      exclude-tags: Xbox,PlayStation5,Nintendo
       settings-path: PSScriptAnalyzerSettings.psd1
