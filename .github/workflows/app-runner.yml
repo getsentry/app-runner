@@ -1,0 +1,21 @@
+name: SentryAppRunner
+
+on:
+  push:
+    branches: ['main']
+    paths:
+      - 'app-runner/**'
+  pull_request:
+    branches: ['main']
+    paths:
+      - 'app-runner/**'
+
+jobs:
+  test:
+    uses: ./.github/workflows/test-powershell-module.yml
+    with:
+      module-name: SentryAppRunner
+      module-path: app-runner
+      test-path: Tests
+      exclude-tags: RequiresConsole
+      settings-path: PSScriptAnalyzerSettings.psd1

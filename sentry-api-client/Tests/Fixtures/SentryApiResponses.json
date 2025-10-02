@@ -1,0 +1,283 @@
+{
+  "event_detail": {
+    "id": "4f1a9f7e7f7b4f9a8c8d9e0f1a2b3c4d",
+    "eventID": "4f1a9f7e7f7b4f9a8c8d9e0f1a2b3c4d",
+    "groupID": "1234567890",
+    "message": "TypeError: Cannot read property 'name' of undefined",
+    "title": "TypeError: Cannot read property 'name' of undefined",
+    "culprit": "app.js in handleSubmit",
+    "level": "error",
+    "platform": "javascript",
+    "logger": "",
+    "type": "error",
+    "metadata": {
+      "type": "TypeError",
+      "value": "Cannot read property 'name' of undefined"
+    },
+    "tags": [
+      { "key": "browser", "value": "Chrome 96.0.4664" },
+      { "key": "browser.name", "value": "Chrome" },
+      { "key": "environment", "value": "production" },
+      { "key": "release", "value": "1.5.2" },
+      { "key": "server_name", "value": "web-01.example.com" },
+      { "key": "transaction", "value": "/api/users/profile" },
+      { "key": "url", "value": "https://app.example.com/dashboard" },
+      { "key": "user", "value": "id:12345" }
+    ],
+    "contexts": {
+      "browser": {
+        "name": "Chrome",
+        "version": "96.0.4664",
+        "type": "browser"
+      },
+      "os": {
+        "name": "Mac OS X",
+        "version": "10.15.7",
+        "type": "os"
+      },
+      "device": {
+        "family": "Mac",
+        "model": "Mac",
+        "brand": "Apple",
+        "type": "device"
+      }
+    },
+    "dateCreated": "2023-12-15T14:32:45.123Z",
+    "dateReceived": "2023-12-15T14:32:45.456Z",
+    "user": {
+      "id": "12345",
+      "email": "user@example.com",
+      "username": "john.doe",
+      "ip_address": "192.168.1.100",
+      "name": "John Doe"
+    },
+    "request": {
+      "url": "https://app.example.com/api/users/profile",
+      "method": "POST",
+      "data": {
+        "userId": "12345"
+      },
+      "query_string": "debug=true",
+      "cookies": "session=abc123",
+      "headers": {
+        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)",
+        "Referer": "https://app.example.com/dashboard"
+      },
+      "env": {
+        "SERVER_NAME": "web-01.example.com",
+        "SERVER_PORT": "443"
+      }
+    },
+    "sdk": {
+      "name": "sentry.javascript.browser",
+      "version": "6.19.7"
+    },
+    "entries": [
+      {
+        "type": "exception",
+        "data": {
+          "values": [
+            {
+              "type": "TypeError",
+              "value": "Cannot read property 'name' of undefined",
+              "stacktrace": {
+                "frames": [
+                  {
+                    "filename": "app.js",
+                    "function": "handleSubmit",
+                    "lineno": 123,
+                    "colno": 15,
+                    "abs_path": "https://app.example.com/static/js/app.js",
+                    "context_line": "    const userName = user.name.trim();",
+                    "pre_context": [
+                      "  function handleSubmit(user) {",
+                      "    try {"
+                    ],
+                    "post_context": [
+                      "      return userName;",
+                      "    } catch (error) {"
+                    ],
+                    "in_app": true
+                  }
+                ]
+              },
+              "mechanism": {
+                "type": "generic",
+                "handled": false
+              }
+            }
+          ]
+        }
+      },
+      {
+        "type": "breadcrumbs",
+        "data": {
+          "values": [
+            {
+              "timestamp": "2023-12-15T14:32:40.000Z",
+              "category": "navigation",
+              "data": {
+                "from": "/login",
+                "to": "/dashboard"
+              }
+            },
+            {
+              "timestamp": "2023-12-15T14:32:44.000Z",
+              "category": "ui.click",
+              "message": "button.submit-profile",
+              "data": {
+                "nodeId": "submit-btn"
+              }
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "event_list": [
+    {
+      "id": "4f1a9f7e7f7b4f9a8c8d9e0f1a2b3c4d",
+      "message": "TypeError: Cannot read property 'name' of undefined",
+      "culprit": "app.js in handleSubmit",
+      "level": "error",
+      "platform": "javascript",
+      "datetime": "2023-12-15T14:32:45.123Z",
+      "tags": {
+        "environment": "production",
+        "release": "1.5.2",
+        "browser": "Chrome 96.0.4664"
+      }
+    },
+    {
+      "id": "5e2b8f6d6e6c5e8b7c7c8d9e0f2b3c5e",
+      "message": "ReferenceError: config is not defined",
+      "culprit": "config.js in loadConfiguration",
+      "level": "error",
+      "platform": "javascript",
+      "datetime": "2023-12-15T13:21:30.456Z",
+      "tags": {
+        "environment": "production",
+        "release": "1.5.2",
+        "browser": "Firefox 95.0"
+      }
+    }
+  ],
+  "issue_detail": {
+    "id": "1234567890",
+    "shareId": null,
+    "shortId": "MYAPP-123",
+    "title": "TypeError: Cannot read property 'name' of undefined",
+    "culprit": "app.js in handleSubmit",
+    "permalink": "https://sentry.io/organizations/my-org/issues/1234567890/",
+    "logger": null,
+    "level": "error",
+    "status": "unresolved",
+    "statusDetails": {},
+    "isPublic": false,
+    "platform": "javascript",
+    "project": {
+      "id": "5678",
+      "name": "my-app",
+      "slug": "my-app",
+      "platform": "javascript"
+    },
+    "type": "error",
+    "metadata": {
+      "value": "Cannot read property 'name' of undefined",
+      "type": "TypeError",
+      "filename": "app.js",
+      "function": "handleSubmit"
+    },
+    "numComments": 3,
+    "assignedTo": {
+      "id": "user123",
+      "name": "Jane Smith",
+      "email": "jane@example.com"
+    },
+    "isBookmarked": false,
+    "isSubscribed": true,
+    "subscriptionDetails": {
+      "reason": "assigned"
+    },
+    "hasSeen": true,
+    "annotations": [],
+    "isUnhandled": true,
+    "count": "142",
+    "userCount": 89,
+    "firstSeen": "2023-12-10T09:15:30.123Z",
+    "lastSeen": "2023-12-15T14:32:45.123Z",
+    "stats": {
+      "24h": [
+        [1702641600, 12],
+        [1702645200, 8],
+        [1702648800, 15],
+        [1702652400, 22]
+      ]
+    }
+  },
+  "issue_list": [
+    {
+      "id": "1234567890",
+      "shareId": null,
+      "shortId": "MYAPP-123",
+      "title": "TypeError: Cannot read property 'name' of undefined",
+      "culprit": "app.js in handleSubmit",
+      "permalink": "https://sentry.io/organizations/my-org/issues/1234567890/",
+      "level": "error",
+      "status": "unresolved",
+      "isPublic": false,
+      "platform": "javascript",
+      "type": "error",
+      "metadata": {
+        "value": "Cannot read property 'name' of undefined",
+        "type": "TypeError"
+      },
+      "count": "142",
+      "userCount": 89,
+      "firstSeen": "2023-12-10T09:15:30.123Z",
+      "lastSeen": "2023-12-15T14:32:45.123Z"
+    },
+    {
+      "id": "0987654321",
+      "shareId": null,
+      "shortId": "MYAPP-124",
+      "title": "ReferenceError: config is not defined",
+      "culprit": "config.js in loadConfiguration",
+      "permalink": "https://sentry.io/organizations/my-org/issues/0987654321/",
+      "level": "error",
+      "status": "resolved",
+      "isPublic": false,
+      "platform": "javascript",
+      "type": "error",
+      "metadata": {
+        "value": "config is not defined",
+        "type": "ReferenceError"
+      },
+      "count": "45",
+      "userCount": 23,
+      "firstSeen": "2023-12-08T11:22:15.789Z",
+      "lastSeen": "2023-12-12T16:45:30.456Z"
+    }
+  ],
+  "pagination_headers": {
+    "link": "<https://sentry.io/api/0/projects/my-org/my-app/events/?&cursor=1234:0:1>; rel=\"previous\"; results=\"false\"; cursor=\"1234:0:1\", <https://sentry.io/api/0/projects/my-org/my-app/events/?&cursor=1234:100:0>; rel=\"next\"; results=\"true\"; cursor=\"1234:100:0\""
+  },
+  "rate_limit_response": {
+    "error": "You are making requests too quickly.",
+    "retry_after": 60
+  },
+  "error_responses": {
+    "401": {
+      "detail": "Authentication credentials were not provided."
+    },
+    "403": {
+      "detail": "You do not have permission to perform this action."
+    },
+    "404": {
+      "detail": "The requested resource does not exist."
+    },
+    "429": {
+      "detail": "Request was throttled. Expected available in 60 seconds."
+    }
+  }
+}

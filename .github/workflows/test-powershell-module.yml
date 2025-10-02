@@ -1,0 +1,128 @@
+name: Test PowerShell Module
+
+on:
+  workflow_call:
+    inputs:
+      module-name:
+        description: 'Name of the PowerShell module to test'
+        required: true
+        type: string
+      module-path:
+        description: 'Path to the module directory'
+        required: true
+        type: string
+      test-path:
+        description: 'Path to the test directory (relative to module-path)'
+        required: false
+        type: string
+        default: 'Tests'
+      exclude-tags:
+        description: 'Comma-separated list of Pester tags to exclude'
+        required: false
+        type: string
+        default: ''
+      settings-path:
+        description: 'Path to PSScriptAnalyzer settings file (relative to repo root)'
+        required: false
+        type: string
+        default: 'PSScriptAnalyzerSettings.psd1'
+
+jobs:
+  test:
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: ${{ inputs.module-path }}
+        shell: pwsh
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Run PowerShell Script Analyzer
+        run: |
+          Write-Host "Running PSScriptAnalyzer on ${{ inputs.module-name }} module..."
+          $settingsPath = Join-Path ".." "${{ inputs.settings-path }}"
+          $analysisResults = Invoke-ScriptAnalyzer -Path . -Recurse -ReportSummary -Settings $settingsPath
+          if ($analysisResults) {
+            Write-Host "PSScriptAnalyzer found issues:" -ForegroundColor Yellow
+            $analysisResults | Format-Table -AutoSize
+            if ($analysisResults | Where-Object { $_.Severity -eq 'Error' }) {
+              Write-Error "PSScriptAnalyzer found errors. Please fix them before merging."
+              exit 1
+            }
+          } else {
+            Write-Host "PSScriptAnalyzer passed with no issues" -ForegroundColor Green
+          }
+
+      - name: Run Pester Tests
+        run: |
+          Write-Host "Running Pester tests for ${{ inputs.module-name }} module..."
+          $config = New-PesterConfiguration
+          $config.Run.Path = "${{ inputs.test-path }}"
+          $config.TestResult.Enabled = $true
+          $config.TestResult.OutputFormat = "NUnitXml"
+          $config.TestResult.OutputPath = "TestResults.xml"
+          $config.Output.Verbosity = "Detailed"
+
+          $excludeTags = "${{ inputs.exclude-tags }}"
+          if ($excludeTags) {
+            $config.Filter.ExcludeTag = $excludeTags.Split(',').Trim()
+          }
+
+          $testResults = Invoke-Pester -Configuration $config
+
+          Write-Host "Test Summary:" -ForegroundColor Cyan
+          Write-Host "Total Tests: $($testResults.TotalCount)" -ForegroundColor White
+          Write-Host "Passed: $($testResults.PassedCount)" -ForegroundColor Green
+          Write-Host "Failed: $($testResults.FailedCount)" -ForegroundColor Red
+          Write-Host "Skipped: $($testResults.SkippedCount)" -ForegroundColor Yellow
+
+          if ($testResults.FailedCount -gt 0) {
+            Write-Host "Failed Tests:" -ForegroundColor Red
+            $testResults.Tests | Where-Object { $_.Result -eq 'Failed' } | ForEach-Object {
+              Write-Host "  - $($_.Name): $($_.ErrorRecord.Exception.Message)" -ForegroundColor Red
+            }
+            exit 1
+          }
+
+          Write-Host "All tests passed successfully!" -ForegroundColor Green
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ${{ inputs.module-name }}-test-results
+          path: ${{ inputs.module-path }}/TestResults.xml
+
+      - name: Validate module manifest
+        run: |
+          Write-Host "Validating PowerShell module manifest..."
+          try {
+            $manifest = Test-ModuleManifest -Path "${{ inputs.module-name }}.psd1"
+            Write-Host "Module manifest validation passed" -ForegroundColor Green
+            Write-Host "Module: $($manifest.Name) v$($manifest.Version)" -ForegroundColor White
+            Write-Host "Author: $($manifest.Author)" -ForegroundColor White
+            Write-Host "Description: $($manifest.Description)" -ForegroundColor White
+          } catch {
+            Write-Error "Module manifest validation failed: $($_.Exception.Message)"
+            exit 1
+          }
+
+      - name: Test module import
+        run: |
+          Write-Host "Testing module import..."
+          try {
+            Import-Module "./${{ inputs.module-name }}.psd1" -Force
+            $importedModule = Get-Module ${{ inputs.module-name }}
+            if ($importedModule) {
+              Write-Host "Module imported successfully" -ForegroundColor Green
+              Write-Host "Exported Functions: $($importedModule.ExportedFunctions.Keys -join ', ')" -ForegroundColor White
+            } else {
+              Write-Error "Module import failed"
+              exit 1
+            }
+          } catch {
+            Write-Error "Module import failed: $($_.Exception.Message)"
+            exit 1
+          }

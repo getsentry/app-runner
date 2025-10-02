@@ -1,0 +1,20 @@
+name: SentryApiClient
+
+on:
+  push:
+    branches: ['main']
+    paths:
+      - 'sentry-api-client/**'
+  pull_request:
+    branches: ['main']
+    paths:
+      - 'sentry-api-client/**'
+
+jobs:
+  test:
+    uses: ./.github/workflows/test-powershell-module.yml
+    with:
+      module-name: SentryApiClient
+      module-path: sentry-api-client
+      test-path: Tests
+      settings-path: PSScriptAnalyzerSettings.psd1

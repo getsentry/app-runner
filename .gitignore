@@ -1,0 +1,54 @@
+# Local configuration and secrets
+*.local*
+.env*
+*.env
+.envrc
+secrets/
+secret.*
+
+# Credentials and keys
+credentials.json
+*.pfx
+*.p12
+*.key
+*.pem
+*.crt
+*.cer
+
+# API tokens and auth
+*token*
+*auth*
+.sentryclirc
+
+# PowerShell specific
+*.ps1xml
+
+# IDE and editors
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Build outputs
+bin/
+obj/
+*.dll
+*.exe
+*.nupkg
+publish/
+
+# Test outputs
+TestResults/
+*.trx
+coverage/
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+*.tmp
+*.temp
+temp/
