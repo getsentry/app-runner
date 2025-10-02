@@ -66,31 +66,6 @@ Get-DeviceLogs -LogType "Error" -MaxEntries 500
 Disconnect-Device
 ```
 
-## Development
-
-### Testing
-
-```powershell
-# Run all tests
-Invoke-Pester -Path ./Tests/ -Output Detailed
-
-# Run specific test file
-Invoke-Pester -Path ./Tests/SessionManagement.Tests.ps1 -Output Detailed
-
-# Run tests on devices
-Invoke-Pester -Path ./Tests/Device.Tests.ps1 -Output Detailed
-
-# Run tests for specific platform
-Invoke-Pester -Path ./Tests/Device.Tests.ps1 -TagFilter 'Xbox' -Output Detailed
-```
-
-### Code Analysis
-
-```powershell
-# Run PSScriptAnalyzer
-Invoke-ScriptAnalyzer -Path . -Recurse -Settings ../PSScriptAnalyzerSettings.psd1
-```
-
 ## Requirements
 
 - PowerShell 7+
@@ -98,3 +73,7 @@ Invoke-ScriptAnalyzer -Path . -Recurse -Settings ../PSScriptAnalyzerSettings.psd
   - Xbox: GameDK (`$env:GameDK`)
   - PlayStation 5: Prospero SDK (`$env:SCE_ROOT_DIR`)
   - Switch: Nintendo SDK (`$env:NINTENDO_SDK_ROOT`)
+
+## Contributing
+
+See [CONTRIBUTING.md](../CONTRIBUTING.md) for development standards, testing guidelines, and code analysis instructions.
