@@ -1,3 +1,5 @@
+name: AppRunner
+
 on:
   push:
     branches: ['main']
