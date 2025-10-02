@@ -1,5 +1,3 @@
-name: SentryApiClient
-
 on:
   push:
     branches: ['main']
