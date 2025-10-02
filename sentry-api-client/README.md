@@ -89,7 +89,7 @@ Find-SentryEventByTag -TagName 'browser' -TagValue 'Chrome' -Sort 'date' -Limit 
 Returns an object with:
 
 - `Issues`: Array of issue objects with tag information
-- `Events`: Array of the latest events for each issue  
+- `Events`: Array of the latest events for each issue
 - `NextCursor`: Cursor for pagination
 
 ### Get-SentryCLI
@@ -145,12 +145,10 @@ The function automatically adds `--org` and `--project` parameters when running 
 
 ## Testing
 
-```powershell
-# Run tests
-Invoke-Pester ./Tests/
+Run tests before committing (needs to run in a new shell to avoid caching the module):
 
-# Clean up after testing
-Remove-Module SentryApiClient
+```powershell
+pwsh -c 'Invoke-Pester ./Tests/'
 ```
 
 ## API Reference

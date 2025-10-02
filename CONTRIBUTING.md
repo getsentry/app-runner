@@ -23,17 +23,17 @@
 
 ## Testing
 
-Run tests before committing:
+Run tests before committing (needs to run in a new shell to avoid caching the module):
 
 ```powershell
 # Run all tests
-Invoke-Pester -Path ./app-runner/Tests/ -Output Detailed
+pwsh -c 'Invoke-Pester -Path ./app-runner/Tests/ -Output Detailed'
 
 # Run tests excluding device tests
-Invoke-Pester -Path ./app-runner/Tests/ -ExcludeTag 'RequiresDevice' -Output Detailed
+pwsh -c 'Invoke-Pester -Path ./app-runner/Tests/ -ExcludeTag "RequiresDevice" -Output Detailed'
 
 # Run device tests for specific platform
-Invoke-Pester -Path ./app-runner/Tests/Device.Tests.ps1 -TagFilter 'Xbox' -Output Detailed
+pwsh -c 'Invoke-Pester -Path ./app-runner/Tests/Device.Tests.ps1 -TagFilter "Xbox" -Output Detailed'
 ```
 
 **All tests must pass before committing.**
