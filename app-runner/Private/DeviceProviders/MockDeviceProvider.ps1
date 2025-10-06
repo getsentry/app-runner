@@ -142,36 +142,65 @@ class MockDeviceProvider : DeviceProvider {
         "Mock screenshot data" | Out-File -FilePath $OutputPath -Encoding UTF8
     }
 
-    [hashtable] GetDiagnostics([bool]$IncludePerformanceMetrics) {
-        Write-Debug "Mock: Getting diagnostics"
+    [hashtable] GetDiagnostics([string]$OutputDirectory) {
+        Write-Debug "Mock: Collecting diagnostics to directory: $OutputDirectory"
 
-        $diagnostics = @{
-            Platform   = $this.Platform
-            SystemInfo = @{
-                OS      = "MockOS 1.0"
-                Version = "Mock.1.0.0"
-                Memory  = "16GB"
-                CPU     = "Mock CPU"
-            }
-            Status     = @{
+        # Ensure output directory exists
+        if (-not (Test-Path $OutputDirectory)) {
+            New-Item -Path $OutputDirectory -ItemType Directory -Force | Out-Null
+        }
+
+        $datePrefix = Get-Date -Format "yyyyMMdd-HHmmss"
+        $results = @{
+            Platform  = $this.Platform
+            Timestamp = Get-Date
+            Files     = @()
+        }
+
+        # Create mock diagnostic files
+        try {
+            $statusFile = Join-Path $OutputDirectory "$datePrefix-device-status.json"
+            $mockStatus = @{
+                Platform    = $this.Platform
                 PowerState  = $this.MockConfig.PowerState
                 AppRunning  = $this.MockConfig.AppRunning
                 Temperature = 45.5
                 FanSpeed    = 1200
+                Timestamp   = Get-Date
             }
-            Timestamp  = Get-Date
+            $mockStatus | ConvertTo-Json -Depth 10 | Out-File -FilePath $statusFile -Encoding UTF8
+            $results.Files += $statusFile
+        } catch {
+            Write-Warning "Failed to create mock device status: $_"
         }
 
-        if ($IncludePerformanceMetrics) {
-            $diagnostics.PerformanceMetrics = @{
-                CPUUsage    = 25.5
-                MemoryUsage = 60.2
-                GPUUsage    = 80.1
-                FrameRate   = 60
-            }
+        try {
+            $screenshotFile = Join-Path $OutputDirectory "$datePrefix-screenshot.png"
+            "Mock screenshot data for $($this.Platform)" | Out-File -FilePath $screenshotFile -Encoding UTF8
+            $results.Files += $screenshotFile
+        } catch {
+            Write-Warning "Failed to create mock screenshot: $_"
         }
 
-        return $diagnostics
+        try {
+            $sysInfoFile = Join-Path $OutputDirectory "$datePrefix-system-info.txt"
+            $sysInfo = @"
+Platform: $($this.Platform)
+Device Identifier: $($this.GetDeviceIdentifier())
+OS: MockOS 1.0
+Version: Mock.1.0.0
+Memory: 16GB
+CPU: Mock CPU
+Collection Time: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')
+"@
+            $sysInfo | Out-File -FilePath $sysInfoFile -Encoding UTF8
+            $results.Files += $sysInfoFile
+        } catch {
+            Write-Warning "Failed to create mock system info: $_"
+        }
+
+        Write-Debug "Mock diagnostics collection complete. Files saved: $($results.Files.Count)"
+        return $results
     }
 
 

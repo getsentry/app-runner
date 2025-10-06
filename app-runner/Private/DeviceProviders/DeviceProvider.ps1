@@ -30,7 +30,9 @@ class DeviceProvider {
             $toolPath = Join-Path $this.SdkPath $toolName
             Test-Path $toolPath
         } else {
-            Get-Command $toolPath -ErrorAction SilentlyContinue
+            # Check if command exists in PATH
+            $cmd = Get-Command $toolPath -ErrorAction SilentlyContinue
+            if ($cmd) { $true } else { $false }
         }
 
 
@@ -183,7 +185,7 @@ class DeviceProvider {
 
         # Filter out empty lines from the output
         if ($result) {
-            $result = $result | Where-Object { 
+            $result = $result | Where-Object {
                 if ($_ -is [string]) {
                     return $_ -and $_.Trim()
                 } else {
@@ -219,10 +221,76 @@ class DeviceProvider {
         Write-Debug "Screenshot saved to $OutputPath ($size bytes)"
     }
 
-    [hashtable] GetDiagnostics([bool]$IncludePerformanceMetrics) {
-        Write-Debug "$($this.Platform): Getting diagnostics (include performance: $IncludePerformanceMetrics)"
-        # TODO screenshot, logs, etc.
-        return @{}
+    [hashtable] GetDiagnostics([string]$OutputDirectory) {
+        Write-Debug "$($this.Platform): Collecting diagnostics to directory: $OutputDirectory"
+
+        # Ensure output directory exists
+        if (-not (Test-Path $OutputDirectory)) {
+            New-Item -Path $OutputDirectory -ItemType Directory -Force | Out-Null
+        }
+
+        $datePrefix = Get-Date -Format 'yyyyMMdd-HHmmss'
+        $results = @{
+            Platform  = $this.Platform
+            Timestamp = Get-Date
+            Files     = @()
+        }
+
+        # Collect device status
+        try {
+            $statusFile = Join-Path $OutputDirectory "$datePrefix-device-status.json"
+            $status = $this.GetDeviceStatus()
+            $status | ConvertTo-Json -Depth 10 | Out-File -FilePath $statusFile -Encoding UTF8
+            $results.Files += $statusFile
+            Write-Debug "Device status saved to: $statusFile"
+        } catch {
+            Write-Warning "Failed to collect device status: $_"
+        }
+
+        # Take screenshot
+        try {
+            $screenshotFile = Join-Path $OutputDirectory "$datePrefix-screenshot.png"
+            $this.TakeScreenshot($screenshotFile)
+            $results.Files += $screenshotFile
+            Write-Debug "Screenshot saved to: $screenshotFile"
+        } catch {
+            Write-Warning "Failed to capture screenshot: $_"
+        }
+
+        # Collect device logs (if available)
+        try {
+            # Try to get logs - this may not be implemented on all platforms
+            if ($this.PSObject.Methods['GetDeviceLogs']) {
+                $logsFile = Join-Path $OutputDirectory "$datePrefix-device-logs.json"
+                $logs = $this.GetDeviceLogs('All', 1000)
+                if ($logs -and $logs.Count -gt 0) {
+                    $logs | ConvertTo-Json -Depth 10 | Out-File -FilePath $logsFile -Encoding UTF8
+                    $results.Files += $logsFile
+                    Write-Debug "Device logs saved to: $logsFile"
+                }
+            }
+        } catch {
+            Write-Debug "Device logs not available or failed to collect: $_"
+        }
+
+        # Collect system information
+        try {
+            $sysInfoFile = Join-Path $OutputDirectory "$datePrefix-system-info.txt"
+            $sysInfo = @"
+Platform: $($this.Platform)
+Device Identifier: $($this.GetDeviceIdentifier())
+Collection Time: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')
+SDK Path: $($this.SdkPath)
+"@
+            $sysInfo | Out-File -FilePath $sysInfoFile -Encoding UTF8
+            $results.Files += $sysInfoFile
+            Write-Debug "System info saved to: $sysInfoFile"
+        } catch {
+            Write-Warning "Failed to collect system information: $_"
+        }
+
+        Write-Debug "Diagnostics collection complete. Files saved: $($results.Files.Count)"
+        return $results
     }
 
     [string] GetDeviceIdentifier() {
