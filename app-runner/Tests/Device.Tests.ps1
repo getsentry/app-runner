@@ -308,6 +308,72 @@ Describe '<TargetName>' -Tag 'RequiresDevice' -ForEach $TestTargets {
             $logs | Should -Not -BeNullOrEmpty
             $logs.Count | Should -BeLessOrEqual 10
         }
+
+        It 'Get-DeviceDiagnostics collects diagnostic files' {
+            # Convert TestDrive to actual path since native SDK tools don't support PSDrive paths
+            $outputDir = Join-Path $TestDrive "diagnostics"
+
+            { Get-DeviceDiagnostics -OutputDirectory $outputDir } | Should -Not -Throw
+
+            # Verify output directory exists
+            Test-Path $outputDir | Should -Be $true
+
+            # Verify diagnostic files were created
+            $files = Get-ChildItem $outputDir
+            $files.Count | Should -BeGreaterThan 0
+
+            # Verify file naming format (yyyyMMdd-HHmmss-subject.ext)
+            $datePrefix = Get-Date -Format 'yyyyMMdd'
+            foreach ($file in $files) {
+                $file.Name | Should -Match "^$datePrefix-\d{6}-.*\.\w+$"
+            }
+
+            # Verify expected diagnostic files exist
+            $fileNames = $files | Select-Object -ExpandProperty Name
+            $fileNames | Where-Object { $_ -like '*-device-status.json' } | Should -Not -BeNullOrEmpty
+            $fileNames | Where-Object { $_ -like '*-system-info.txt' } | Should -Not -BeNullOrEmpty
+            # Screenshot may fail with TestDrive: path on some platforms, so it's optional
+
+            # Verify device status file has valid JSON
+            $statusFile = $files | Where-Object { $_.Name -like '*-device-status.json' } | Select-Object -First 1
+            { Get-Content $statusFile.FullName -Raw | ConvertFrom-Json } | Should -Not -Throw
+
+            # Verify screenshot file if it exists (optional, may fail with TestDrive paths)
+            $screenshotFile = $files | Where-Object { $_.Name -like '*-screenshot.png' } | Select-Object -First 1
+            if ($screenshotFile) {
+                $screenshotFile.Length | Should -BeGreaterThan 0
+            }
+
+            # Verify system info file has content
+            $sysInfoFile = $files | Where-Object { $_.Name -like '*-system-info.txt' } | Select-Object -First 1
+            $content = Get-Content $sysInfoFile.FullName -Raw
+            $content | Should -Match "Platform: $Platform"
+        }
+
+        It 'Get-DeviceDiagnostics returns result object with file paths' {
+            # Convert TestDrive to actual path since native SDK tools don't support PSDrive paths
+            $outputDir = Join-Path $TestDrive "diagnostics2"
+
+            $result = Get-DeviceDiagnostics -OutputDirectory $outputDir
+
+            # Verify result structure
+            $result | Should -Not -BeNullOrEmpty
+            $result.GetType().Name | Should -Be 'Hashtable'
+            $result.Keys | Should -Contain 'Platform'
+            $result.Keys | Should -Contain 'Timestamp'
+            $result.Keys | Should -Contain 'Files'
+
+            # Verify result values
+            $result.Platform | Should -Be $Platform
+            $result.Timestamp | Should -BeOfType [datetime]
+            $result.Files | Should -Not -BeNullOrEmpty
+            $result.Files.Count | Should -BeGreaterThan 0
+
+            # Verify all file paths in result exist
+            foreach ($filePath in $result.Files) {
+                Test-Path $filePath | Should -Be $true
+            }
+        }
     }
 
     Context 'Error Handling Consistency' -Tag $TargetName {

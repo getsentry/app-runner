@@ -4,47 +4,45 @@ function Get-DeviceDiagnostics {
     Collects diagnostic information from the device.
 
     .DESCRIPTION
-    This function gathers comprehensive diagnostic data from the device including system info, performance metrics, and error logs.
+    This function gathers comprehensive diagnostic data from the device including system info, logs, screenshots, and device status.
+    All diagnostic data is saved to multiple files in the specified directory with the naming format: yyyyMMdd-HHmmss-<subject>.<extension>
     Uses the current device session.
 
-    .PARAMETER OutputPath
-    Optional path to save diagnostic data to file.
-
-    .PARAMETER IncludePerformanceMetrics
-    Include performance metrics in the diagnostic output.
+    .PARAMETER OutputDirectory
+    Directory path where diagnostic files will be saved. If not specified, uses the current directory.
+    Multiple files will be created with timestamps and descriptive names.
 
     .EXAMPLE
     Connect-Device -Platform "Xbox"
+    Get-DeviceDiagnostics -OutputDirectory "C:\diagnostics"
+
+    .EXAMPLE
+    Connect-Device -Platform "PlayStation5"
     Get-DeviceDiagnostics
     #>
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $false)]
-        [string]$OutputPath,
-
-        [Parameter(Mandatory = $false)]
-        [switch]$IncludePerformanceMetrics
+        [string]$OutputDirectory = (Get-Location).Path
     )
 
     Assert-DeviceSession
 
     Write-Debug "Collecting diagnostics for device: $($script:CurrentSession.Platform)"
-    if ($OutputPath) {
-        Write-Debug "Output path: $OutputPath"
-    }
-    if ($IncludePerformanceMetrics) {
-        Write-Debug "Including performance metrics"
-    }
+    Write-Debug "Output directory: $OutputDirectory"
 
     # Use the provider to collect diagnostics
     $provider = $script:CurrentSession.Provider
-    $diagnostics = $provider.GetDiagnostics($IncludePerformanceMetrics)
+    $results = $provider.GetDiagnostics($OutputDirectory)
 
-    # Save to file if output path is specified
-    if ($OutputPath) {
-        $diagnostics | ConvertTo-Json -Depth 10 | Out-File -FilePath $OutputPath -Encoding UTF8
-        Write-Output "Diagnostics saved to: $OutputPath"
+    if ($results.Files -and $results.Files.Count -gt 0) {
+        Write-Host "Diagnostics collected: $($results.Files.Count) file(s) saved to $OutputDirectory"
+        foreach ($file in $results.Files) {
+            Write-Debug "  - $(Split-Path $file -Leaf)"
+        }
+    } else {
+        Write-Warning "No diagnostic files were created"
     }
 
-    return $diagnostics
+    return $results
 }
