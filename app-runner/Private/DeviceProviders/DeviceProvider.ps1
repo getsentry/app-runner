@@ -30,7 +30,7 @@ class DeviceProvider {
             $toolPath = Join-Path $this.SdkPath $toolName
             Test-Path $toolPath
         } else {
-            Get-Command $toolPath -ErrorAction SilentlyContinue
+            $null -ne (Get-Command $toolPath -ErrorAction SilentlyContinue)
         }
 
 
