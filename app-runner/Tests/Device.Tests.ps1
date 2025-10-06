@@ -353,6 +353,21 @@ Describe '<TargetName>' -Tag 'RequiresDevice' -ForEach $TestTargets {
             $sysInfoFile = $files | Where-Object { $_.Name -like '*-system-info.txt' } | Select-Object -First 1
             $content = Get-Content $sysInfoFile.FullName -Raw
             $content | Should -Match "Platform: $Platform"
+
+            # Verify platform-specific diagnostic files
+            if ($Platform -eq 'PlayStation5') {
+                $healthCheckFile = $files | Where-Object { $_.Name -like '*-health-check.txt' } | Select-Object -First 1
+                $healthCheckFile | Should -Not -BeNullOrEmpty
+                $healthCheckFile.Length | Should -BeGreaterThan 0
+
+                $ipConfigFile = $files | Where-Object { $_.Name -like '*-network-ip-config.txt' } | Select-Object -First 1
+                $ipConfigFile | Should -Not -BeNullOrEmpty
+                $ipConfigFile.Length | Should -BeGreaterThan 0
+
+                $natInfoFile = $files | Where-Object { $_.Name -like '*-network-nat-traversal-info.txt' } | Select-Object -First 1
+                $natInfoFile | Should -Not -BeNullOrEmpty
+                $natInfoFile.Length | Should -BeGreaterThan 0
+            }
         }
 
         It 'Get-DeviceDiagnostics returns result object with file paths' {
