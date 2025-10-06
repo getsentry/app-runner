@@ -257,20 +257,17 @@ class DeviceProvider {
             Write-Warning "Failed to capture screenshot: $_"
         }
 
-        # Collect device logs (if available)
+        # Collect device logs
         try {
-            # Try to get logs - this may not be implemented on all platforms
-            if ($this.PSObject.Methods['GetDeviceLogs']) {
-                $logsFile = Join-Path $OutputDirectory "$datePrefix-device-logs.json"
-                $logs = $this.GetDeviceLogs('All', 1000)
-                if ($logs -and $logs.Count -gt 0) {
-                    $logs | ConvertTo-Json -Depth 10 | Out-File -FilePath $logsFile -Encoding UTF8
-                    $results.Files += $logsFile
-                    Write-Debug "Device logs saved to: $logsFile"
-                }
+            $logsFile = Join-Path $OutputDirectory "$datePrefix-device-logs.json"
+            $logs = $this.GetDeviceLogs('All', 1000)
+            if ($logs -and $logs.Count -gt 0) {
+                $logs | ConvertTo-Json -Depth 10 | Out-File -FilePath $logsFile -Encoding UTF8
+                $results.Files += $logsFile
+                Write-Debug "Device logs saved to: $logsFile"
             }
         } catch {
-            Write-Debug "Device logs not available or failed to collect: $_"
+            Write-Debug "Failed to collect device logs: $_"
         }
 
         # Collect system information
