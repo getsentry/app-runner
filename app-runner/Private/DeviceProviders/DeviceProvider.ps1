@@ -30,7 +30,9 @@ class DeviceProvider {
             $toolPath = Join-Path $this.SdkPath $toolName
             Test-Path $toolPath
         } else {
-            $null -ne (Get-Command $toolPath -ErrorAction SilentlyContinue)
+            # Check if command exists in PATH
+            $cmd = Get-Command $toolPath -ErrorAction SilentlyContinue
+            if ($cmd) { $true } else { $false }
         }
 
 
