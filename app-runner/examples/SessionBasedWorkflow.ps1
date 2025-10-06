@@ -42,11 +42,7 @@ try {
 
     # Step 6: Collect diagnostics (all session-aware)
     Write-Host "`n5. Collecting diagnostics..." -ForegroundColor Green
-    Get-DeviceLogs -LogType 'Error' -MaxEntries 100
-
-    Get-DeviceScreenshot -OutputPath 'game_screenshot.png'
-
-    Get-DeviceDiagnostics -IncludePerformanceMetrics
+    Get-DeviceDiagnostics
 
 } finally {
     # Step 7: Always disconnect when done
