@@ -267,7 +267,7 @@ class DeviceProvider {
                 Write-Debug "Device logs saved to: $logsFile"
             }
         } catch {
-            Write-Debug "Failed to collect device logs: $_"
+            Write-Warning "Failed to collect device logs: $_"
         }
 
         # Collect system information
