@@ -129,7 +129,12 @@ Describe '<TargetName>' -Tag 'RequiresDevice' -ForEach $TestTargets {
             $sessionAfterStatus = Get-DeviceSession
             $sessionAfterStatus.SessionId | Should -Be $initialSession.SessionId
 
-            Get-DeviceDiagnostics | Out-Null
+            Push-Location $TestDrive
+            try {
+                Get-DeviceDiagnostics | Out-Null
+            } finally {
+                Pop-Location
+            }
             $sessionAfterDiagnostics = Get-DeviceSession
             $sessionAfterDiagnostics.SessionId | Should -Be $initialSession.SessionId
         }
