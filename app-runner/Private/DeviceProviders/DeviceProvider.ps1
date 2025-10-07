@@ -187,6 +187,8 @@ class DeviceProvider {
         if ($result) {
             $result = $result | ForEach-Object {
                 ($_ | Out-String).Trim()
+            } | Where-Object {
+                $_.Length -gt 0
             }
         }
 
