@@ -132,7 +132,6 @@ jobs:
           }
 
   test-import:
-    needs: validate-manifest
     runs-on: windows-latest
     defaults:
       run:
