@@ -28,8 +28,8 @@ on:
         default: 'PSScriptAnalyzerSettings.psd1'
 
 jobs:
-  test:
-    runs-on: windows-latest
+  lint:
+    runs-on: ubuntu-latest
     defaults:
       run:
         working-directory: ${{ inputs.module-path }}
@@ -54,6 +54,17 @@ jobs:
           } else {
             Write-Host "PSScriptAnalyzer passed with no issues" -ForegroundColor Green
           }
+
+  unit-tests:
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: ${{ inputs.module-path }}
+        shell: pwsh
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
       - name: Run Pester Tests
         run: |
@@ -95,6 +106,17 @@ jobs:
           name: ${{ inputs.module-name }}-test-results
           path: ${{ inputs.module-path }}/TestResults.xml
 
+  validate-manifest:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ${{ inputs.module-path }}
+        shell: pwsh
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
       - name: Validate module manifest
         run: |
           Write-Host "Validating PowerShell module manifest..."
@@ -108,6 +130,18 @@ jobs:
             Write-Error "Module manifest validation failed: $($_.Exception.Message)"
             exit 1
           }
+
+  test-import:
+    needs: validate-manifest
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: ${{ inputs.module-path }}
+        shell: pwsh
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
       - name: Test module import
         run: |
