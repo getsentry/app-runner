@@ -1,4 +1,6 @@
 name: Test PowerShell Module
+permissions:
+  contents: read
 
 on:
   workflow_call:
