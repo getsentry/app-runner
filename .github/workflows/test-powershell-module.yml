@@ -39,6 +39,8 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - run: Get-Module PSScriptAnalyzer
+
       - name: Run PowerShell Script Analyzer
         run: |
           Write-Host "Running PSScriptAnalyzer on ${{ inputs.module-name }} module..."
