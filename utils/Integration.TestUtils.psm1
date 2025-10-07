@@ -83,7 +83,7 @@ function Get-SentryTestEvent {
         [string]$TagValue,
 
         [Parameter()]
-        [int]$TimeoutSeconds = 30
+        [int]$TimeoutSeconds = 120
     )
 
     if ($EventId) {
