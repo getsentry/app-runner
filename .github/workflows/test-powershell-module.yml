@@ -41,7 +41,10 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - run: Get-Module PSScriptAnalyzer
+      - name: Show PSScriptAnalyzer versions
+        run: |
+          Get-Module PSScriptAnalyzer | Format-Table -AutoSize
+          Get-Command Invoke-ScriptAnalyzer | Format-Table -AutoSize
 
       - name: Run PowerShell Script Analyzer
         run: |
