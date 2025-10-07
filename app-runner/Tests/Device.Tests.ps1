@@ -337,7 +337,6 @@ Describe '<TargetName>' -Tag 'RequiresDevice' -ForEach $TestTargets {
             $fileNames = $files | Select-Object -ExpandProperty Name
             $fileNames | Where-Object { $_ -like '*-device-status.json' } | Should -Not -BeNullOrEmpty
             $fileNames | Where-Object { $_ -like '*-system-info.txt' } | Should -Not -BeNullOrEmpty
-            # Screenshot may fail with TestDrive: path on some platforms, so it's optional
 
             # Verify device status file has valid JSON
             $statusFile = $files | Where-Object { $_.Name -like '*-device-status.json' } | Select-Object -First 1
@@ -345,14 +344,28 @@ Describe '<TargetName>' -Tag 'RequiresDevice' -ForEach $TestTargets {
 
             # Verify screenshot file if it exists (optional, may fail with TestDrive paths)
             $screenshotFile = $files | Where-Object { $_.Name -like '*-screenshot.png' } | Select-Object -First 1
-            if ($screenshotFile) {
-                $screenshotFile.Length | Should -BeGreaterThan 0
-            }
+            $screenshotFile | Should -Not -BeNullOrEmpty
+            $screenshotFile.Length | Should -BeGreaterThan 0
 
             # Verify system info file has content
             $sysInfoFile = $files | Where-Object { $_.Name -like '*-system-info.txt' } | Select-Object -First 1
             $content = Get-Content $sysInfoFile.FullName -Raw
             $content | Should -Match "Platform: $Platform"
+
+            # Verify platform-specific diagnostic files
+            if ($Platform -eq 'PlayStation5') {
+                $healthCheckFile = $files | Where-Object { $_.Name -like '*-health-check.txt' } | Select-Object -First 1
+                $healthCheckFile | Should -Not -BeNullOrEmpty
+                $healthCheckFile.Length | Should -BeGreaterThan 0
+
+                $ipConfigFile = $files | Where-Object { $_.Name -like '*-network-ip-config.txt' } | Select-Object -First 1
+                $ipConfigFile | Should -Not -BeNullOrEmpty
+                $ipConfigFile.Length | Should -BeGreaterThan 0
+
+                $natInfoFile = $files | Where-Object { $_.Name -like '*-network-nat-traversal-info.txt' } | Select-Object -First 1
+                $natInfoFile | Should -Not -BeNullOrEmpty
+                $natInfoFile.Length | Should -BeGreaterThan 0
+            }
         }
 
         It 'Get-DeviceDiagnostics returns result object with file paths' {

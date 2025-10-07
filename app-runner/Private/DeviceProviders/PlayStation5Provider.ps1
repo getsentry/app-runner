@@ -31,15 +31,18 @@ class PlayStation5Provider : DeviceProvider {
 
         # Configure PlayStation 5 specific commands using Command objects
         $this.Commands = @{
-            "connect"    = @($this.TargetControlTool, "target connect")
-            "disconnect" = @($this.TargetControlTool, "target disconnect")
-            "poweron"    = @($this.TargetControlTool, "power on")
-            "poweroff"   = @($this.TargetControlTool, "power off")
-            "reset"      = @($this.TargetControlTool, "power reboot")
-            "getstatus"  = @($this.TargetControlTool, "target info")
-            "launch"     = @($this.ApplicationRunnerTool, '/elf "{0}" {1}')
-            "getlogs"    = @($this.TargetControlTool, "target console /timestamp /history")
-            "screenshot" = @($this.TargetControlTool, 'target screenshot "{0}/{1}"')
+            "connect"     = @($this.TargetControlTool, "target connect")
+            "disconnect"  = @($this.TargetControlTool, "target disconnect")
+            "poweron"     = @($this.TargetControlTool, "power on")
+            "poweroff"    = @($this.TargetControlTool, "power off")
+            "reset"       = @($this.TargetControlTool, "power reboot")
+            "getstatus"   = @($this.TargetControlTool, "target info")
+            "launch"      = @($this.ApplicationRunnerTool, '/elf "{0}" {1}')
+            "getlogs"     = @($this.TargetControlTool, "target console /timestamp /history")
+            "screenshot"  = @($this.TargetControlTool, 'target screenshot "{0}/{1}"')
+            "healthcheck" = @($this.TargetControlTool, "diagnostics health-check")
+            "ipconfig"    = @($this.TargetControlTool, "network ip-config")
+            "natinfo"     = @($this.TargetControlTool, "network get-nat-traversal-info")
         }
     }
 
@@ -93,6 +96,49 @@ class PlayStation5Provider : DeviceProvider {
         # Try to extract GameLanIpAddress from PS5 status text
         $line = $statusData | Where-Object { $_ -match 'GameLanIpAddress' }
         return $line.Split(':')[1].Trim()
+    }
+
+    [hashtable] GetDiagnostics([string]$OutputDirectory) {
+        # Call base implementation to collect standard diagnostics
+        $results = ([DeviceProvider]$this).GetDiagnostics($OutputDirectory)
+
+        # Add PlayStation 5 specific diagnostics
+        $datePrefix = Get-Date -Format 'yyyyMMdd-HHmmss'
+
+        # Run prospero-ctrl diagnostics health-check
+        try {
+            $healthCheckFile = Join-Path $OutputDirectory "$datePrefix-health-check.txt"
+            $healthCheckOutput = $this.InvokeCommand('healthcheck', @())
+            $healthCheckOutput | Out-File -FilePath $healthCheckFile -Encoding UTF8
+            $results.Files += $healthCheckFile
+            Write-Debug "Health check saved to: $healthCheckFile"
+        } catch {
+            Write-Warning "Failed to collect health check diagnostics: $_"
+        }
+
+        # Run prospero-ctrl network ip-config
+        try {
+            $ipConfigFile = Join-Path $OutputDirectory "$datePrefix-network-ip-config.txt"
+            $ipConfigOutput = $this.InvokeCommand('ipconfig', @())
+            $ipConfigOutput | Out-File -FilePath $ipConfigFile -Encoding UTF8
+            $results.Files += $ipConfigFile
+            Write-Debug "Network IP config saved to: $ipConfigFile"
+        } catch {
+            Write-Warning "Failed to collect network IP config: $_"
+        }
+
+        # Run prospero-ctrl network get-nat-traversal-info
+        try {
+            $natInfoFile = Join-Path $OutputDirectory "$datePrefix-network-nat-traversal-info.txt"
+            $natInfoOutput = $this.InvokeCommand('natinfo', @())
+            $natInfoOutput | Out-File -FilePath $natInfoFile -Encoding UTF8
+            $results.Files += $natInfoFile
+            Write-Debug "NAT traversal info saved to: $natInfoFile"
+        } catch {
+            Write-Warning "Failed to collect NAT traversal info: $_"
+        }
+
+        return $results
     }
 
 }
