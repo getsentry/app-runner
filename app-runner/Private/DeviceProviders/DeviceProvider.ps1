@@ -183,14 +183,10 @@ class DeviceProvider {
             $PSNativeCommandUseErrorActionPreference = $true
         }
 
-        # Filter out empty lines from the output
+        # Convert output to string (it's actually a list of ErrorRecord in case the command writes to stdout).
         if ($result) {
-            $result = $result | Where-Object {
-                if ($_ -is [string]) {
-                    return $_ -and $_.Trim()
-                } else {
-                    return $true  # Keep non-string objects
-                }
+            $result = $result | ForEach-Object {
+                ($_ | Out-String).Trim()
             }
         }
 
