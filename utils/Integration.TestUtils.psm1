@@ -140,7 +140,7 @@ function Get-SentryTestEvent {
                 return $sentryEvent
             }
 
-            Start-Sleep -Seconds 1
+            Start-Sleep -Milliseconds 500
             $currentTime = Get-Date
         } while ($currentTime -lt $endTime)
     } finally {
