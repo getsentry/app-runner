@@ -344,6 +344,7 @@ Describe '<TargetName>' -Tag 'RequiresDevice' -ForEach $TestTargets {
 
             # Verify screenshot file if it exists (optional, may fail with TestDrive paths)
             $screenshotFile = $files | Where-Object { $_.Name -like '*-screenshot.png' } | Select-Object -First 1
+            $screenshotFile | Should -Not -BeNullOrEmpty
             $screenshotFile.Length | Should -BeGreaterThan 0
 
             # Verify system info file has content
