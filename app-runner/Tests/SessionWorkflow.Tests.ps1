@@ -35,7 +35,7 @@ Context 'Comprehensive Session Requirements' {
         { Get-DeviceStatus } | Should -Not -Throw
         { Get-DeviceLogs } | Should -Not -Throw
         { Get-DeviceScreenshot -OutputPath 'test.local.png' } | Should -Not -Throw
-        { Get-DeviceDiagnostics } | Should -Not -Throw
+        { Get-DeviceDiagnostics -OutputDirectory $TestDrive } | Should -Not -Throw
         { Stop-Device } | Should -Not -Throw
     }
 
