@@ -36,6 +36,7 @@
         'Get-DeviceScreenshot',
         'Get-DeviceSession',
         'Get-DeviceStatus',
+        'Install-DeviceApp',
         'Invoke-DeviceApp',
         'Restart-Device',
         'Start-Device',

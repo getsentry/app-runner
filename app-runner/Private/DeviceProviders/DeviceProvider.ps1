@@ -57,7 +57,7 @@ class DeviceProvider {
         $executablePath = $this.GetToolPath($commandObj[0])
 
         $arguments = $commandObj[1]
-        if ($parameters -and $parameters.Count -gt 0) {
+        if ($null -ne $parameters) {
             $arguments = $arguments -f $parameters
         }
         return "& '$executablePath' $arguments 2>&1"
@@ -79,7 +79,7 @@ class DeviceProvider {
             Write-Debug "$($this.Platform): Invoking ($action) command $command"
             $result = Invoke-Expression $command
             if ($LASTEXITCODE -ne 0) {
-                Write-Warning "Command ($action) failed with exit code $($LASTEXITCODE) $($result.Length -gt 0 ? 'and output:' : '')"
+                Write-Warning "Command ($action`: $command) failed with exit code $($LASTEXITCODE) $($result.Length -gt 0 ? 'and output:' : '')"
                 $result | ForEach-Object { Write-Warning $_ }
                 throw "Command ($action) failed with exit code $($LASTEXITCODE)"
             }
@@ -162,6 +162,12 @@ class DeviceProvider {
     }
 
     # Application management (shared implementation)
+    [hashtable] InstallApp([string]$PackagePath) {
+        Write-Debug "$($this.Platform): Installing application package: $PackagePath"
+        $this.LogNotImplemented('InstallApp')
+        return @{}
+    }
+
     [hashtable] RunApplication([string]$ExecutablePath, [string]$Arguments) {
         Write-Debug "$($this.Platform): Running application: $ExecutablePath with arguments: $Arguments"
 

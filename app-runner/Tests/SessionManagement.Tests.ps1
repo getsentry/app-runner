@@ -142,3 +142,24 @@ Context 'Invoke-DeviceApp' {
         $result.Arguments | Should -Be ''
     }
 }
+
+Context 'Install-DeviceApp' {
+    It 'Should require a device session' {
+        Disconnect-Device
+        { Install-DeviceApp -Path 'MyGame.xvc' } | Should -Throw '*No active device session*'
+    }
+
+    It 'Should accept package path' {
+        Connect-Device -Platform 'Mock'
+        $result = Install-DeviceApp -Path 'MyGame.xvc'
+        $result | Should -Not -Be $null
+        $result.PackagePath | Should -Be 'MyGame.xvc'
+        $result.Platform | Should -Be 'Mock'
+        $result.Status | Should -Be 'Installed'
+    }
+
+    It 'Should throw error when package path is empty' {
+        Connect-Device -Platform 'Mock'
+        { Install-DeviceApp -Path '' } | Should -Throw
+    }
+}

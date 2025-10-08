@@ -52,6 +52,9 @@ Export-ModuleMember -Function @(
     'Get-DeviceSession',
     'Test-DeviceConnection',
     'Test-DeviceInternetConnection',
+
+    # Application Management
+    'Install-DeviceApp',
     'Invoke-DeviceApp',
 
     # Device Lifecycle
