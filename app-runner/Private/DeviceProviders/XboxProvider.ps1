@@ -16,6 +16,7 @@ It supports both Xbox One and Xbox Series X/S development kits through the same 
 class XboxProvider : DeviceProvider {
     [string]$ConnectTool = 'xbconnect.exe'
     [string]$PowerTool = 'xbreboot.exe'
+    [string]$AppTool = 'xbapp.exe'
 
     XboxProvider() {
         $this.Platform = 'Xbox'
@@ -31,18 +32,21 @@ class XboxProvider : DeviceProvider {
 
         # Configure Xbox specific commands using Command objects
         $this.Commands = @{
-            'connect'    = @($this.ConnectTool, '')
-            'setTarget'  = @($this.ConnectTool, '/N "{0}"')
-            'disconnect' = $null
-            'powerState' = @($this.PowerTool, '/Q')
-            'poweron'    = @($this.PowerTool, '/W') # Wake up
-            'poweroff'   = @($this.PowerTool, '/P') # Sleep
-            'reset'      = @($this.PowerTool, '')
-            'getstatus'  = @($this.ConnectTool, '')
-            'screenshot' = @('xbcapture.exe', '"{0}/{1}"')
-            'diaginfo'   = @('xbdiaginfo.exe', '')
-            'xbcopy'     = @('xbcopy.exe', '"{0}" "{1}" /mirror')
-            'launch'     = @('xbrun.exe', '/O /D:"{0}" "{1}" {2}')
+            'connect'     = @($this.ConnectTool, '')
+            'setTarget'   = @($this.ConnectTool, '/N "{0}"')
+            'disconnect'  = $null
+            'powerState'  = @($this.PowerTool, '/Q')
+            'poweron'     = @($this.PowerTool, '/W') # Wake up
+            'poweroff'    = @($this.PowerTool, '/P') # Sleep
+            'reset'       = @($this.PowerTool, '')
+            'getstatus'   = @($this.ConnectTool, '')
+            'screenshot'  = @('xbcapture.exe', '"{0}/{1}"')
+            'diaginfo'    = @('xbdiaginfo.exe', '')
+            'xbcopy'      = @('xbcopy.exe', '"{0}" "{1}" /mirror')
+            'launch'      = @('xbrun.exe', '/O /D:"{0}" "{1}" {2}')
+            'install-app' = @($this.AppTool, 'install {0}')
+            'stop-app'    = @($this.AppTool, 'terminate {0}')
+            'launch-app'  = @($this.AppTool, 'launch /O "{0}" {1}')
         }
     }
 
@@ -99,17 +103,58 @@ class XboxProvider : DeviceProvider {
         return @{}
     }
 
+    # Install a packaged application (.xvc)
+    [hashtable] InstallApp([string]$PackagePath) {
+        if (-not (Test-Path $PackagePath)) {
+            throw "Package file not found: $PackagePath"
+        }
+
+        if ($PackagePath -notlike '*.xvc') {
+            throw "Package must be a .xvc file. Got: $PackagePath"
+        }
+
+        $this.InvokeCommand('install-app', @($PackagePath))
+        return @{}
+    }
+
+    # Launch an already-installed packaged application
+    [hashtable] LaunchInstalledApp([string]$PackageIdentity, [string]$Arguments) {
+        # Not giving the argument here stops any foreground app
+        $this.InvokeCommand('stop-app', @(''))
+
+        $command = $this.BuildCommand('launch-app', @($PackageIdentity, $Arguments))
+        return $this.InvokeApplicationCommand($command, $PackageIdentity, $Arguments)
+    }
+
     # Application management
-    [hashtable] RunApplication([string]$AppDir, [string]$Arguments) {
-        $appExecutableName = Get-ChildItem -Path $AppDir -File -Filter '*.exe' | Select-Object -First 1 -ExpandProperty Name
-        $appNameWithoutExt = [System.IO.Path]::GetFileNameWithoutExtension($appExecutableName)
-        $xboxTempDir = "d:\temp\$appNameWithoutExt"
+    # AppPath can be either:
+    # - A directory containing loose .exe files (uses xbrun)
+    # - A package identifier (AUMID string) for already-installed packages (uses xbapp launch)
+    # - A .xvc file path (ERROR - user must use Install-DeviceApp first)
+    [hashtable] RunApplication([string]$AppPath, [string]$Arguments) {
+        if (Test-Path $AppPath -PathType Container) {
+            # It's a directory - use loose executable flow (xbrun)
+            $appExecutableName = Get-ChildItem -Path $AppPath -File -Filter '*.exe' | Select-Object -First 1 -ExpandProperty Name
+            $appNameWithoutExt = [System.IO.Path]::GetFileNameWithoutExtension($appExecutableName)
+            $xboxTempDir = "d:\temp\$appNameWithoutExt"
 
-        Write-Host "Mirroring directory $AppDir to Xbox devkit $xboxTempDir..."
-        $this.InvokeCommand('xbcopy', @($AppDir, "x$xboxTempDir"))
+            Write-Host "Mirroring directory $AppPath to Xbox devkit $xboxTempDir..."
+            $this.InvokeCommand('xbcopy', @($AppPath, "x$xboxTempDir"))
 
-        $command = $this.BuildCommand('launch', @($xboxTempDir, "$xboxTempDir\$appExecutableName", $Arguments))
-        return $this.InvokeApplicationCommand($command, $appExecutableName, $Arguments)
+            $command = $this.BuildCommand('launch', @($xboxTempDir, "$xboxTempDir\$appExecutableName", $Arguments))
+            return $this.InvokeApplicationCommand($command, $appExecutableName, $Arguments)
+        } elseif (Test-Path $AppPath -PathType Leaf) {
+            # It's a file - check if it's a .xvc package
+            if ($AppPath -like '*.xvc') {
+                throw "Cannot run .xvc package directly. Please use 'Install-DeviceApp -Path `"$AppPath`"' first, then 'Invoke-DeviceApp -ExecutablePath `"PackageName_Hash!ExecutableId`" -Arguments ...'"
+            } else {
+                throw "Unsupported file type: $AppPath. Expected directory with .exe files or package identifier (AUMID)."
+            }
+        } else {
+            # Not a path - assume it's a package identifier (AUMID)
+            Write-Debug "Treating as package identifier (AUMID): $AppPath"
+            return $this.LaunchInstalledApp($AppPath, $Arguments)
+        }
     }
 
     [string] GetDeviceIdentifier() {

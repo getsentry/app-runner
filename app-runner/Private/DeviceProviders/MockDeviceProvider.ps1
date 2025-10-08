@@ -104,6 +104,21 @@ class MockDeviceProvider : DeviceProvider {
     }
 
 
+    [hashtable] InstallApp([string]$PackagePath) {
+        Write-Debug "Mock: Installing application package: $PackagePath"
+
+        if (-not $PackagePath) {
+            throw "PackagePath cannot be empty"
+        }
+
+        return @{
+            Platform      = $this.Platform
+            PackagePath   = $PackagePath
+            InstalledAt   = Get-Date
+            Status        = "Installed"
+        }
+    }
+
     [hashtable] RunApplication([string]$ExecutablePath, [string]$Arguments) {
         Write-Debug "Mock: Running application $ExecutablePath with args: $Arguments"
 
