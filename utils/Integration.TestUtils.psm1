@@ -24,7 +24,7 @@ function Invoke-CMakeBuild {
         throw "Test application not found at: $($global:TestAppPath) after build."
     }
 
-    # "sentry-cli debu-files check" requires individual files (https://github.com/getsentry/sentry-cli/issues/2033)
+    # "sentry-cli debug-files check" requires individual files (https://github.com/getsentry/sentryx-cli/issues/2033)
     # Invoke-SentryCLI -Version 'latest' debug-files check $global:TestAppDir 2>&1 | Out-File (Get-OutputFilePath 'debug-files-check.txt')
 
     Invoke-SentryCLI -Version 'latest' debug-files upload --include-sources --log-level=info $global:TestAppDir
@@ -83,7 +83,7 @@ function Get-SentryTestEvent {
         [string]$TagValue,
 
         [Parameter()]
-        [int]$TimeoutSeconds = 120
+        [int]$TimeoutSeconds = 300
     )
 
     if ($EventId) {
