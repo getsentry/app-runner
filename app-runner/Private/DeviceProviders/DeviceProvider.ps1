@@ -16,10 +16,17 @@ class DeviceProvider {
     [string]$Platform
 
     [hashtable]$Commands
+    [hashtable]$Timeouts
     [string]$SdkPath
+
+    # Timeout handling configuration (opt-in via derived classes)
+    [int]$TimeoutSeconds = 0  # 0 = no timeout (default for all commands)
+    [int]$MaxRetryAttempts = 2
+    [bool]$IsRebooting = $false  # Internal flag to skip retry-on-timeout during reboot
 
     DeviceProvider() {
         $this.Commands = @{}
+        $this.Timeouts = @{}
         $this.SdkPath = $null
     }
 
@@ -68,25 +75,147 @@ class DeviceProvider {
         Write-Warning "$($this.Platform) $operation not yet implemented"
     }
 
+    # Helper method to invoke a command with timeout and retry handling
+    # This method is used internally when TimeoutSeconds > 0
+    [object] InvokeCommandWithTimeoutAndRetry([scriptblock]$scriptBlock, [string]$platform, [string]$action, [string]$command) {
+        $attempt = 1
+
+        while ($attempt -le $this.MaxRetryAttempts) {
+            try {
+                # Only log attempt info for retries
+                if ($attempt -gt 1) {
+                    Write-Warning "$($this.Platform): Retry attempt $attempt of $($this.MaxRetryAttempts) for command ($action)"
+                }
+
+                # Start job with the provided scriptblock and arguments
+                $job = Start-Job -ScriptBlock $scriptBlock -ArgumentList $platform, $action, $command
+
+                # Wait with progress messages every minute
+                $waitIntervalSeconds = 60
+                $elapsedSeconds = 0
+                $completed = $null
+
+                while ($elapsedSeconds -lt $this.TimeoutSeconds) {
+                    $completed = Wait-Job -Job $job -Timeout $waitIntervalSeconds
+
+                    if ($null -ne $completed) {
+                        # Job completed
+                        break
+                    }
+
+                    $elapsedSeconds += $waitIntervalSeconds
+
+                    if ($elapsedSeconds -lt $this.TimeoutSeconds) {
+                        $remainingMinutes = [math]::Ceiling(($this.TimeoutSeconds - $elapsedSeconds) / 60)
+                        Write-Warning "$($this.Platform): Command ($action) still running after $([math]::Floor($elapsedSeconds / 60)) minute(s), timeout in $remainingMinutes minute(s)..."
+                    }
+                }
+
+                if ($null -eq $completed) {
+                    # Timeout occurred
+                    Stop-Job -Job $job
+                    Remove-Job -Job $job -Force
+                    $jobResult = @{ TimedOut = $true; Success = $false; Result = $null }
+                } else {
+                    # Job completed within timeout
+                    $result = Receive-Job -Job $job
+                    $jobFailed = $job.ChildJobs[0].State -eq 'Failed'
+                    Remove-Job -Job $job -Force
+                    $jobResult = @{ TimedOut = $false; Success = -not $jobFailed; Result = $result }
+                }
+
+                if ($jobResult.TimedOut) {
+                    Write-Warning "$($this.Platform): Command ($action) timed out after $($this.TimeoutSeconds) seconds"
+
+                    if ($attempt -lt $this.MaxRetryAttempts) {
+                        Write-Warning "$($this.Platform): Triggering device reboot and retrying..."
+
+                        # Trigger reboot using the platform's RestartDevice method
+                        # Platform-specific implementations should handle waiting for device to be ready
+                        try {
+                            # Set flag to prevent timeout logic during reboot
+                            $this.IsRebooting = $true
+
+                            Write-Debug "$($this.Platform): Restarting device"
+                            $this.RestartDevice()
+                            Write-Debug "$($this.Platform): Device reboot complete, retrying command..."
+                        } catch {
+                            Write-Warning "$($this.Platform): Failed to trigger reboot: $_"
+                        } finally {
+                            # Always clear the reboot flag
+                            $this.IsRebooting = $false
+                        }
+
+                        $attempt++
+                        continue
+                    } else {
+                        throw "Command ($action) timed out after $($this.TimeoutSeconds) seconds and retry failed"
+                    }
+                } elseif (-not $jobResult.Success) {
+                    throw "Command ($action) failed"
+                } else {
+                    # Success
+                    return $jobResult.Result
+                }
+            } catch {
+                if ($attempt -lt $this.MaxRetryAttempts -and $_.Exception.Message -match 'timed out') {
+                    # Already handled above, continue to next attempt
+                    $attempt++
+                    continue
+                } else {
+                    throw
+                }
+            }
+        }
+
+        throw "Command ($action) failed after $($this.MaxRetryAttempts) attempts"
+    }
+
     [object] InvokeCommand([string]$action, [object[]]$parameters) {
+        # Build command once and check for null
         $command = $this.BuildCommand($action, $parameters)
         if ($null -eq $command) {
             return $null
         }
 
-        try {
-            $PSNativeCommandUseErrorActionPreference = $false
-            Write-Debug "$($this.Platform): Invoking ($action) command $command"
-            $result = Invoke-Expression $command
-            if ($LASTEXITCODE -ne 0) {
-                Write-Warning "Command ($action`: $command) failed with exit code $($LASTEXITCODE) $($result.Length -gt 0 ? 'and output:' : '')"
-                $result | ForEach-Object { Write-Warning $_ }
-                throw "Command ($action) failed with exit code $($LASTEXITCODE)"
+        # Build the execution scriptblock once - used for both timeout and non-timeout paths
+        $scriptBlock = {
+            param($platform, $act, $cmd)
+            try {
+                $PSNativeCommandUseErrorActionPreference = $false
+                Write-Debug "${platform}: Invoking ($act) command $cmd"
+                $result = Invoke-Expression $cmd
+                if ($LASTEXITCODE -ne 0) {
+                    Write-Warning "Command ($act`: $cmd) failed with exit code $($LASTEXITCODE) $($result.Length -gt 0 ? 'and output:' : '')"
+                    $result | ForEach-Object { Write-Warning $_ }
+                    throw "Command ($act) failed with exit code $($LASTEXITCODE)"
+                }
+                return $result
+            } finally {
+                $PSNativeCommandUseErrorActionPreference = $true
             }
-            return $result
-        } finally {
-            $PSNativeCommandUseErrorActionPreference = $true
         }
+
+        # Determine timeout for this action: use action-specific timeout if defined, otherwise use default
+        $effectiveTimeout = $this.TimeoutSeconds
+        if ($this.Timeouts.ContainsKey($action)) {
+            $effectiveTimeout = $this.Timeouts[$action]
+        }
+
+        # If timeout is enabled and we're not in the middle of a reboot, use timeout handling
+        if ($effectiveTimeout -gt 0 -and -not $this.IsRebooting) {
+            # Temporarily override TimeoutSeconds for this specific action
+            $originalTimeout = $this.TimeoutSeconds
+            $this.TimeoutSeconds = $effectiveTimeout
+            try {
+                return $this.InvokeCommandWithTimeoutAndRetry($scriptBlock, $this.Platform, $action, $command)
+            } finally {
+                $this.TimeoutSeconds = $originalTimeout
+            }
+        }
+
+        # Otherwise, execute directly without timeout
+        return & $scriptBlock $this.Platform $action $command
     }
 
     [hashtable] CreateSessionInfo() {

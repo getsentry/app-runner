@@ -21,6 +21,10 @@ class XboxProvider : DeviceProvider {
     XboxProvider() {
         $this.Platform = 'Xbox'
 
+        # Enable timeout handling with 2-minute default timeout
+        $this.TimeoutSeconds = 120
+        $this.MaxRetryAttempts = 2
+
         # Set SDK path if GameDK environment variable is available
         $gameDkRoot = $env:GameDK
         if ($gameDkRoot) {
@@ -47,6 +51,12 @@ class XboxProvider : DeviceProvider {
             'install-app' = @($this.AppTool, 'install {0}')
             'stop-app'    = @($this.AppTool, 'terminate {0}')
             'launch-app'  = @($this.AppTool, 'launch /O "{0}" {1}')
+        }
+
+        # Configure action-specific timeouts (app launch commands need more time)
+        $this.Timeouts = @{
+            'launch'     = 300  # 5 minutes for loose executable launch
+            'launch-app' = 300  # 5 minutes for packaged app launch
         }
     }
 
@@ -95,6 +105,40 @@ class XboxProvider : DeviceProvider {
     [void] StartDevice() {
         Write-Debug "$($this.Platform): Starting device"
         $this.InvokePowerOn()
+    }
+
+    # Override RestartDevice to implement proper wait-for-ready sequence
+    [void] RestartDevice() {
+        $this.InvokeCommand('reset', @())
+
+        # Wait for device to become ready after reboot
+        $maxWaitSeconds = 120
+        $pollIntervalSeconds = 5
+        $elapsedSeconds = 0
+        $isReady = $false
+
+        Write-Debug "$($this.Platform): Waiting for device to become ready after reboot..."
+
+        while ($elapsedSeconds -lt $maxWaitSeconds -and -not $isReady) {
+            Start-Sleep -Seconds $pollIntervalSeconds
+            $elapsedSeconds += $pollIntervalSeconds
+
+            try {
+                # Try to get device status
+                $status = $this.GetDeviceStatus()
+                if ($null -ne $status) {
+                    $isReady = $true
+                    Write-Debug "$($this.Platform): Device is ready after $elapsedSeconds seconds"
+                }
+            } catch {
+                # Device not ready yet, continue waiting
+                Write-Debug "$($this.Platform): Device not ready yet, waiting... ($elapsedSeconds/$maxWaitSeconds seconds)"
+            }
+        }
+
+        if (-not $isReady) {
+            throw "Device did not become ready after $maxWaitSeconds seconds"
+        }
     }
 
     # Override GetDeviceLogs to provide Xbox specific log retrieval
