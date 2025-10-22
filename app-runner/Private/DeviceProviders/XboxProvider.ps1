@@ -21,6 +21,10 @@ class XboxProvider : DeviceProvider {
     XboxProvider() {
         $this.Platform = 'Xbox'
 
+        # Enable timeout handling with 5-minute timeout
+        $this.TimeoutSeconds = 300
+        $this.MaxRetryAttempts = 2
+
         # Set SDK path if GameDK environment variable is available
         $gameDkRoot = $env:GameDK
         if ($gameDkRoot) {
