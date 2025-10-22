@@ -66,6 +66,43 @@ Get-DeviceLogs -LogType "Error" -MaxEntries 500
 Disconnect-Device
 ```
 
+## Exclusive Device Access
+
+The module uses named semaphores to enforce exclusive access to device resources, preventing conflicts when multiple processes or sessions attempt to use the same device.
+
+**How it works:**
+
+- Each device connection acquires an exclusive system-wide lock based on `Platform-Target`
+- Only one connection can hold a device at a time
+- Other processes wait (with progress updates) or timeout after 30 minutes
+- Lock is released on disconnect, connection failure, or when the PowerShell session ends
+
+**Resource naming:**
+
+- Same platform + target = **exclusive** (blocks concurrent access)
+- Different targets = **parallel** (allows concurrent access)
+- Examples: `Xbox-192.168.1.100`, `Xbox-Default`, `PlayStation5-Default`
+
+**Example scenario:**
+
+```powershell
+# Terminal 1 - Connects successfully
+Connect-Device -Platform "Xbox" -Target "192.168.1.100"
+
+# Terminal 2 - Waits or times out (same device)
+Connect-Device -Platform "Xbox" -Target "192.168.1.100" -TimeoutSeconds 60
+
+# Terminal 3 - Connects successfully (different device)
+Connect-Device -Platform "Xbox" -Target "192.168.1.101"
+```
+
+**Custom timeout:**
+
+```powershell
+# Use shorter timeout for local environments
+Connect-Device -Platform "Xbox" -TimeoutSeconds 300  # 5 minutes
+```
+
 ## Requirements
 
 - PowerShell 7+

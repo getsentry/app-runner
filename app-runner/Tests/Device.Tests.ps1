@@ -421,4 +421,67 @@ Describe '<TargetName>' -Tag 'RequiresDevice' -ForEach $TestTargets {
             { Get-DeviceLogs -MaxEntries 0 } | Should -Throw
         }
     }
+
+    Context 'Exclusive Device Access' -Tag $TargetName {
+        AfterEach {
+            Invoke-TestCleanup
+        }
+
+        It 'Concurrent connections to same device are blocked' {
+            # First connection acquires exclusive access
+            Connect-TestDevice -Platform $Platform -Target $Target
+            $firstSession = Get-DeviceSession
+            $firstSession.Semaphore | Should -Not -BeNullOrEmpty
+            $firstSession.ResourceName | Should -Not -BeNullOrEmpty
+
+            # Start a background job that tries to connect to the same device
+            $job = Start-Job -ScriptBlock {
+                param($ModulePath, $Platform, $Target)
+                Import-Module $ModulePath -Force
+                try {
+                    if ($Target) {
+                        Connect-Device -Platform $Platform -Target $Target -TimeoutSeconds 5
+                    } else {
+                        Connect-Device -Platform $Platform -TimeoutSeconds 5
+                    }
+                    return 'SUCCESS'
+                } catch {
+                    return $_.Exception.Message
+                }
+            } -ArgumentList "$PSScriptRoot\..\SentryAppRunner.psm1", $Platform, $Target
+
+            # Wait for job with short timeout (should timeout waiting for semaphore)
+            $result = Wait-Job -Job $job | Receive-Job
+            Remove-Job -Job $job -Force
+
+            # Should have failed with semaphore timeout error
+            $result | Should -Match 'Could not acquire exclusive access'
+            $result | Should -Match $firstSession.ResourceName
+        }
+
+        It 'Sequential connections work after disconnect' {
+            # First connection
+            Connect-TestDevice -Platform $Platform -Target $Target
+            $firstResourceName = (Get-DeviceSession).ResourceName
+            Disconnect-Device
+
+            # Second connection should succeed immediately
+            $startTime = Get-Date
+            Connect-TestDevice -Platform $Platform -Target $Target
+            $duration = ((Get-Date) - $startTime).TotalSeconds
+
+            # Should connect quickly (not waiting for semaphore)
+            $duration | Should -BeLessOrEqual 10
+
+            # Resource name should be the same
+            $secondResourceName = (Get-DeviceSession).ResourceName
+            $secondResourceName | Should -Be $firstResourceName
+        }
+
+        It 'Releases semaphore on connection failure' -Skip {
+            # This test is skipped because it's difficult to force a connection
+            # failure after semaphore acquisition without affecting the device.
+            # Manual testing is recommended for this scenario.
+        }
+    }
 }
