@@ -39,7 +39,6 @@ class XboxProvider : DeviceProvider {
             'connect'     = @($this.ConnectTool, '')
             'setTarget'   = @($this.ConnectTool, '/N "{0}"')
             'disconnect'  = $null
-            'powerState'  = @($this.PowerTool, '/Q')
             'poweron'     = @($this.PowerTool, '/W') # Wake up
             'poweroff'    = @($this.PowerTool, '/P') # Sleep
             'reset'       = @($this.PowerTool, '')
