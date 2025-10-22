@@ -21,8 +21,8 @@ class XboxProvider : DeviceProvider {
     XboxProvider() {
         $this.Platform = 'Xbox'
 
-        # Enable timeout handling with 5-minute timeout
-        $this.TimeoutSeconds = 300
+        # Enable timeout handling with 2-minute default timeout
+        $this.TimeoutSeconds = 120
         $this.MaxRetryAttempts = 2
 
         # Set SDK path if GameDK environment variable is available
@@ -51,6 +51,12 @@ class XboxProvider : DeviceProvider {
             'install-app' = @($this.AppTool, 'install {0}')
             'stop-app'    = @($this.AppTool, 'terminate {0}')
             'launch-app'  = @($this.AppTool, 'launch /O "{0}" {1}')
+        }
+
+        # Configure action-specific timeouts (app launch commands need more time)
+        $this.Timeouts = @{
+            'launch'     = 300  # 5 minutes for loose executable launch
+            'launch-app' = 300  # 5 minutes for packaged app launch
         }
     }
 

@@ -16,15 +16,17 @@ class DeviceProvider {
     [string]$Platform
 
     [hashtable]$Commands
+    [hashtable]$Timeouts
     [string]$SdkPath
 
     # Timeout handling configuration (opt-in via derived classes)
-    [int]$TimeoutSeconds = 0  # 0 = no timeout (default)
+    [int]$TimeoutSeconds = 0  # 0 = no timeout (default for all commands)
     [int]$MaxRetryAttempts = 2
     [bool]$IsRebooting = $false  # Internal flag to skip retry-on-timeout during reboot
 
     DeviceProvider() {
         $this.Commands = @{}
+        $this.Timeouts = @{}
         $this.SdkPath = $null
     }
 
@@ -194,9 +196,22 @@ class DeviceProvider {
             }
         }
 
+        # Determine timeout for this action: use action-specific timeout if defined, otherwise use default
+        $effectiveTimeout = $this.TimeoutSeconds
+        if ($this.Timeouts.ContainsKey($action)) {
+            $effectiveTimeout = $this.Timeouts[$action]
+        }
+
         # If timeout is enabled and we're not in the middle of a reboot, use timeout handling
-        if ($this.TimeoutSeconds -gt 0 -and -not $this.IsRebooting) {
-            return $this.InvokeCommandWithTimeoutAndRetry($scriptBlock, $this.Platform, $action, $command)
+        if ($effectiveTimeout -gt 0 -and -not $this.IsRebooting) {
+            # Temporarily override TimeoutSeconds for this specific action
+            $originalTimeout = $this.TimeoutSeconds
+            $this.TimeoutSeconds = $effectiveTimeout
+            try {
+                return $this.InvokeCommandWithTimeoutAndRetry($scriptBlock, $this.Platform, $action, $command)
+            } finally {
+                $this.TimeoutSeconds = $originalTimeout
+            }
         }
 
         # Otherwise, execute directly without timeout
