@@ -70,7 +70,7 @@ class XboxProvider : DeviceProvider {
         if ($powerState -match 'Allows Instant On' -and $powerState -match 'Connected Standby') {
             Write-Debug "$($this.Platform): Waking up device from Connected Standby"
             $this.InvokeCommand('wakeup', @())
-        } 
+        }
     }
 
     [hashtable] Connect() {
@@ -87,10 +87,20 @@ class XboxProvider : DeviceProvider {
         return $this.Connect()
     }
 
-    # Override StartDevice to use retry logic for connected standby
+    # Override StartDevice to support connected standby
     [void] StartDevice() {
         Write-Debug "$($this.Platform): Starting device"
         $this.InvokePowerOn()
+    }
+
+    # Override StopDevice to support connected standby
+    [void] StopDevice() {
+        $powerState = $this.InvokeCommand('powerState', @())
+        if ($powerState -match 'Allows Instant On') {
+            $this.InvokeCommand('sleep', @())
+        } else {
+            $this.InvokeCommand('poweroff', @())
+        }
     }
 
     # Override RestartDevice to implement proper wait-for-ready sequence
