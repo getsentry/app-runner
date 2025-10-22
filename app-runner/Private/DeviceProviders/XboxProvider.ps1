@@ -101,6 +101,40 @@ class XboxProvider : DeviceProvider {
         $this.InvokePowerOn()
     }
 
+    # Override RestartDevice to implement proper wait-for-ready sequence
+    [void] RestartDevice() {
+        $this.InvokeCommand('reset', @())
+
+        # Wait for device to become ready after reboot
+        $maxWaitSeconds = 120
+        $pollIntervalSeconds = 5
+        $elapsedSeconds = 0
+        $isReady = $false
+
+        Write-Debug "$($this.Platform): Waiting for device to become ready after reboot..."
+
+        while ($elapsedSeconds -lt $maxWaitSeconds -and -not $isReady) {
+            Start-Sleep -Seconds $pollIntervalSeconds
+            $elapsedSeconds += $pollIntervalSeconds
+
+            try {
+                # Try to get device status
+                $status = $this.GetDeviceStatus()
+                if ($null -ne $status) {
+                    $isReady = $true
+                    Write-Debug "$($this.Platform): Device is ready after $elapsedSeconds seconds"
+                }
+            } catch {
+                # Device not ready yet, continue waiting
+                Write-Debug "$($this.Platform): Device not ready yet, waiting... ($elapsedSeconds/$maxWaitSeconds seconds)"
+            }
+        }
+
+        if (-not $isReady) {
+            throw "Device did not become ready after $maxWaitSeconds seconds"
+        }
+    }
+
     # Override GetDeviceLogs to provide Xbox specific log retrieval
     [hashtable] GetDeviceLogs([string]$LogType, [int]$MaxEntries) {
         Write-Warning 'GetDeviceLogs is not available for Xbox devices.'

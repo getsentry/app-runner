@@ -21,7 +21,7 @@ class DeviceProvider {
     # Timeout handling configuration (opt-in via derived classes)
     [int]$TimeoutSeconds = 0  # 0 = no timeout (default)
     [int]$MaxRetryAttempts = 2
-    [string[]]$TimeoutExcludedActions = @('reset', 'poweron', 'poweroff')
+    [bool]$IsRebooting = $false  # Internal flag to skip retry-on-timeout during reboot
 
     DeviceProvider() {
         $this.Commands = @{}
@@ -129,14 +129,19 @@ class DeviceProvider {
                         Write-Warning "$($this.Platform): Triggering device reboot and retrying..."
 
                         # Trigger reboot using the platform's RestartDevice method
+                        # Platform-specific implementations should handle waiting for device to be ready
                         try {
-                            $this.RestartDevice()
-                            Write-Debug "$($this.Platform): Reboot triggered, waiting for device to restart..."
+                            # Set flag to prevent timeout logic during reboot
+                            $this.IsRebooting = $true
 
-                            # Wait for device to reboot (5 seconds)
-                            Start-Sleep -Seconds 5
+                            Write-Debug "$($this.Platform): Restarting device"
+                            $this.RestartDevice()
+                            Write-Debug "$($this.Platform): Device reboot complete, retrying command..."
                         } catch {
                             Write-Warning "$($this.Platform): Failed to trigger reboot: $_"
+                        } finally {
+                            # Always clear the reboot flag
+                            $this.IsRebooting = $false
                         }
 
                         $attempt++
@@ -189,8 +194,8 @@ class DeviceProvider {
             }
         }
 
-        # If timeout is enabled and action is not excluded, use timeout handling
-        if ($this.TimeoutSeconds -gt 0 -and $action -notin $this.TimeoutExcludedActions) {
+        # If timeout is enabled and we're not in the middle of a reboot, use timeout handling
+        if ($this.TimeoutSeconds -gt 0 -and -not $this.IsRebooting) {
             return $this.InvokeCommandWithTimeoutAndRetry($scriptBlock, $this.Platform, $action, $command)
         }
 
