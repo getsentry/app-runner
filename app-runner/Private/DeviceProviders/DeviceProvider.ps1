@@ -239,7 +239,9 @@ class DeviceProvider {
     }
 
     [hashtable] Connect([string]$target) {
-        Write-Debug "$($this.Platform): Connecting to device with target: $target"
+        if (-not [string]::IsNullOrEmpty($target)) {
+            Write-Warning "$($this.Platform): Connect doesn't support specifying the target parameter so it's ignored."
+        }
 
         # Default implementation just calls Connect() - platforms that support targets should override
         return $this.Connect()

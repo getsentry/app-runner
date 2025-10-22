@@ -14,6 +14,10 @@ function Connect-Device {
     For Xbox platform, specifies the target to connect to. Can be either a name or IP address.
     If not specified, the system will auto-discover an available Xbox target.
 
+    .PARAMETER TimeoutSeconds
+    Maximum time to wait for exclusive device access. Default is 1800 seconds (30 minutes).
+    Progress messages are displayed every minute during long waits.
+
     .EXAMPLE
     Connect-Device -Platform "Xbox"
     # Auto-discovers an available Xbox devkit
@@ -33,11 +37,14 @@ function Connect-Device {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $true)]
-        [ValidateSet("Xbox", "PlayStation5", "Switch", "Mock")]
+        [ValidateSet('Xbox', 'PlayStation5', 'Switch', 'Mock')]
         [string]$Platform,
 
         [Parameter(Mandatory = $false)]
-        [string]$Target
+        [string]$Target,
+
+        [Parameter(Mandatory = $false)]
+        [int]$TimeoutSeconds = 1800
     )
 
     Write-Debug "Connecting to device platform: $Platform"
@@ -53,21 +60,38 @@ function Connect-Device {
         Disconnect-Device
     }
 
-    # Create provider for the specified platform
-    $provider = [DeviceProviderFactory]::CreateProvider($Platform)
+    # Build resource name for semaphore coordination
+    $resourceName = New-DeviceResourceName -Platform $Platform -Target $Target
+    Write-Debug "Device resource name: $resourceName"
 
-    # Connect using the provider
-    if ($Platform -eq "Xbox" -and $Target) {
+    # Acquire exclusive access to the device resource
+    # Default 30-minute timeout with progress messages every minute
+    $semaphore = $null
+    try {
+        $semaphore = Request-DeviceAccess -ResourceName $resourceName -TimeoutSeconds $TimeoutSeconds -ProgressIntervalSeconds 60
+        Write-Output "Acquired exclusive access to device: $resourceName"
+
+        # Create provider for the specified platform
+        $provider = [DeviceProviderFactory]::CreateProvider($Platform)
+
+        # Connect using the provider
         $sessionInfo = $provider.Connect($Target)
-    } else {
-        $sessionInfo = $provider.Connect()
+
+        # Store the provider instance and semaphore with the session
+        $script:CurrentSession = $sessionInfo
+        $script:CurrentSession.Provider = $provider
+        $script:CurrentSession.Semaphore = $semaphore
+        $script:CurrentSession.ResourceName = $resourceName
+
+        Write-Debug "Successfully connected to $Platform device (Device: $($script:CurrentSession.Identifier))"
+
+        return $script:CurrentSession
+    } catch {
+        # If connection failed after acquiring semaphore, release it
+        if ($semaphore) {
+            Write-Debug "Connection failed, releasing semaphore for resource: $resourceName"
+            Release-DeviceAccess -Semaphore $semaphore -ResourceName $resourceName
+        }
+        throw
     }
-
-    # Store the provider instance with the session
-    $script:CurrentSession = $sessionInfo
-    $script:CurrentSession.Provider = $provider
-
-    Write-Debug "Successfully connected to $Platform device (Device: $($script:CurrentSession.Identifier))"
-
-    return $script:CurrentSession
 }

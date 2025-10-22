@@ -42,6 +42,15 @@ function Disconnect-Device {
         }
         $provider.Disconnect()
     } finally {
+        # Release device semaphore if present
+        if ($script:CurrentSession.Semaphore) {
+            $resourceName = $script:CurrentSession.ResourceName
+            $semaphore = $script:CurrentSession.Semaphore
+            Write-Debug "Releasing exclusive access to device: $resourceName"
+            Release-DeviceAccess -Semaphore $semaphore -ResourceName $resourceName
+            Write-Output "Released exclusive access to device: $resourceName"
+        }
+
         $script:CurrentSession = $null
 
         Write-Debug "Successfully disconnected from $platform device"
