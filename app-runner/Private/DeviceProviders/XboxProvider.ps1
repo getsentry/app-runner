@@ -39,8 +39,12 @@ class XboxProvider : DeviceProvider {
             'connect'     = @($this.ConnectTool, '')
             'setTarget'   = @($this.ConnectTool, '/N "{0}"')
             'disconnect'  = $null
-            'poweron'     = @($this.PowerTool, '/W') # Wake up
-            'poweroff'    = @($this.PowerTool, '/P') # Sleep
+            # Xbox has two "powermode" values: "energysaving" which is basically always on or "instanton" which support sleep/wakeup
+            'powerState'  = @($this.PowerTool, '/Q')
+            'wakeup'      = @($this.PowerTool, '/W') # Wake up
+            'sleep'       = @($this.PowerTool, '/P') # Sleep
+            'poweron'     = $null
+            'poweroff'    = $null # Xbox cannot recover from full power-off via CLI, so we don't implement power off.
             'reset'       = @($this.PowerTool, '')
             'getstatus'   = @($this.ConnectTool, '')
             'screenshot'  = @('xbcapture.exe', '"{0}/{1}"')
@@ -61,28 +65,11 @@ class XboxProvider : DeviceProvider {
 
     # Helper method to invoke poweron with retry logic for connected standby timeout
     [void] InvokePowerOn() {
-        $maxRetries = 2
-        $attempt = 1
-        $success = $false
+        $powerState = $this.InvokeCommand('powerState', @())
 
-        while ($attempt -le $maxRetries -and -not $success) {
-            try {
-                Write-Debug "$($this.Platform): Power-on attempt $attempt of $maxRetries"
-                $this.InvokeCommand('poweron', @())
-                $success = $true
-            } catch {
-                # Check if it's the known connected standby timeout (0x80070102)
-                if ($_.Exception.Message -match '0x80070102|wait operation timed out' -and $attempt -lt $maxRetries) {
-                    Write-Warning "$($this.Platform): Connected standby wake timeout detected. Retrying..."
-                    $attempt++
-                } else {
-                    throw
-                }
-            }
-        }
-
-        if (-not $success) {
-            throw "Failed to power on device after $maxRetries attempts"
+        if ($powerState -match 'Allows Instant On' -and $powerState -match 'Connected Standby') {
+            Write-Debug "$($this.Platform): Waking up device from Connected Standby"
+            $this.InvokeCommand('wakeup', @())
         }
     }
 
@@ -100,10 +87,20 @@ class XboxProvider : DeviceProvider {
         return $this.Connect()
     }
 
-    # Override StartDevice to use retry logic for connected standby
+    # Override StartDevice to support connected standby
     [void] StartDevice() {
         Write-Debug "$($this.Platform): Starting device"
         $this.InvokePowerOn()
+    }
+
+    # Override StopDevice to support connected standby
+    [void] StopDevice() {
+        $powerState = $this.InvokeCommand('powerState', @())
+        if ($powerState -match 'Allows Instant On') {
+            $this.InvokeCommand('sleep', @())
+        } else {
+            $this.InvokeCommand('poweroff', @())
+        }
     }
 
     # Override RestartDevice to implement proper wait-for-ready sequence

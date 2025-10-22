@@ -36,6 +36,7 @@ class MockDeviceProvider : DeviceProvider {
         $this.MockConfig = @{
             ShouldFailConnection = $false
             ShouldFailCommands   = $false
+            PowerState           = "Off"
             AppRunning           = $false
         }
     }
@@ -76,15 +77,18 @@ class MockDeviceProvider : DeviceProvider {
 
     [void] StartDevice() {
         Write-Debug "Mock: Starting device"
+        $this.MockConfig.PowerState = "On"
     }
 
     [void] StopDevice() {
         Write-Debug "Mock: Stopping device"
+        $this.MockConfig.PowerState = "Off"
         $this.MockConfig.AppRunning = $false
     }
 
     [void] RestartDevice() {
         Write-Debug "Mock: Restarting device"
+        $this.MockConfig.PowerState = "On"
         $this.MockConfig.AppRunning = $false
     }
 
@@ -92,6 +96,7 @@ class MockDeviceProvider : DeviceProvider {
         Write-Debug "Mock: Getting device status"
         return @{
             Platform   = $this.Platform
+            PowerState = $this.MockConfig.PowerState
             AppRunning = $this.MockConfig.AppRunning
             Status     = "Online"
             Timestamp  = Get-Date
@@ -172,6 +177,7 @@ class MockDeviceProvider : DeviceProvider {
             $statusFile = Join-Path $OutputDirectory "$datePrefix-device-status.json"
             $mockStatus = @{
                 Platform    = $this.Platform
+                PowerState  = $this.MockConfig.PowerState
                 AppRunning  = $this.MockConfig.AppRunning
                 Temperature = 45.5
                 FanSpeed    = 1200
