@@ -90,8 +90,8 @@ class DeviceProvider {
                 # Start job with the provided scriptblock and arguments
                 $job = Start-Job -ScriptBlock $scriptBlock -ArgumentList $platform, $action, $command
 
-                # Wait with progress messages every minute
-                $waitIntervalSeconds = 60
+                # Wait with progress messages every 30 seconds
+                $waitIntervalSeconds = 30
                 $elapsedSeconds = 0
                 $completed = $null
 
@@ -106,8 +106,7 @@ class DeviceProvider {
                     $elapsedSeconds += $waitIntervalSeconds
 
                     if ($elapsedSeconds -lt $this.TimeoutSeconds) {
-                        $remainingMinutes = [math]::Ceiling(($this.TimeoutSeconds - $elapsedSeconds) / 60)
-                        Write-Warning "$($this.Platform): Command ($action) still running after $([math]::Floor($elapsedSeconds / 60)) minute(s), timeout in $remainingMinutes minute(s)..."
+                        Write-Warning "$($this.Platform): Command ($action) still running after $elapsedSeconds seconds, timeout in $($this.TimeoutSeconds - $elapsedSeconds) seconds..."
                     }
                 }
 
