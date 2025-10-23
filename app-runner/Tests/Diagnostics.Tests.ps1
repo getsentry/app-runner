@@ -81,6 +81,29 @@ Context 'Get-DeviceDiagnostics' {
             Pop-Location
         }
     }
+
+    It 'Should create output directory if it does not exist' {
+        Connect-Device -Platform 'Mock'
+        $NonExistentDir = Join-Path $TestDrive "new-directory-$(Get-Random)"
+
+        # Verify directory doesn't exist
+        $NonExistentDir | Should -Not -Exist
+
+        # Should not throw and should create the directory
+        { Get-DeviceDiagnostics -OutputDirectory $NonExistentDir } | Should -Not -Throw
+
+        # Directory should now exist
+        $NonExistentDir | Should -Exist
+
+        # Files should be created in the new directory
+        $diagnostics = Get-DeviceDiagnostics -OutputDirectory $NonExistentDir
+        $diagnostics.Files.Count | Should -BeGreaterThan 0
+
+        foreach ($file in $diagnostics.Files) {
+            $file | Should -Exist
+            Split-Path $file -Parent | Should -Be $NonExistentDir
+        }
+    }
 }
 
 Context 'Get-DeviceScreenshot' {

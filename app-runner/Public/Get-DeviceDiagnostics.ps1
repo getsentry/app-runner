@@ -31,6 +31,12 @@ function Get-DeviceDiagnostics {
     Write-Debug "Collecting diagnostics for device: $($script:CurrentSession.Platform)"
     Write-Debug "Output directory: $OutputDirectory"
 
+    # Ensure output directory exists
+    if (-not (Test-Path $OutputDirectory)) {
+        Write-Debug "Creating output directory: $OutputDirectory"
+        New-Item -Path $OutputDirectory -ItemType Directory -Force | Out-Null
+    }
+
     # Use the provider to collect diagnostics
     $provider = $script:CurrentSession.Provider
     $results = $provider.GetDiagnostics($OutputDirectory)
@@ -41,7 +47,7 @@ function Get-DeviceDiagnostics {
             Write-Debug "  - $(Split-Path $file -Leaf)"
         }
     } else {
-        Write-Warning "No diagnostic files were created"
+        Write-Warning 'No diagnostic files were created'
     }
 
     return $results
