@@ -183,7 +183,7 @@ class DeviceProvider {
             try {
                 $PSNativeCommandUseErrorActionPreference = $false
                 Write-Debug "${platform}: Invoking ($act) command $cmd"
-                $result = Invoke-Expression $cmd
+                $result = Invoke-Expression "$cmd | Tee-Object -variable capturedOutput | Foreach-Object { Write-Debug `$_ } ; `$capturedOutput"
                 if ($LASTEXITCODE -ne 0) {
                     Write-Warning "Command ($act`: $cmd) failed with exit code $($LASTEXITCODE) $($result.Length -gt 0 ? 'and output:' : '')"
                     $result | ForEach-Object { Write-Warning $_ }
@@ -313,7 +313,7 @@ class DeviceProvider {
         $startDate = Get-Date
         try {
             $PSNativeCommandUseErrorActionPreference = $false
-            $result = Invoke-Expression $command
+            $result = Invoke-Expression "$command | Tee-Object -variable capturedOutput | Foreach-Object { Write-Debug `$_ } ; `$capturedOutput"
             $exitCode = $LASTEXITCODE
         } finally {
             $PSNativeCommandUseErrorActionPreference = $true
