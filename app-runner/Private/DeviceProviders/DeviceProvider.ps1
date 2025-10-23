@@ -57,7 +57,10 @@ class DeviceProvider {
 
         $commandObj = $this.Commands[$action]
         if ($null -eq $commandObj) {
-            Write-Warning "Command '$action' is not available for platform '$($this.Platform)'"
+            # Special case: disconnect is a no-op for some platforms but users should still call it to unlock resources.
+            if ($action -ne 'disconnect') {
+                Write-Warning "Command '$action' is not available for platform '$($this.Platform)'"
+            }
             return $null
         }
 
