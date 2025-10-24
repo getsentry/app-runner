@@ -157,65 +157,18 @@ class MockDeviceProvider : DeviceProvider {
         "Mock screenshot data" | Out-File -FilePath $OutputPath -Encoding UTF8
     }
 
-    [hashtable] GetDiagnostics([string]$OutputDirectory) {
-        Write-Debug "Mock: Collecting diagnostics to directory: $OutputDirectory"
+    [object] GetRunningProcesses() {
+        Write-Debug "Mock: Getting running processes"
 
-        # Ensure output directory exists
-        if (-not (Test-Path $OutputDirectory)) {
-            New-Item -Path $OutputDirectory -ItemType Directory -Force | Out-Null
-        }
-
-        $datePrefix = Get-Date -Format "yyyyMMdd-HHmmss"
-        $results = @{
-            Platform  = $this.Platform
-            Timestamp = Get-Date
-            Files     = @()
-        }
-
-        # Create mock diagnostic files
-        try {
-            $statusFile = Join-Path $OutputDirectory "$datePrefix-device-status.json"
-            $mockStatus = @{
-                Platform    = $this.Platform
-                PowerState  = $this.MockConfig.PowerState
-                AppRunning  = $this.MockConfig.AppRunning
-                Temperature = 45.5
-                FanSpeed    = 1200
-                Timestamp   = Get-Date
-            }
-            $mockStatus | ConvertTo-Json -Depth 10 | Out-File -FilePath $statusFile -Encoding UTF8
-            $results.Files += $statusFile
-        } catch {
-            Write-Warning "Failed to create mock device status: $_"
-        }
-
-        try {
-            $screenshotFile = Join-Path $OutputDirectory "$datePrefix-screenshot.png"
-            "Mock screenshot data for $($this.Platform)" | Out-File -FilePath $screenshotFile -Encoding UTF8
-            $results.Files += $screenshotFile
-        } catch {
-            Write-Warning "Failed to create mock screenshot: $_"
-        }
-
-        try {
-            $sysInfoFile = Join-Path $OutputDirectory "$datePrefix-system-info.txt"
-            $sysInfo = @"
-Platform: $($this.Platform)
-Device Identifier: $($this.GetDeviceIdentifier())
-OS: MockOS 1.0
-Version: Mock.1.0.0
-Memory: 16GB
-CPU: Mock CPU
-Collection Time: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')
-"@
-            $sysInfo | Out-File -FilePath $sysInfoFile -Encoding UTF8
-            $results.Files += $sysInfoFile
-        } catch {
-            Write-Warning "Failed to create mock system info: $_"
-        }
-
-        Write-Debug "Mock diagnostics collection complete. Files saved: $($results.Files.Count)"
-        return $results
+        # Return mock process list as structured objects
+        # Include optional properties (ParentPid, Path) to simulate different platform formats
+        return @(
+            [PSCustomObject]@{ Id = 123; Name = "C:\Windows\System32\svchost.exe"; ParentPid = 1; Path = "C:\Windows\System32\svchost.exe" }
+            [PSCustomObject]@{ Id = 456; Name = "C:\Windows\System32\explorer.exe"; ParentPid = 123; Path = "C:\Windows\System32\explorer.exe" }
+            [PSCustomObject]@{ Id = 1234; Name = "C:\Program Files\MockApp\app.exe"; ParentPid = 456; Path = "C:\Program Files\MockApp\app.exe" }
+            [PSCustomObject]@{ Id = 5678; Name = "C:\Windows\System32\dwm.exe"; ParentPid = 1; Path = "C:\Windows\System32\dwm.exe" }
+            [PSCustomObject]@{ Id = 999; Name = "<unknown>"; ParentPid = 0; Path = $null }
+        )
     }
 
 

@@ -43,6 +43,7 @@ class PlayStation5Provider : DeviceProvider {
             "healthcheck" = @($this.TargetControlTool, "diagnostics health-check")
             "ipconfig"    = @($this.TargetControlTool, "network ip-config")
             "natinfo"     = @($this.TargetControlTool, "network get-nat-traversal-info")
+            "processlist" = @($this.TargetControlTool, "process list")
         }
     }
 
@@ -96,6 +97,65 @@ class PlayStation5Provider : DeviceProvider {
         # Try to extract GameLanIpAddress from PS5 status text
         $line = $statusData | Where-Object { $_ -match 'GameLanIpAddress' }
         return $line.Split(':')[1].Trim()
+    }
+
+    # Override GetRunningProcesses to provide PlayStation 5 process list via prospero-ctrl
+    # Returns array of objects with Id, ParentPid, Name, and Path properties
+    [object] GetRunningProcesses() {
+        Write-Debug "$($this.Platform): Collecting running processes via prospero-ctrl process list"
+        $output = $this.InvokeCommand('processlist', @())
+
+        # Parse prospero-ctrl process list output (YAML-like format)
+        # Format: Lines starting with "-" begin a new object, followed by key-value pairs
+        # Example:
+        # - Id: 0x00000063
+        #   ParentPid: 0x0000003b
+        #   Name: eboot.bin
+        #   Path: /app0/eboot.bin
+        $processes = @()
+        $currentObject = $null
+
+        foreach ($line in $output) {
+            $trimmedLine = $line.Trim()
+
+            # Check for start of new YAML object (line starting with "-")
+            if ($trimmedLine -match '^-\s+(.+):\s*(.*)$') {
+                # Save previous object if it exists
+                if ($currentObject) {
+                    $processes += [PSCustomObject]$currentObject
+                }
+                # Start new object with first key-value pair
+                $currentObject = @{}
+                $key = $matches[1]
+                $value = $matches[2].Trim()
+
+                # Convert hex values to decimal
+                if ($value -match '^0x[0-9a-fA-F]+$') {
+                    $currentObject[$key] = [Convert]::ToInt32($value, 16)
+                } else {
+                    $currentObject[$key] = if ($value) { $value } else { $null }
+                }
+            }
+            # Parse additional key-value pairs for current object
+            elseif ($currentObject -and $trimmedLine -match '^([^:]+):\s*(.*)$') {
+                $key = $matches[1].Trim()
+                $value = $matches[2].Trim()
+
+                # Convert hex values to decimal
+                if ($value -match '^0x[0-9a-fA-F]+$') {
+                    $currentObject[$key] = [Convert]::ToInt32($value, 16)
+                } else {
+                    $currentObject[$key] = if ($value) { $value } else { $null }
+                }
+            }
+        }
+
+        # Add the last object if exists
+        if ($currentObject) {
+            $processes += [PSCustomObject]$currentObject
+        }
+
+        return $processes
     }
 
     [hashtable] GetDiagnostics([string]$OutputDirectory) {

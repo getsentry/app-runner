@@ -86,7 +86,7 @@ BeforeDiscovery {
         Write-Warning "  - Switch: Set `$env:NINTENDO_SDK_ROOT or add ControlTarget.exe to PATH"
     }
 
-    $global:DebugPreference = 'Continue'
+    # $global:DebugPreference = 'Continue'
 }
 
 BeforeAll {
@@ -365,6 +365,66 @@ Describe '<TargetName>' -Tag 'RequiresDevice' -ForEach $TestTargets {
                 $natInfoFile = $files | Where-Object { $_.Name -like '*-network-nat-traversal-info.txt' } | Select-Object -First 1
                 $natInfoFile | Should -Not -BeNullOrEmpty
                 $natInfoFile.Length | Should -BeGreaterThan 0
+            }
+
+            # Verify process list file exists for platforms that support it (Xbox, PlayStation5)
+            if ($Platform -in @('Xbox', 'PlayStation5', 'Mock')) {
+                $processListFile = $files | Where-Object { $_.Name -like '*-process-list.json' } | Select-Object -First 1
+                $processListFile | Should -Not -BeNullOrEmpty
+                $processListFile.Length | Should -BeGreaterThan 0
+
+                # Verify process list JSON structure
+                $processList = Get-Content $processListFile.FullName -Raw | ConvertFrom-Json
+                $processList | Should -Not -BeNullOrEmpty
+                $processList.Count | Should -BeGreaterThan 0
+
+                # Verify each process has Id and Name properties
+                foreach ($process in $processList) {
+                    $process.PSObject.Properties.Name | Should -Contain 'Id'
+                    $process.PSObject.Properties.Name | Should -Contain 'Name'
+                }
+            }
+        }
+
+        It '<Platform> process list contains expected data' -Skip:($Platform -notin @('Xbox', 'PlayStation5')) {
+            # Convert TestDrive to actual path since native SDK tools don't support PSDrive paths
+            $outputDir = Join-Path $TestDrive "diagnostics-$Platform-process"
+
+            { Get-DeviceDiagnostics -OutputDirectory $outputDir } | Should -Not -Throw
+
+            # Verify process list file exists
+            $files = Get-ChildItem $outputDir
+            $processListFile = $files | Where-Object { $_.Name -like '*-process-list.json' } | Select-Object -First 1
+            $processListFile | Should -Not -BeNullOrEmpty
+
+            # Parse and verify process list structure
+            $processList = Get-Content $processListFile.FullName -Raw | ConvertFrom-Json
+            $processList | Should -Not -BeNullOrEmpty
+
+            # Platform-specific validations
+            if ($Platform -eq 'Xbox') {
+                $processList.Count | Should -BeGreaterThan 10  # Xbox should have many processes
+
+                # Verify we have some common Xbox system processes
+                $processNames = $processList | Select-Object -ExpandProperty Name
+                $hasSystemProcesses = $processNames | Where-Object { $_ -like '*svchost.exe*' -or $_ -like '*dwm.exe*' }
+                $hasSystemProcesses | Should -Not -BeNullOrEmpty
+            }
+
+            # Common validations for all platforms
+            foreach ($process in $processList) {
+                # All platforms must have Id and Name
+                $process.PSObject.Properties.Name | Should -Contain 'Id'
+                $process.PSObject.Properties.Name | Should -Contain 'Name'
+                $process.Id | Should -BeGreaterOrEqual 0
+                $process.Name | Should -Not -BeNullOrEmpty
+
+                # PlayStation5 has additional required properties
+                if ($Platform -eq 'PlayStation5') {
+                    $process.PSObject.Properties.Name | Should -Contain 'ParentPid'
+                    $process.PSObject.Properties.Name | Should -Contain 'Path'
+                    $process.Path | Should -Not -BeNullOrEmpty
+                }
             }
         }
 
