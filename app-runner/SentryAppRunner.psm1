@@ -15,7 +15,6 @@ foreach ($import in $ProviderFiles) {
     if (Test-Path $import) {
         try {
             . $import
-            Write-Debug "Imported device provider: $(Split-Path -Leaf $import)"
         } catch {
             Write-Error "Failed to import provider $import`: $($_.Exception.Message)"
         }
@@ -27,7 +26,6 @@ $Private = @(Get-ChildItem -Path $PSScriptRoot\Private\*.ps1 -ErrorAction Silent
 foreach ($import in $Private) {
     try {
         . $import.FullName
-        Write-Debug "Imported private function: $($import.Name)"
     } catch {
         Write-Error "Failed to import function $($import.FullName): $($_.Exception.Message)"
     }
