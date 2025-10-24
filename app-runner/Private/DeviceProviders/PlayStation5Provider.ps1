@@ -105,46 +105,54 @@ class PlayStation5Provider : DeviceProvider {
         Write-Debug "$($this.Platform): Collecting running processes via prospero-ctrl process list"
         $output = $this.InvokeCommand('processlist', @())
 
-        # Parse prospero-ctrl process list output
-        # Format is YAML-like:
+        # Parse prospero-ctrl process list output (YAML-like format)
+        # Format: Lines starting with "-" begin a new object, followed by key-value pairs
+        # Example:
         # - Id: 0x00000063
         #   ParentPid: 0x0000003b
         #   Name: eboot.bin
         #   Path: /app0/eboot.bin
         $processes = @()
-        $currentProcess = $null
+        $currentObject = $null
 
         foreach ($line in $output) {
             $trimmedLine = $line.Trim()
 
-            if ($trimmedLine -match '^- Id: (0x[0-9a-fA-F]+)') {
-                # Start of a new process entry
-                if ($currentProcess) {
-                    $processes += $currentProcess
+            # Check for start of new YAML object (line starting with "-")
+            if ($trimmedLine -match '^-\s+(.+):\s*(.*)$') {
+                # Save previous object if it exists
+                if ($currentObject) {
+                    $processes += [PSCustomObject]$currentObject
                 }
-                $currentProcess = [PSCustomObject]@{
-                    Id = [Convert]::ToInt32($matches[1], 16)  # Convert hex to decimal
-                    ParentPid = $null
-                    Name = $null
-                    Path = $null
+                # Start new object with first key-value pair
+                $currentObject = @{}
+                $key = $matches[1]
+                $value = $matches[2].Trim()
+
+                # Convert hex values to decimal
+                if ($value -match '^0x[0-9a-fA-F]+$') {
+                    $currentObject[$key] = [Convert]::ToInt32($value, 16)
+                } else {
+                    $currentObject[$key] = if ($value) { $value } else { $null }
                 }
             }
-            elseif ($currentProcess) {
-                if ($trimmedLine -match '^ParentPid: (0x[0-9a-fA-F]+)') {
-                    $currentProcess.ParentPid = [Convert]::ToInt32($matches[1], 16)
-                }
-                elseif ($trimmedLine -match '^Name: (.+)') {
-                    $currentProcess.Name = $matches[1].Trim()
-                }
-                elseif ($trimmedLine -match '^Path: (.+)') {
-                    $currentProcess.Path = $matches[1].Trim()
+            # Parse additional key-value pairs for current object
+            elseif ($currentObject -and $trimmedLine -match '^([^:]+):\s*(.*)$') {
+                $key = $matches[1].Trim()
+                $value = $matches[2].Trim()
+
+                # Convert hex values to decimal
+                if ($value -match '^0x[0-9a-fA-F]+$') {
+                    $currentObject[$key] = [Convert]::ToInt32($value, 16)
+                } else {
+                    $currentObject[$key] = if ($value) { $value } else { $null }
                 }
             }
         }
 
-        # Add the last process if exists
-        if ($currentProcess) {
-            $processes += $currentProcess
+        # Add the last object if exists
+        if ($currentObject) {
+            $processes += [PSCustomObject]$currentObject
         }
 
         return $processes
