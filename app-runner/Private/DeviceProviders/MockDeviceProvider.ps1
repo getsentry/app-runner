@@ -161,12 +161,13 @@ class MockDeviceProvider : DeviceProvider {
         Write-Debug "Mock: Getting running processes"
 
         # Return mock process list as structured objects
+        # Include optional properties (ParentPid, Path) to simulate different platform formats
         return @(
-            [PSCustomObject]@{ Id = 123; Name = "C:\Windows\System32\svchost.exe" }
-            [PSCustomObject]@{ Id = 456; Name = "C:\Windows\System32\explorer.exe" }
-            [PSCustomObject]@{ Id = 1234; Name = "C:\Program Files\MockApp\app.exe" }
-            [PSCustomObject]@{ Id = 5678; Name = "C:\Windows\System32\dwm.exe" }
-            [PSCustomObject]@{ Id = 999; Name = "<unknown>" }
+            [PSCustomObject]@{ Id = 123; Name = "C:\Windows\System32\svchost.exe"; ParentPid = 1; Path = "C:\Windows\System32\svchost.exe" }
+            [PSCustomObject]@{ Id = 456; Name = "C:\Windows\System32\explorer.exe"; ParentPid = 123; Path = "C:\Windows\System32\explorer.exe" }
+            [PSCustomObject]@{ Id = 1234; Name = "C:\Program Files\MockApp\app.exe"; ParentPid = 456; Path = "C:\Program Files\MockApp\app.exe" }
+            [PSCustomObject]@{ Id = 5678; Name = "C:\Windows\System32\dwm.exe"; ParentPid = 1; Path = "C:\Windows\System32\dwm.exe" }
+            [PSCustomObject]@{ Id = 999; Name = "<unknown>"; ParentPid = 0; Path = $null }
         )
     }
 

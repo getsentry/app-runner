@@ -43,6 +43,7 @@ class PlayStation5Provider : DeviceProvider {
             "healthcheck" = @($this.TargetControlTool, "diagnostics health-check")
             "ipconfig"    = @($this.TargetControlTool, "network ip-config")
             "natinfo"     = @($this.TargetControlTool, "network get-nat-traversal-info")
+            "processlist" = @($this.TargetControlTool, "process list")
         }
     }
 
@@ -96,6 +97,57 @@ class PlayStation5Provider : DeviceProvider {
         # Try to extract GameLanIpAddress from PS5 status text
         $line = $statusData | Where-Object { $_ -match 'GameLanIpAddress' }
         return $line.Split(':')[1].Trim()
+    }
+
+    # Override GetRunningProcesses to provide PlayStation 5 process list via prospero-ctrl
+    # Returns array of objects with Id, ParentPid, Name, and Path properties
+    [object] GetRunningProcesses() {
+        Write-Debug "$($this.Platform): Collecting running processes via prospero-ctrl process list"
+        $output = $this.InvokeCommand('processlist', @())
+
+        # Parse prospero-ctrl process list output
+        # Format is YAML-like:
+        # - Id: 0x00000063
+        #   ParentPid: 0x0000003b
+        #   Name: eboot.bin
+        #   Path: /app0/eboot.bin
+        $processes = @()
+        $currentProcess = $null
+
+        foreach ($line in $output) {
+            $trimmedLine = $line.Trim()
+
+            if ($trimmedLine -match '^- Id: (0x[0-9a-fA-F]+)') {
+                # Start of a new process entry
+                if ($currentProcess) {
+                    $processes += $currentProcess
+                }
+                $currentProcess = [PSCustomObject]@{
+                    Id = [Convert]::ToInt32($matches[1], 16)  # Convert hex to decimal
+                    ParentPid = $null
+                    Name = $null
+                    Path = $null
+                }
+            }
+            elseif ($currentProcess) {
+                if ($trimmedLine -match '^ParentPid: (0x[0-9a-fA-F]+)') {
+                    $currentProcess.ParentPid = [Convert]::ToInt32($matches[1], 16)
+                }
+                elseif ($trimmedLine -match '^Name: (.+)') {
+                    $currentProcess.Name = $matches[1].Trim()
+                }
+                elseif ($trimmedLine -match '^Path: (.+)') {
+                    $currentProcess.Path = $matches[1].Trim()
+                }
+            }
+        }
+
+        # Add the last process if exists
+        if ($currentProcess) {
+            $processes += $currentProcess
+        }
+
+        return $processes
     }
 
     [hashtable] GetDiagnostics([string]$OutputDirectory) {

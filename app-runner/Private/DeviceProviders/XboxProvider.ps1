@@ -145,19 +145,22 @@ class XboxProvider : DeviceProvider {
     }
 
     # Override GetRunningProcesses to provide Xbox process list via xbtlist
-    # Returns array of objects with Id and Name properties
+    # Returns array of objects with Id, Name, ParentPid (null), and Path (null) properties
     [object] GetRunningProcesses() {
         Write-Debug "$($this.Platform): Collecting running processes via xbtlist"
         $output = $this.InvokeCommand('xbtlist', @())
 
         # Parse xbtlist output into structured objects
         # Format: "  PID Executable" or "  PID <unknown>"
+        # Note: xbtlist doesn't provide ParentPid or separate Path, so Name is used for both
         $processes = @()
         foreach ($line in $output) {
             if ($line -match '^\s*(\d+)\s+(.+)$') {
                 $processes += [PSCustomObject]@{
-                    Id   = [int]$matches[1]
-                    Name = $matches[2].Trim()
+                    Id        = [int]$matches[1]
+                    Name      = $matches[2].Trim()
+                    ParentPid = $null  # Not available from xbtlist
+                    Path      = $matches[2].Trim()  # xbtlist combines name and path
                 }
             }
         }
