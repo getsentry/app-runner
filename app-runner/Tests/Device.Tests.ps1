@@ -386,9 +386,9 @@ Describe '<TargetName>' -Tag 'RequiresDevice' -ForEach $TestTargets {
             }
         }
 
-        It 'Xbox process list contains expected data' -Skip:($Platform -ne 'Xbox') {
+        It '<Platform> process list contains expected data' -Skip:($Platform -notin @('Xbox', 'PlayStation5')) {
             # Convert TestDrive to actual path since native SDK tools don't support PSDrive paths
-            $outputDir = Join-Path $TestDrive "diagnostics-xbox-process"
+            $outputDir = Join-Path $TestDrive "diagnostics-$Platform-process"
 
             { Get-DeviceDiagnostics -OutputDirectory $outputDir } | Should -Not -Throw
 
@@ -400,48 +400,31 @@ Describe '<TargetName>' -Tag 'RequiresDevice' -ForEach $TestTargets {
             # Parse and verify process list structure
             $processList = Get-Content $processListFile.FullName -Raw | ConvertFrom-Json
             $processList | Should -Not -BeNullOrEmpty
-            $processList.Count | Should -BeGreaterThan 10  # Xbox should have many processes
 
-            # Verify we have some common Xbox system processes
-            $processNames = $processList | Select-Object -ExpandProperty Name
-            $hasSystemProcesses = $processNames | Where-Object { $_ -like '*svchost.exe*' -or $_ -like '*dwm.exe*' }
-            $hasSystemProcesses | Should -Not -BeNullOrEmpty
+            # Platform-specific validations
+            if ($Platform -eq 'Xbox') {
+                $processList.Count | Should -BeGreaterThan 10  # Xbox should have many processes
 
-            # Verify all processes have valid IDs (greater than or equal to 0)
-            foreach ($process in $processList) {
-                $process.Id | Should -BeGreaterOrEqual 0
-                $process.Name | Should -Not -BeNullOrEmpty
+                # Verify we have some common Xbox system processes
+                $processNames = $processList | Select-Object -ExpandProperty Name
+                $hasSystemProcesses = $processNames | Where-Object { $_ -like '*svchost.exe*' -or $_ -like '*dwm.exe*' }
+                $hasSystemProcesses | Should -Not -BeNullOrEmpty
             }
-        }
 
-        It 'PlayStation5 process list contains expected data' -Skip:($Platform -ne 'PlayStation5') {
-            # Convert TestDrive to actual path since native SDK tools don't support PSDrive paths
-            $outputDir = Join-Path $TestDrive "diagnostics-ps5-process"
-
-            { Get-DeviceDiagnostics -OutputDirectory $outputDir } | Should -Not -Throw
-
-            # Verify process list file exists
-            $files = Get-ChildItem $outputDir
-            $processListFile = $files | Where-Object { $_.Name -like '*-process-list.json' } | Select-Object -First 1
-            $processListFile | Should -Not -BeNullOrEmpty
-
-            # Parse and verify process list structure
-            $processList = Get-Content $processListFile.FullName -Raw | ConvertFrom-Json
-            $processList | Should -Not -BeNullOrEmpty
-
-            # Verify process structure includes PlayStation5-specific properties
+            # Common validations for all platforms
             foreach ($process in $processList) {
+                # All platforms must have Id and Name
                 $process.PSObject.Properties.Name | Should -Contain 'Id'
                 $process.PSObject.Properties.Name | Should -Contain 'Name'
-                $process.PSObject.Properties.Name | Should -Contain 'ParentPid'
-                $process.PSObject.Properties.Name | Should -Contain 'Path'
-
-                # Verify Id is a valid number
                 $process.Id | Should -BeGreaterOrEqual 0
-
-                # Name and Path should not be null/empty
                 $process.Name | Should -Not -BeNullOrEmpty
-                $process.Path | Should -Not -BeNullOrEmpty
+
+                # PlayStation5 has additional required properties
+                if ($Platform -eq 'PlayStation5') {
+                    $process.PSObject.Properties.Name | Should -Contain 'ParentPid'
+                    $process.PSObject.Properties.Name | Should -Contain 'Path'
+                    $process.Path | Should -Not -BeNullOrEmpty
+                }
             }
         }
 
