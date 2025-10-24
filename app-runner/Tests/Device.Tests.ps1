@@ -86,7 +86,7 @@ BeforeDiscovery {
         Write-Warning "  - Switch: Set `$env:NINTENDO_SDK_ROOT or add ControlTarget.exe to PATH"
     }
 
-    $global:DebugPreference = 'Continue'
+    # $global:DebugPreference = 'Continue'
 }
 
 BeforeAll {
@@ -367,20 +367,22 @@ Describe '<TargetName>' -Tag 'RequiresDevice' -ForEach $TestTargets {
                 $natInfoFile.Length | Should -BeGreaterThan 0
             }
 
-            # Verify process list file exists for all platforms
-            $processListFile = $files | Where-Object { $_.Name -like '*-process-list.json' } | Select-Object -First 1
-            $processListFile | Should -Not -BeNullOrEmpty
-            $processListFile.Length | Should -BeGreaterThan 0
+            # Verify process list file exists for platforms that support it (Xbox, PlayStation5)
+            if ($Platform -in @('Xbox', 'PlayStation5', 'Mock')) {
+                $processListFile = $files | Where-Object { $_.Name -like '*-process-list.json' } | Select-Object -First 1
+                $processListFile | Should -Not -BeNullOrEmpty
+                $processListFile.Length | Should -BeGreaterThan 0
 
-            # Verify process list JSON structure
-            $processList = Get-Content $processListFile.FullName -Raw | ConvertFrom-Json
-            $processList | Should -Not -BeNullOrEmpty
-            $processList.Count | Should -BeGreaterThan 0
+                # Verify process list JSON structure
+                $processList = Get-Content $processListFile.FullName -Raw | ConvertFrom-Json
+                $processList | Should -Not -BeNullOrEmpty
+                $processList.Count | Should -BeGreaterThan 0
 
-            # Verify each process has Id and Name properties
-            foreach ($process in $processList) {
-                $process.PSObject.Properties.Name | Should -Contain 'Id'
-                $process.PSObject.Properties.Name | Should -Contain 'Name'
+                # Verify each process has Id and Name properties
+                foreach ($process in $processList) {
+                    $process.PSObject.Properties.Name | Should -Contain 'Id'
+                    $process.PSObject.Properties.Name | Should -Contain 'Name'
+                }
             }
         }
 
