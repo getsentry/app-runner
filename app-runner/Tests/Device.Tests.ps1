@@ -366,6 +366,50 @@ Describe '<TargetName>' -Tag 'RequiresDevice' -ForEach $TestTargets {
                 $natInfoFile | Should -Not -BeNullOrEmpty
                 $natInfoFile.Length | Should -BeGreaterThan 0
             }
+
+            # Verify process list file exists for all platforms
+            $processListFile = $files | Where-Object { $_.Name -like '*-process-list.json' } | Select-Object -First 1
+            $processListFile | Should -Not -BeNullOrEmpty
+            $processListFile.Length | Should -BeGreaterThan 0
+
+            # Verify process list JSON structure
+            $processList = Get-Content $processListFile.FullName -Raw | ConvertFrom-Json
+            $processList | Should -Not -BeNullOrEmpty
+            $processList.Count | Should -BeGreaterThan 0
+
+            # Verify each process has Id and Name properties
+            foreach ($process in $processList) {
+                $process.PSObject.Properties.Name | Should -Contain 'Id'
+                $process.PSObject.Properties.Name | Should -Contain 'Name'
+            }
+        }
+
+        It 'Xbox process list contains expected data' -Skip:($Platform -ne 'Xbox') {
+            # Convert TestDrive to actual path since native SDK tools don't support PSDrive paths
+            $outputDir = Join-Path $TestDrive "diagnostics-xbox-process"
+
+            { Get-DeviceDiagnostics -OutputDirectory $outputDir } | Should -Not -Throw
+
+            # Verify process list file exists
+            $files = Get-ChildItem $outputDir
+            $processListFile = $files | Where-Object { $_.Name -like '*-process-list.json' } | Select-Object -First 1
+            $processListFile | Should -Not -BeNullOrEmpty
+
+            # Parse and verify process list structure
+            $processList = Get-Content $processListFile.FullName -Raw | ConvertFrom-Json
+            $processList | Should -Not -BeNullOrEmpty
+            $processList.Count | Should -BeGreaterThan 10  # Xbox should have many processes
+
+            # Verify we have some common Xbox system processes
+            $processNames = $processList | Select-Object -ExpandProperty Name
+            $hasSystemProcesses = $processNames | Where-Object { $_ -like '*svchost.exe*' -or $_ -like '*dwm.exe*' }
+            $hasSystemProcesses | Should -Not -BeNullOrEmpty
+
+            # Verify all processes have valid IDs (greater than or equal to 0)
+            foreach ($process in $processList) {
+                $process.Id | Should -BeGreaterOrEqual 0
+                $process.Name | Should -Not -BeNullOrEmpty
+            }
         }
 
         It 'Get-DeviceDiagnostics returns result object with file paths' {

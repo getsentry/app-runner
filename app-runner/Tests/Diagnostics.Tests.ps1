@@ -104,6 +104,74 @@ Context 'Get-DeviceDiagnostics' {
             Split-Path $file -Parent | Should -Be $NonExistentDir
         }
     }
+
+    It 'Should collect process list when supported by platform' {
+        Connect-Device -Platform 'Mock'
+        $diagnostics = Get-DeviceDiagnostics -OutputDirectory $TestOutputDir
+
+        # Find the process-list.json file
+        $processListFile = $diagnostics.Files | Where-Object { $_ -like '*process-list.json' }
+        $processListFile | Should -Not -BeNullOrEmpty
+        $processListFile | Should -Exist
+    }
+
+    It 'Should create process list file with structured JSON format' {
+        Connect-Device -Platform 'Mock'
+        $diagnostics = Get-DeviceDiagnostics -OutputDirectory $TestOutputDir
+
+        # Find and read the process-list.json file
+        $processListFile = $diagnostics.Files | Where-Object { $_ -like '*process-list.json' }
+        $content = Get-Content $processListFile -Raw | ConvertFrom-Json
+
+        # Verify content is an array
+        $content | Should -Not -BeNullOrEmpty
+        $content.Count | Should -BeGreaterThan 0
+
+        # Verify each process has Id and Name properties
+        foreach ($process in $content) {
+            $process.Id | Should -Not -BeNullOrEmpty
+            $process.Name | Should -Not -BeNullOrEmpty
+            # Id can be either [int] or [long] after JSON deserialization
+            $process.Id | Should -BeOfType [System.ValueType]
+            $process.Name | Should -BeOfType [string]
+        }
+    }
+
+    It 'Should parse process list with expected data structure' {
+        Connect-Device -Platform 'Mock'
+        $diagnostics = Get-DeviceDiagnostics -OutputDirectory $TestOutputDir
+
+        # Find and read the process-list.json file
+        $processListFile = $diagnostics.Files | Where-Object { $_ -like '*process-list.json' }
+        $processes = Get-Content $processListFile -Raw | ConvertFrom-Json
+
+        # Verify we have the expected mock processes
+        $processes.Count | Should -Be 5
+
+        # Verify specific process entries
+        $firstProcess = $processes[0]
+        $firstProcess.Id | Should -Be 123
+        $firstProcess.Name | Should -Be 'C:\Windows\System32\svchost.exe'
+    }
+
+    It 'Should include all expected diagnostic files' {
+        Connect-Device -Platform 'Mock'
+        $diagnostics = Get-DeviceDiagnostics -OutputDirectory $TestOutputDir
+
+        # Expected file patterns
+        $expectedFiles = @(
+            '*device-status.json'
+            '*screenshot.png'
+            '*device-logs.json'
+            '*system-info.txt'
+            '*process-list.json'
+        )
+
+        foreach ($pattern in $expectedFiles) {
+            $matchingFile = $diagnostics.Files | Where-Object { $_ -like $pattern }
+            $matchingFile | Should -Not -BeNullOrEmpty -Because "Expected to find file matching pattern: $pattern"
+        }
+    }
 }
 
 Context 'Get-DeviceScreenshot' {

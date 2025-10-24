@@ -49,6 +49,7 @@ class XboxProvider : DeviceProvider {
             'getstatus'   = @($this.ConnectTool, '')
             'screenshot'  = @('xbcapture.exe', '"{0}/{1}"')
             'diaginfo'    = @('xbdiaginfo.exe', '')
+            'xbtlist'     = @('xbtlist.exe', '')
             'xbcopy'      = @('xbcopy.exe', '"{0}" "{1}" /mirror')
             'launch'      = @('xbrun.exe', '/O /D:"{0}" "{1}" {2}')
             'install-app' = @($this.AppTool, 'install {0}')
@@ -141,6 +142,27 @@ class XboxProvider : DeviceProvider {
     [hashtable] GetDeviceLogs([string]$LogType, [int]$MaxEntries) {
         Write-Warning 'GetDeviceLogs is not available for Xbox devices.'
         return @{}
+    }
+
+    # Override GetRunningProcesses to provide Xbox process list via xbtlist
+    # Returns array of objects with Id and Name properties
+    [object] GetRunningProcesses() {
+        Write-Debug "$($this.Platform): Collecting running processes via xbtlist"
+        $output = $this.InvokeCommand('xbtlist', @())
+
+        # Parse xbtlist output into structured objects
+        # Format: "  PID Executable" or "  PID <unknown>"
+        $processes = @()
+        foreach ($line in $output) {
+            if ($line -match '^\s*(\d+)\s+(.+)$') {
+                $processes += [PSCustomObject]@{
+                    Id   = [int]$matches[1]
+                    Name = $matches[2].Trim()
+                }
+            }
+        }
+
+        return $processes
     }
 
     # Install a packaged application (.xvc)

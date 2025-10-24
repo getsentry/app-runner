@@ -358,6 +358,14 @@ class DeviceProvider {
         Write-Debug "Screenshot saved to $OutputPath ($size bytes)"
     }
 
+    # Virtual method for getting running processes
+    # Platforms should override this to provide process list information
+    # Returns raw command output as string array, or $null if not supported
+    [object] GetRunningProcesses() {
+        Write-Debug "$($this.Platform): GetRunningProcesses not implemented for this platform"
+        return $null
+    }
+
     [hashtable] GetDiagnostics([string]$OutputDirectory) {
         Write-Debug "$($this.Platform): Collecting diagnostics to directory: $OutputDirectory"
 
@@ -421,6 +429,19 @@ SDK Path: $($this.SdkPath)
             Write-Debug "System info saved to: $sysInfoFile"
         } catch {
             Write-Warning "Failed to collect system information: $_"
+        }
+
+        # Collect running processes
+        try {
+            $processList = $this.GetRunningProcesses()
+            if ($processList) {
+                $processListFile = Join-Path $OutputDirectory "$datePrefix-process-list.json"
+                $processList | ConvertTo-Json -Depth 10 | Out-File -FilePath $processListFile -Encoding UTF8
+                $results.Files += $processListFile
+                Write-Debug "Process list saved to: $processListFile"
+            }
+        } catch {
+            Write-Warning "Failed to collect process list: $_"
         }
 
         Write-Debug "Diagnostics collection complete. Files saved: $($results.Files.Count)"
