@@ -1,5 +1,33 @@
 # PowerShell module containing utility functions for Sentry console integration tests
 
+function script:Convert-HashtableToObject {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $false)]
+        $Item
+    )
+
+    if ($null -eq $Item) {
+        return $null
+    }
+
+    if ($Item -is [System.Collections.IDictionary]) {
+        $obj = [PSCustomObject]@{}
+        foreach ($key in $Item.Keys) {
+            if ([string]::IsNullOrWhiteSpace($key)) {
+                # Skip properties with empty or whitespace-only names
+                continue
+            }
+            $obj | Add-Member -NotePropertyName $key -NotePropertyValue (Convert-HashtableToObject $Item[$key])
+        }
+        return $obj
+    } elseif ($Item -is [System.Collections.IEnumerable] -and -not ($Item -is [string])) {
+        return @($Item | ForEach-Object { Convert-HashtableToObject $_ })
+    } else {
+        return $Item
+    }
+}
+
 function Invoke-CMakeBuild {
     [CmdletBinding()]
     param(
@@ -130,6 +158,17 @@ function Get-SentryTestEvent {
             }
 
             if ($sentryEvent) {
+                # Handles Sentry API responses with empty property names as these won't be converted to objects automatically
+                if ($sentryEvent -is [string]) {
+                    try {
+                        $raw = $sentryEvent | ConvertFrom-Json -Depth 50 -AsHashtable
+                        $sentryEvent = Convert-HashtableToObject -Item $raw
+                    } catch {
+                        Write-Host "Failed to parse JSON from Sentry event: $($_.Exception.Message)" -ForegroundColor Red
+                        return
+                    }
+                }
+
                 Write-Host "Event $($sentryEvent.id) fetched from Sentry" -ForegroundColor Green
                 $entries = $sentryEvent.entries
                 $sentryEvent = $sentryEvent | Select-Object -ExcludeProperty 'entries'
