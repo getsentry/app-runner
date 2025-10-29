@@ -52,7 +52,7 @@ jobs:
         run: |
           Write-Host "Running PSScriptAnalyzer on ${{ inputs.module-name }} module..."
           $settingsPath = Join-Path ".." "${{ inputs.settings-path }}"
-          $analysisResults = Invoke-ScriptAnalyzer -Path . -Recurse -ReportSummary -Settings $settingsPath -ExcludeRule PSReviewUnusedParameter,PSUseShouldProcessForStateChangingFunctions -ErrorAction SilentlyContinue
+          $analysisResults = Invoke-ScriptAnalyzer -Path . -Recurse -ReportSummary -Settings $settingsPath
           if ($analysisResults) {
             Write-Host "PSScriptAnalyzer found issues:" -ForegroundColor Yellow
             $analysisResults | Format-Table -AutoSize
