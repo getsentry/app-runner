@@ -161,10 +161,10 @@ function Get-SentryTestEvent {
                 # Handles Sentry API responses with empty property names as these won't be converted to objects automatically
                 if ($sentryEvent -is [string]) {
                     try {
-                        $raw = $sentryEvent | ConvertFrom-Json -Depth 50 -AsHashtable
-                        $sentryEvent = Convert-HashtableToObject -Item $raw
+                        $hashtable = $sentryEvent | ConvertFrom-Json -Depth 50 -AsHashtable
+                        $sentryEvent = Convert-HashtableToObject -Item $hashtable
                     } catch {
-                        Write-Host "Failed to parse JSON from Sentry event: $($_.Exception.Message)" -ForegroundColor Red
+                        Write-Host "Failed to retrieve Sentry event object: $($_.Exception.Message)" -ForegroundColor Red
                         return
                     }
                 }
