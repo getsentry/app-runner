@@ -82,68 +82,74 @@ Describe 'SentryApiClient Module' {
     
     Context 'API Request Functions with Mocked HTTP' {
         BeforeAll {
-            # Mock only the external HTTP call, not our internal functions
-            Mock -ModuleName SentryApiClient Invoke-RestMethod {
-                param($Uri, $Method, $Headers, $ContentType, $Body)
-                
+            # Mock Invoke-WebRequest instead of Invoke-RestMethod
+            # Our implementation uses Invoke-WebRequest for explicit JSON parsing control
+            Mock -ModuleName SentryApiClient Invoke-WebRequest {
+                param($Uri)
+
                 # Return different responses based on the URI pattern
+                # Invoke-WebRequest returns an object with a Content property containing JSON
                 # Order matters - most specific patterns first
                 switch -Regex ($Uri) {
                     '/issues/[^/]+/events/' {
                         # Handle issues/{id}/events/ endpoint - most specific first
-                        return @(
+                        $responseData = @(
                             @{
                                 eventID = 'event123'
-                                id = 'some-other-id'
+                                id      = 'some-other-id'
                                 message = 'Event summary'
                             }
                         )
+                        return @{ Content = ($responseData | ConvertTo-Json -Depth 10) }
                     }
                     '/events/\w+/' {
-                        return @{
-                            id = '12345678901234567890123456789012'
-                            message = 'Test error message'
+                        $responseData = @{
+                            id        = '12345678901234567890123456789012'
+                            message   = 'Test error message'
                             timestamp = '2023-01-01T00:00:00Z'
-                            tags = @(
+                            tags      = @(
                                 @{ key = 'environment'; value = 'production' }
                                 @{ key = 'release'; value = '1.0.0' }
                             )
                         }
+                        return @{ Content = ($responseData | ConvertTo-Json -Depth 10) }
                     }
                     '/events.*query=' {
-                        return @(
+                        $responseData = @(
                             @{
-                                id = 'event1'
+                                id      = 'event1'
                                 message = 'Error 1'
-                                tags = @(
+                                tags    = @(
                                     @{ key = 'environment'; value = 'production' }
                                 )
                             },
                             @{
-                                id = 'event2'
+                                id      = 'event2'
                                 message = 'Error 2'
-                                tags = @(
+                                tags    = @(
                                     @{ key = 'environment'; value = 'production' }
                                 )
                             }
                         )
+                        return @{ Content = ($responseData | ConvertTo-Json -Depth 10) }
                     }
                     '/issues.*query=' {
-                        return @(
+                        $responseData = @(
                             @{
-                                id = 'issue1'
-                                title = 'Test Issue 1'
-                                culprit = 'app.js'
+                                id        = 'issue1'
+                                title     = 'Test Issue 1'
+                                culprit   = 'app.js'
                                 permalink = 'https://sentry.io/issues/1/'
                                 firstSeen = '2023-01-01T00:00:00Z'
-                                lastSeen = '2023-01-02T00:00:00Z'
-                                count = 10
-                                metadata = @{
-                                    type = 'Error'
+                                lastSeen  = '2023-01-02T00:00:00Z'
+                                count     = 10
+                                metadata  = @{
+                                    type  = 'Error'
                                     value = 'Test error'
                                 }
                             }
                         )
+                        return @{ Content = ($responseData | ConvertTo-Json -Depth 10) }
                     }
                     default {
                         throw "Unexpected URI: $Uri"
@@ -169,10 +175,10 @@ Describe 'SentryApiClient Module' {
                 $guidEventId = '12345678-9012-3456-7890-123456789012'
                 
                 # Verify the function is called with the correct parameters
-                $result = Get-SentryEvent -EventId $guidEventId
-                
+                Get-SentryEvent -EventId $guidEventId
+
                 # The mock should have been called with the cleaned event ID
-                Assert-MockCalled -ModuleName SentryApiClient Invoke-RestMethod -ParameterFilter {
+                Assert-MockCalled -ModuleName SentryApiClient Invoke-WebRequest -ParameterFilter {
                     $Uri -like '*events/12345678901234567890123456789012/*'
                 }
             }
@@ -181,9 +187,9 @@ Describe 'SentryApiClient Module' {
                 $eventId = '12345678901234567890123456789012'
                 
                 Get-SentryEvent -EventId $eventId
-                
-                # Verify Invoke-RestMethod was called with correct URL structure
-                Assert-MockCalled -ModuleName SentryApiClient Invoke-RestMethod -ParameterFilter {
+
+                # Verify Invoke-WebRequest was called with correct URL structure
+                Assert-MockCalled -ModuleName SentryApiClient Invoke-WebRequest -ParameterFilter {
                     $Uri -match 'https://sentry.io/api/0/projects/test-org/test-project/events/\w+/'
                 }
             }
@@ -200,9 +206,9 @@ Describe 'SentryApiClient Module' {
             
             It 'Should include query parameters in URL' {
                 Get-SentryEventsByTag -TagName 'environment' -TagValue 'production' -Limit 50
-                
+
                 # Verify the query parameters were included
-                Assert-MockCalled -ModuleName SentryApiClient Invoke-RestMethod -ParameterFilter {
+                Assert-MockCalled -ModuleName SentryApiClient Invoke-WebRequest -ParameterFilter {
                     $Uri -match 'query=environment%3Aproduction' -and
                     $Uri -match 'limit=50'
                 }
@@ -210,16 +216,16 @@ Describe 'SentryApiClient Module' {
             
             It 'Should include cursor parameter when provided' {
                 Get-SentryEventsByTag -TagName 'environment' -TagValue 'production' -Cursor 'next123'
-                
-                Assert-MockCalled -ModuleName SentryApiClient Invoke-RestMethod -ParameterFilter {
+
+                Assert-MockCalled -ModuleName SentryApiClient Invoke-WebRequest -ParameterFilter {
                     $Uri -match 'cursor=next123'
                 }
             }
             
             It 'Should include full parameter when switch is provided' {
                 Get-SentryEventsByTag -TagName 'environment' -TagValue 'production' -Full
-                
-                Assert-MockCalled -ModuleName SentryApiClient Invoke-RestMethod -ParameterFilter {
+
+                Assert-MockCalled -ModuleName SentryApiClient Invoke-WebRequest -ParameterFilter {
                     $Uri -match 'full=true'
                 }
             }
@@ -237,32 +243,32 @@ Describe 'SentryApiClient Module' {
             
             It 'Should make correct API call to issues endpoint' {
                 Find-SentryEventByTag -TagName 'release' -TagValue '1.0.0'
-                
-                Assert-MockCalled -ModuleName SentryApiClient Invoke-RestMethod -ParameterFilter {
+
+                Assert-MockCalled -ModuleName SentryApiClient Invoke-WebRequest -ParameterFilter {
                     $Uri -match '/issues/' -and
                     $Uri -match 'query=release%3A1\.0\.0'
                 }
             }
-            
+
             It 'Should include sort parameter when provided' {
                 Find-SentryEventByTag -TagName 'release' -TagValue '1.0.0' -Sort 'date'
-                
-                Assert-MockCalled -ModuleName SentryApiClient Invoke-RestMethod -ParameterFilter {
+
+                Assert-MockCalled -ModuleName SentryApiClient Invoke-WebRequest -ParameterFilter {
                     $Uri -match 'sort=date'
                 }
             }
-            
+
             It 'Should retrieve associated events when issues are found' {
                 # Use the default mock setup - it already handles both endpoints correctly
                 $result = Find-SentryEventByTag -TagName 'environment' -TagValue 'production'
-                
+
                 # Should return events that can be accessed by index
                 $result.Count | Should -BeGreaterThan 0
                 $result[0].id | Should -Be '12345678901234567890123456789012'
                 $result[0].message | Should -Be 'Test error message'
-                
+
                 # Should have made 3 calls - one for issues, one for events list, one for actual event content
-                Assert-MockCalled -ModuleName SentryApiClient Invoke-RestMethod -Times 3
+                Assert-MockCalled -ModuleName SentryApiClient Invoke-WebRequest -Times 3
             }
         }
     }
@@ -273,7 +279,7 @@ Describe 'SentryApiClient Module' {
         }
         
         It 'Should handle API errors gracefully' {
-            Mock -ModuleName SentryApiClient Invoke-RestMethod {
+            Mock -ModuleName SentryApiClient Invoke-WebRequest {
                 throw [System.Net.WebException]::new("404 Not Found")
             }
             
