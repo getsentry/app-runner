@@ -43,9 +43,14 @@ Describe 'SentryApiClient Integration Tests' {
                 Events = $testEvents
                 Issues = $testIssues
             }
-            
-            Mock -ModuleName SentryApiClient Invoke-RestMethod $mockResponder
-            
+
+            # Wrap mock responder to return Invoke-WebRequest format
+            Mock -ModuleName SentryApiClient Invoke-WebRequest {
+                param($Uri)
+                $result = & $mockResponder -Uri $Uri
+                return @{ Content = ($result | ConvertTo-Json -Depth 20) }
+            }
+
             # Setup connection
             Connect-SentryApi -ApiToken 'test-token' -Organization 'test-org' -Project 'test-project'
         }
@@ -74,34 +79,33 @@ Describe 'SentryApiClient Integration Tests' {
         
         It 'Should find issues by tag and retrieve associated events' {
             # Create a new mock that handles both issues and events
-            Mock -ModuleName SentryApiClient Invoke-RestMethod {
+            Mock -ModuleName SentryApiClient Invoke-WebRequest {
                 param($Uri)
-                
-                if ($Uri -match '/events/[^/]+/') {
+
+                $result = if ($Uri -match '/events/[^/]+/') {
                     # Handle Get-SentryEvent calls - most specific first
-                    return $testEvents | Where-Object { $_.id -eq 'event001' }
-                }
-                elseif ($Uri -match '/issues/[^/]+/events/') {
+                    $testEvents | Where-Object { $_.id -eq 'event001' }
+                } elseif ($Uri -match '/issues/[^/]+/events/') {
                     # Return event summaries for the issue
-                    return @(
+                    @(
                         @{
                             eventID = 'event001'
-                            id = 'summary-id'
+                            id      = 'summary-id'
                             message = 'Event summary'
                         }
                     )
-                }
-                elseif ($Uri -match '/issues/.*query=') {
+                } elseif ($Uri -match '/issues/.*query=') {
                     # Return issues that match the tag
-                    return $testIssues | Where-Object { $_.title -match 'Database' }
+                    $testIssues | Where-Object { $_.title -match 'Database' }
+                } else {
+                    throw 'Unexpected URI: $Uri'
                 }
-                else {
-                    throw "Unexpected URI: $Uri"
-                }
+
+                return @{ Content = ($result | ConvertTo-Json -Depth 20) }
             }
-            
+
             $result = Find-SentryEventByTag -TagName 'severity' -TagValue 'high'
-            
+
             $result | Should -Not -BeNullOrEmpty
             # Function now returns events array directly
             if ($result.Count -gt 0) {
@@ -119,9 +123,9 @@ Describe 'SentryApiClient Integration Tests' {
                 )
             }
             
-            Mock -ModuleName SentryApiClient Invoke-RestMethod {
+            Mock -ModuleName SentryApiClient Invoke-WebRequest {
                 param($Uri)
-                
+
                 $queryParams = @{}
                 if ($Uri -match '\?(.+)$') {
                     $Matches[1] -split '&' | ForEach-Object {
@@ -129,12 +133,13 @@ Describe 'SentryApiClient Integration Tests' {
                         $queryParams[$key] = [System.Web.HttpUtility]::UrlDecode($value)
                     }
                 }
-                
+
                 $limit = if ($queryParams['limit']) { [int]$queryParams['limit'] } else { 100 }
-                
-                return $largeEventSet | Select-Object -First $limit
+
+                $result = $largeEventSet | Select-Object -First $limit
+                return @{ Content = ($result | ConvertTo-Json -Depth 20) }
             }
-            
+
             Connect-SentryApi -ApiToken 'test-token' -Organization 'test-org' -Project 'test-project'
         }
         
@@ -164,8 +169,14 @@ Describe 'SentryApiClient Integration Tests' {
             }
             
             $mockResponder = New-MockSentryApiResponder -TestData $testData -SimulateRateLimit -RateLimitAfterCalls 2
-            Mock -ModuleName SentryApiClient Invoke-RestMethod $mockResponder
-            
+
+            # Wrap mock responder to return Invoke-WebRequest format
+            Mock -ModuleName SentryApiClient Invoke-WebRequest {
+                param($Uri)
+                $result = & $mockResponder -Uri $Uri
+                return @{ Content = ($result | ConvertTo-Json -Depth 20) }
+            }
+
             Connect-SentryApi -ApiToken 'test-token' -Organization 'test-org' -Project 'test-project'
             
             # First two calls should succeed
@@ -177,15 +188,14 @@ Describe 'SentryApiClient Integration Tests' {
         }
         
         It 'Should provide meaningful error for malformed responses' {
-            Mock -ModuleName SentryApiClient Invoke-RestMethod {
-                return "Not a valid JSON response"
+            Mock -ModuleName SentryApiClient Invoke-WebRequest {
+                return @{ Content = 'Not a valid JSON response' }
             }
-            
+
             Connect-SentryApi -ApiToken 'test-token' -Organization 'test-org' -Project 'test-project'
-            
-            # The function should handle the malformed response gracefully
-            $result = Get-SentryEvent -EventId 'test'
-            $result | Should -Be "Not a valid JSON response"
+
+            # The function should now throw an error for malformed JSON
+            { Get-SentryEvent -EventId 'test' } | Should -Throw
         }
     }
     
@@ -212,22 +222,24 @@ Describe 'SentryApiClient Integration Tests' {
                 )
             )
             
-            Mock -ModuleName SentryApiClient Invoke-RestMethod {
+            Mock -ModuleName SentryApiClient Invoke-WebRequest {
                 param($Uri)
-                
+
                 # Simple tag filtering logic for testing
-                if ($Uri -match 'query=(\w+)%3A(\w+)') {
+                $result = if ($Uri -match 'query=(\w+)%3A(\w+)') {
                     $tagName = $Matches[1]
                     $tagValue = $Matches[2]
-                    
-                    return $complexEvents | Where-Object {
+
+                    $complexEvents | Where-Object {
                         $_.tags | Where-Object { $_.key -eq $tagName -and $_.value -eq $tagValue }
                     }
+                } else {
+                    $complexEvents
                 }
-                
-                return $complexEvents
+
+                return @{ Content = ($result | ConvertTo-Json -Depth 20) }
             }
-            
+
             Connect-SentryApi -ApiToken 'test-token' -Organization 'test-org' -Project 'test-project'
         }
         
