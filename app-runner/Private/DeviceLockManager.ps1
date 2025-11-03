@@ -123,8 +123,9 @@ function Request-DeviceAccess {
             try {
                 $acquired = $mutex.WaitOne($waitMs)
             } catch [System.Threading.AbandonedMutexException] {
-                # Previous owner crashed - mutex is now ours
-                Write-Warning "Detected abandoned mutex for '$ResourceName' (previous process crashed). Mutex has been acquired."
+                # Previous owner crashed - WaitOne() throws this exception BUT we now own the mutex
+                # The exception is a notification that the device state may be inconsistent
+                Write-Warning "Detected abandoned mutex for '$ResourceName' (previous process crashed). Mutex has been acquired, but device may be in an inconsistent state."
                 $acquired = $true
             }
 
