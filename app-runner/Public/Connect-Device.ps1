@@ -60,15 +60,15 @@ function Connect-Device {
         Disconnect-Device
     }
 
-    # Build resource name for semaphore coordination
+    # Build resource name for mutex coordination
     $resourceName = New-DeviceResourceName -Platform $Platform -Target $Target
     Write-Debug "Device resource name: $resourceName"
 
     # Acquire exclusive access to the device resource
     # Default 30-minute timeout with progress messages every minute
-    $semaphore = $null
+    $mutex = $null
     try {
-        $semaphore = Request-DeviceAccess -ResourceName $resourceName -TimeoutSeconds $TimeoutSeconds -ProgressIntervalSeconds 60
+        $mutex = Request-DeviceAccess -ResourceName $resourceName -TimeoutSeconds $TimeoutSeconds -ProgressIntervalSeconds 60
         Write-Output "Acquired exclusive access to device: $resourceName"
 
         # Create provider for the specified platform
@@ -77,20 +77,20 @@ function Connect-Device {
         # Connect using the provider
         $sessionInfo = $provider.Connect($Target)
 
-        # Store the provider instance and semaphore with the session
+        # Store the provider instance and mutex with the session
         $script:CurrentSession = $sessionInfo
         $script:CurrentSession.Provider = $provider
-        $script:CurrentSession.Semaphore = $semaphore
+        $script:CurrentSession.Mutex = $mutex
         $script:CurrentSession.ResourceName = $resourceName
 
         Write-Debug "Successfully connected to $Platform device (Device: $($script:CurrentSession.Identifier))"
 
         return $script:CurrentSession
     } catch {
-        # If connection failed after acquiring semaphore, release it
-        if ($semaphore) {
-            Write-Debug "Connection failed, releasing semaphore for resource: $resourceName"
-            Release-DeviceAccess -Semaphore $semaphore -ResourceName $resourceName
+        # If connection failed after acquiring mutex, release it
+        if ($mutex) {
+            Write-Debug "Connection failed, releasing mutex for resource: $resourceName"
+            Release-DeviceAccess -Mutex $mutex -ResourceName $resourceName
         }
         throw
     }
