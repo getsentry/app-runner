@@ -491,7 +491,7 @@ Describe '<TargetName>' -Tag 'RequiresDevice' -ForEach $TestTargets {
             # First connection acquires exclusive access
             Connect-TestDevice -Platform $Platform -Target $Target
             $firstSession = Get-DeviceSession
-            $firstSession.Semaphore | Should -Not -BeNullOrEmpty
+            $firstSession.Mutex | Should -Not -BeNullOrEmpty
             $firstSession.ResourceName | Should -Not -BeNullOrEmpty
 
             # Start a background job that tries to connect to the same device

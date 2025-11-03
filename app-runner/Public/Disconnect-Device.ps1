@@ -42,12 +42,12 @@ function Disconnect-Device {
         }
         $provider.Disconnect()
     } finally {
-        # Release device semaphore if present
-        if ($script:CurrentSession.Semaphore) {
+        # Release device mutex if present
+        if ($script:CurrentSession.Mutex) {
             $resourceName = $script:CurrentSession.ResourceName
-            $semaphore = $script:CurrentSession.Semaphore
+            $mutex = $script:CurrentSession.Mutex
             Write-Debug "Releasing exclusive access to device: $resourceName"
-            Release-DeviceAccess -Semaphore $semaphore -ResourceName $resourceName
+            Release-DeviceAccess -Mutex $mutex -ResourceName $resourceName
             Write-Output "Released exclusive access to device: $resourceName"
         }
 

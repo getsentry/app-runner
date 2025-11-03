@@ -1,10 +1,10 @@
-# Device Semaphore Manager
-# Manages exclusive access to devices using named semaphores
+# Device Lock Manager
+# Manages exclusive access to devices using system-wide locks (mutexes)
 
 
 <#
 .SYNOPSIS
-Builds a unique resource name for device semaphore coordination.
+Builds a unique resource name for device lock coordination.
 
 .DESCRIPTION
 Creates a system-wide unique identifier based on platform and target.
@@ -44,36 +44,38 @@ function New-DeviceResourceName {
 
 <#
 .SYNOPSIS
-Acquires exclusive access to a device resource using a named semaphore.
+Acquires exclusive access to a device resource using a named mutex.
 
 .DESCRIPTION
-Attempts to acquire a system-wide named semaphore for the specified resource.
-Blocks until the semaphore is available or the timeout expires.
+Attempts to acquire a system-wide named mutex for the specified resource.
+Blocks until the mutex is available or the timeout expires.
 Uses the Global\ namespace for system-wide coordination across PowerShell sessions.
+Automatically handles abandoned mutexes (from crashed processes).
 For long timeouts, displays periodic progress messages to inform the user.
 
 .PARAMETER ResourceName
 The unique resource name for the device.
 
 .PARAMETER TimeoutSeconds
-Maximum time to wait for semaphore acquisition. Default is 30 seconds.
+Maximum time to wait for mutex acquisition. Default is 30 seconds.
 
 .PARAMETER ProgressIntervalSeconds
 How often to display progress messages while waiting. Default is 60 seconds.
 
 .OUTPUTS
-System.Threading.Semaphore object that must be released when done.
+System.Threading.Mutex object that must be released when done.
 
 .EXAMPLE
-$semaphore = Request-DeviceAccess -ResourceName "Xbox-192.168.1.100" -TimeoutSeconds 1800
+$mutex = Request-DeviceAccess -ResourceName "Xbox-192.168.1.100" -TimeoutSeconds 1800
 try {
     # Use device
 } finally {
-    Release-DeviceAccess -Semaphore $semaphore -ResourceName "Xbox-192.168.1.100"
+    Release-DeviceAccess -Mutex $mutex -ResourceName "Xbox-192.168.1.100"
 }
 #>
 function Request-DeviceAccess {
     [CmdletBinding()]
+    [OutputType([System.Threading.Mutex])]
     param(
         [Parameter(Mandatory = $true)]
         [string]$ResourceName,
@@ -85,29 +87,31 @@ function Request-DeviceAccess {
         [int]$ProgressIntervalSeconds = 60
     )
 
-    $semaphoreName = "Global\SentryAppRunner-Device-$ResourceName"
-    $semaphore = $null
+    $mutexName = "Global\SentryAppRunner-Device-$ResourceName"
+    $mutex = $null
 
     try {
         Write-Debug "Attempting to acquire device access for resource: $ResourceName (timeout: ${TimeoutSeconds}s)"
 
-        # Try to open existing semaphore or create new one
+        # Try to open existing mutex or create new one
+        $createdNew = $false
         try {
-            $semaphore = [System.Threading.Semaphore]::OpenExisting($semaphoreName)
-            Write-Debug "Opened existing semaphore: $semaphoreName"
+            $mutex = [System.Threading.Mutex]::OpenExisting($mutexName)
+            Write-Debug "Opened existing mutex: $mutexName"
         }
         catch [System.Threading.WaitHandleCannotBeOpenedException] {
-            # Semaphore doesn't exist, create it with max count = 1 for exclusive access
-            $semaphore = New-Object System.Threading.Semaphore(1, 1, $semaphoreName)
-            Write-Debug "Created new semaphore with exclusive access: $semaphoreName"
+            # Mutex doesn't exist, create it
+            # initiallyOwned = $false means we don't own it yet, will acquire with WaitOne
+            $mutex = New-Object System.Threading.Mutex($false, $mutexName, [ref]$createdNew)
+            Write-Debug "Created new mutex with exclusive access: $mutexName"
         }
 
-        # Try to acquire semaphore with periodic progress messages
+        # Try to acquire mutex with periodic progress messages
         $startTime = Get-Date
         $elapsedSeconds = 0
         $acquired = $false
 
-        Write-Debug "Waiting to acquire semaphore at $(Get-Date -Format 'HH:mm:ss.fff')..."
+        Write-Debug "Waiting to acquire mutex at $(Get-Date -Format 'HH:mm:ss.fff')..."
 
         while ($elapsedSeconds -lt $TimeoutSeconds) {
             # Calculate remaining time for this wait interval
@@ -116,13 +120,19 @@ function Request-DeviceAccess {
             $waitMs = $waitSeconds * 1000
 
             # Try to acquire with this interval
-            $acquired = $semaphore.WaitOne($waitMs)
+            try {
+                $acquired = $mutex.WaitOne($waitMs)
+            } catch [System.Threading.AbandonedMutexException] {
+                # Previous owner crashed - mutex is now ours
+                Write-Warning "Detected abandoned mutex for '$ResourceName' (previous process crashed). Mutex has been acquired."
+                $acquired = $true
+            }
 
             if ($acquired) {
                 # Successfully acquired
                 $waitDuration = ((Get-Date) - $startTime).TotalSeconds
-                Write-Debug "Semaphore acquired for $ResourceName (waited $([math]::Round($waitDuration, 2))s)"
-                return $semaphore
+                Write-Debug "Mutex acquired for $ResourceName (waited $([math]::Round($waitDuration, 2))s)"
+                return $mutex
             }
 
             # Not acquired yet, update elapsed time
@@ -136,13 +146,13 @@ function Request-DeviceAccess {
         }
 
         # Timeout occurred
-        $semaphore.Dispose()
+        $mutex.Dispose()
         throw "Could not acquire exclusive access to device resource '$ResourceName'. The device may be in use by another process. Timeout after ${TimeoutSeconds}s."
     }
     catch {
-        # Clean up semaphore on any error
-        if ($semaphore) {
-            $semaphore.Dispose()
+        # Clean up mutex on any error
+        if ($mutex) {
+            $mutex.Dispose()
         }
         throw
     }
@@ -154,50 +164,50 @@ function Request-DeviceAccess {
 Releases exclusive access to a device resource.
 
 .DESCRIPTION
-Releases and disposes the device semaphore, allowing other processes to acquire it.
+Releases and disposes the device mutex, allowing other processes to acquire it.
 Always logs warnings instead of throwing errors to ensure disconnect operations complete.
 
-.PARAMETER Semaphore
-The semaphore object to release.
+.PARAMETER Mutex
+The mutex object to release.
 
 .PARAMETER ResourceName
 The resource name (used for logging/debugging only).
 
 .EXAMPLE
-Release-DeviceAccess -Semaphore $semaphore -ResourceName "Xbox-192.168.1.100"
+Release-DeviceAccess -Mutex $mutex -ResourceName "Xbox-192.168.1.100"
 #>
 function Release-DeviceAccess {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $false)]
         [AllowNull()]
-        [System.Threading.Semaphore]$Semaphore,
+        [System.Threading.Mutex]$Mutex,
 
         [Parameter(Mandatory = $true)]
         [string]$ResourceName
     )
 
-    if (-not $Semaphore) {
-        Write-Debug "No semaphore to release for resource: $ResourceName"
+    if (-not $Mutex) {
+        Write-Debug "No mutex to release for resource: $ResourceName"
         return
     }
 
     try {
-        $Semaphore.Release()
-        Write-Debug "Semaphore released for resource: $ResourceName at $(Get-Date -Format 'HH:mm:ss.fff')"
+        $Mutex.ReleaseMutex()
+        Write-Debug "Mutex released for resource: $ResourceName at $(Get-Date -Format 'HH:mm:ss.fff')"
     }
     catch {
         # Don't throw - log warning and continue
         # This ensures Disconnect-Device always succeeds from user perspective
-        Write-Warning "Failed to release semaphore for resource '$ResourceName': $($_.Exception.Message)"
+        Write-Warning "Failed to release mutex for resource '$ResourceName': $($_.Exception.Message)"
     }
     finally {
         try {
-            $Semaphore.Dispose()
-            Write-Debug "Semaphore disposed for resource: $ResourceName"
+            $Mutex.Dispose()
+            Write-Debug "Mutex disposed for resource: $ResourceName"
         }
         catch {
-            Write-Warning "Failed to dispose semaphore for resource '$ResourceName': $($_.Exception.Message)"
+            Write-Warning "Failed to dispose mutex for resource '$ResourceName': $($_.Exception.Message)"
         }
     }
 }
