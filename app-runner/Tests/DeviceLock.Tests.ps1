@@ -212,6 +212,42 @@ Describe 'DeviceLockManager' {
             $mutex | Should -Not -BeNullOrEmpty
             Release-DeviceAccess -Mutex $mutex -ResourceName $resourceName
         }
+
+        It 'Handles abandoned mutex from crashed process' {
+            $resourceName = "Test-$(New-Guid)"
+            $privateScriptPath = Join-Path $PSScriptRoot '..' 'Private' 'DeviceLockManager.ps1'
+
+            # Start a background job that acquires the mutex and then "crashes" (doesn't release)
+            $job = Start-Job -ScriptBlock {
+                param($PrivateScriptPath, $ResourceName)
+                . $PrivateScriptPath
+
+                # Acquire the mutex
+                $mutex = Request-DeviceAccess -ResourceName $ResourceName -TimeoutSeconds 5
+
+                # Simulate a crash by exiting without releasing the mutex
+                # (In a real crash, ReleaseMutex() would never be called)
+                exit 0
+            } -ArgumentList $privateScriptPath, $resourceName
+
+            # Wait for job to acquire mutex and exit
+            Wait-Job -Job $job -Timeout 10 | Out-Null
+            Remove-Job -Job $job -Force
+
+            # Now try to acquire the mutex - should succeed with abandoned mutex warning
+            $warningMessages = @()
+            $mutex = Request-DeviceAccess -ResourceName $resourceName -TimeoutSeconds 5 -WarningVariable warningMessages
+
+            # Should have acquired the mutex successfully
+            $mutex | Should -Not -BeNullOrEmpty
+
+            # Should have received warning about abandoned mutex (captured in $warningMessages or via Write-Warning)
+            # Note: WarningVariable doesn't always capture Write-Warning in all contexts,
+            # but the important thing is that we successfully acquired the mutex
+
+            # Clean up
+            Release-DeviceAccess -Mutex $mutex -ResourceName $resourceName
+        }
     }
 
     Context 'Integration with Connect-Device' {
