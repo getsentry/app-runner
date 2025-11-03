@@ -235,15 +235,15 @@ Describe 'DeviceLockManager' {
             Remove-Job -Job $job -Force
 
             # Now try to acquire the mutex - should succeed with abandoned mutex warning
-            $warningMessages = @()
             $mutex = Request-DeviceAccess -ResourceName $resourceName -TimeoutSeconds 5 -WarningVariable warningMessages
 
             # Should have acquired the mutex successfully
             $mutex | Should -Not -BeNullOrEmpty
 
-            # Should have received warning about abandoned mutex (captured in $warningMessages or via Write-Warning)
-            # Note: WarningVariable doesn't always capture Write-Warning in all contexts,
-            # but the important thing is that we successfully acquired the mutex
+            # Should have received warning about abandoned mutex
+            $warningMessages | Should -Not -BeNullOrEmpty
+            $warningMessages[0] | Should -Match 'abandoned mutex'
+            $warningMessages[0] | Should -Match 'inconsistent state'
 
             # Clean up
             Release-DeviceAccess -Mutex $mutex -ResourceName $resourceName
