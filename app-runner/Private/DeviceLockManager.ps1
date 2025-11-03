@@ -34,7 +34,7 @@ function New-DeviceResourceName {
         [string]$Target
     )
 
-    $targetName = if ($Target) { $Target } else { "Default" }
+    $targetName = if ($Target) { $Target } else { 'Default' }
     $resourceName = "$Platform-$targetName"
 
     Write-Debug "Built device resource name: $resourceName"
@@ -93,64 +93,62 @@ function Request-DeviceAccess {
     try {
         Write-Debug "Attempting to acquire device access for resource: $ResourceName (timeout: ${TimeoutSeconds}s)"
 
-        # Try to open existing mutex or create new one
+        # Try to open existing mutex or create new one.
+        # Request initial ownership by passing true for the first parameter
         $createdNew = $false
-        try {
-            $mutex = [System.Threading.Mutex]::OpenExisting($mutexName)
-            Write-Debug "Opened existing mutex: $mutexName"
-        }
-        catch [System.Threading.WaitHandleCannotBeOpenedException] {
-            # Mutex doesn't exist, create it
-            # initiallyOwned = $false means we don't own it yet, will acquire with WaitOne
-            $mutex = New-Object System.Threading.Mutex($false, $mutexName, [ref]$createdNew)
+        $mutex = New-Object System.Threading.Mutex($true, $mutexName, [ref]$createdNew)
+
+        if ($createdNew) {
             Write-Debug "Created new mutex with exclusive access: $mutexName"
+            return $mutex
+        } else {
+            Write-Debug "Mutex already exists, will attempt to acquire: $mutexName"
+
+            # Try to acquire mutex with periodic progress messages
+            $startTime = Get-Date
+            $elapsedSeconds = 0
+            $acquired = $false
+
+            Write-Debug "Waiting to acquire mutex at $(Get-Date -Format 'HH:mm:ss.fff')..."
+
+            while ($elapsedSeconds -lt $TimeoutSeconds) {
+                # Calculate remaining time for this wait interval
+                $remainingSeconds = $TimeoutSeconds - $elapsedSeconds
+                $waitSeconds = [Math]::Min($ProgressIntervalSeconds, $remainingSeconds)
+                $waitMs = $waitSeconds * 1000
+
+                # Try to acquire with this interval
+                try {
+                    $acquired = $mutex.WaitOne($waitMs)
+                } catch [System.Threading.AbandonedMutexException] {
+                    # Previous owner crashed - WaitOne() throws this exception BUT we now own the mutex
+                    # The exception is a notification that the device state may be inconsistent
+                    Write-Warning "Detected abandoned mutex for '$ResourceName' (previous process crashed). Mutex has been acquired, but device may be in an inconsistent state."
+                    $acquired = $true
+                }
+
+                if ($acquired) {
+                    # Successfully acquired
+                    $waitDuration = ((Get-Date) - $startTime).TotalSeconds
+                    Write-Debug "Mutex acquired for $ResourceName (waited $([math]::Round($waitDuration, 2))s)"
+                    return $mutex
+                }
+
+                # Not acquired yet, update elapsed time
+                $elapsedSeconds += $waitSeconds
+
+                # Log progress if we haven't timed out yet
+                if ($elapsedSeconds -lt $TimeoutSeconds) {
+                    $remainingMinutes = [Math]::Ceiling(($TimeoutSeconds - $elapsedSeconds) / 60)
+                    Write-Warning "Still waiting for exclusive access to '$ResourceName' (${elapsedSeconds}s elapsed, ~${remainingMinutes} minute(s) remaining)..."
+                }
+            }
+
+            # Timeout occurred
+            $mutex.Dispose()
+            throw "Could not acquire exclusive access to device resource '$ResourceName'. The device may be in use by another process. Timeout after ${TimeoutSeconds}s."
         }
-
-        # Try to acquire mutex with periodic progress messages
-        $startTime = Get-Date
-        $elapsedSeconds = 0
-        $acquired = $false
-
-        Write-Debug "Waiting to acquire mutex at $(Get-Date -Format 'HH:mm:ss.fff')..."
-
-        while ($elapsedSeconds -lt $TimeoutSeconds) {
-            # Calculate remaining time for this wait interval
-            $remainingSeconds = $TimeoutSeconds - $elapsedSeconds
-            $waitSeconds = [Math]::Min($ProgressIntervalSeconds, $remainingSeconds)
-            $waitMs = $waitSeconds * 1000
-
-            # Try to acquire with this interval
-            try {
-                $acquired = $mutex.WaitOne($waitMs)
-            } catch [System.Threading.AbandonedMutexException] {
-                # Previous owner crashed - WaitOne() throws this exception BUT we now own the mutex
-                # The exception is a notification that the device state may be inconsistent
-                Write-Warning "Detected abandoned mutex for '$ResourceName' (previous process crashed). Mutex has been acquired, but device may be in an inconsistent state."
-                $acquired = $true
-            }
-
-            if ($acquired) {
-                # Successfully acquired
-                $waitDuration = ((Get-Date) - $startTime).TotalSeconds
-                Write-Debug "Mutex acquired for $ResourceName (waited $([math]::Round($waitDuration, 2))s)"
-                return $mutex
-            }
-
-            # Not acquired yet, update elapsed time
-            $elapsedSeconds += $waitSeconds
-
-            # Log progress if we haven't timed out yet
-            if ($elapsedSeconds -lt $TimeoutSeconds) {
-                $remainingMinutes = [Math]::Ceiling(($TimeoutSeconds - $elapsedSeconds) / 60)
-                Write-Warning "Still waiting for exclusive access to '$ResourceName' (${elapsedSeconds}s elapsed, ~${remainingMinutes} minute(s) remaining)..."
-            }
-        }
-
-        # Timeout occurred
-        $mutex.Dispose()
-        throw "Could not acquire exclusive access to device resource '$ResourceName'. The device may be in use by another process. Timeout after ${TimeoutSeconds}s."
-    }
-    catch {
+    } catch {
         # Clean up mutex on any error
         if ($mutex) {
             $mutex.Dispose()
@@ -196,18 +194,15 @@ function Release-DeviceAccess {
     try {
         $Mutex.ReleaseMutex()
         Write-Debug "Mutex released for resource: $ResourceName at $(Get-Date -Format 'HH:mm:ss.fff')"
-    }
-    catch {
+    } catch {
         # Don't throw - log warning and continue
         # This ensures Disconnect-Device always succeeds from user perspective
         Write-Warning "Failed to release mutex for resource '$ResourceName': $($_.Exception.Message)"
-    }
-    finally {
+    } finally {
         try {
             $Mutex.Dispose()
             Write-Debug "Mutex disposed for resource: $ResourceName"
-        }
-        catch {
+        } catch {
             Write-Warning "Failed to dispose mutex for resource '$ResourceName': $($_.Exception.Message)"
         }
     }
