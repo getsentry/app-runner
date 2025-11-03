@@ -138,7 +138,7 @@ class SwitchProvider : DeviceProvider {
             $result['System'] = $text -split "`n" | Select-Object -Last $MaxEntries | ForEach-Object {
                 # Parse 'Jan  1 18:38:07 XAL06100010154 user.info pc_control[936]: 1970/01/01 18:38:07 [user@WIN01 187]stream.Recv() returned err, rpc error: code = Canceled desc = context canceled. End SetUser'
                 $logLine = $_.Trim()
-                if ([string]::IsNullOrEmpty($logLine)) {
+                if ([string]::IsNullOrEmpty($logLine) -or $logLine.Length -lt 16) {
                     return $null
                 }
                 try {

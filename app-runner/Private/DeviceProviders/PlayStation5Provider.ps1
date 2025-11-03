@@ -67,7 +67,7 @@ class PlayStation5Provider : DeviceProvider {
             $result['System'] = $text | Select-Object -Last $MaxEntries | ForEach-Object {
                 # Parse '[16:30:17] [DECI] Finished to notify DRFP disconnection to DRFS.'
                 $logLine = $_.Trim()
-                if ([string]::IsNullOrEmpty($logLine)) {
+                if ([string]::IsNullOrEmpty($logLine) -or $logLine.Length -lt 11) {
                     return $null
                 }
                 try {
