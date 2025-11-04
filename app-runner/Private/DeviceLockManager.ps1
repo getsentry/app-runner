@@ -129,7 +129,7 @@ function Request-DeviceAccess {
             # This can happen during creation or when opening, retry in both cases
             if ($attempt -lt $maxAttempts) {
                 Write-Debug "UnauthorizedAccessException on attempt $attempt - another process likely created mutex, retrying..."
-                Start-Sleep -Milliseconds 100 * $attempt
+                Start-Sleep -Milliseconds (100 * $attempt)
                 continue
             } else {
                 throw "Access denied when accessing mutex '$mutexName' after $maxAttempts attempts. This may require elevated privileges. Error: $($_.Exception.Message)"
