@@ -24,6 +24,8 @@ class DeviceProvider {
     [int]$MaxRetryAttempts = 2
     [bool]$IsRebooting = $false  # Internal flag to skip retry-on-timeout during reboot
 
+    [string]$DebugOutputForwarder = "ForEach-Object { (`$_ | Out-String).Trim() } | Where-Object { `$_.Length -gt 0 } | Tee-Object -variable capturedOutput | Foreach-Object { Write-Debug `$_ } ; `$capturedOutput"
+
     DeviceProvider() {
         $this.Commands = @{}
         $this.Timeouts = @{}
@@ -91,7 +93,7 @@ class DeviceProvider {
                 }
 
                 # Start job with the provided scriptblock and arguments
-                $job = Start-Job -ScriptBlock $scriptBlock -ArgumentList $platform, $action, $command
+                $job = Start-Job -ScriptBlock $scriptBlock -ArgumentList $platform, $action, $command, $this.DebugOutputForwarder
 
                 # Wait with progress messages every 30 seconds
                 $waitIntervalSeconds = 30
@@ -182,11 +184,11 @@ class DeviceProvider {
 
         # Build the execution scriptblock once - used for both timeout and non-timeout paths
         $scriptBlock = {
-            param($platform, $act, $cmd)
+            param($platform, $act, $cmd, $debugForwarder)
             try {
                 $PSNativeCommandUseErrorActionPreference = $false
                 Write-Debug "${platform}: Invoking ($act) command $cmd"
-                $result = Invoke-Expression "$cmd | Tee-Object -variable capturedOutput | Foreach-Object { Write-Debug `$_ } ; `$capturedOutput"
+                $result = Invoke-Expression "$cmd | $debugForwarder"
                 if ($LASTEXITCODE -ne 0) {
                     Write-Warning "Command ($act`: $cmd) failed with exit code $($LASTEXITCODE) $($result.Length -gt 0 ? 'and output:' : '')"
                     $result | ForEach-Object { Write-Warning $_ }
@@ -217,7 +219,7 @@ class DeviceProvider {
         }
 
         # Otherwise, execute directly without timeout
-        return & $scriptBlock $this.Platform $action $command
+        return & $scriptBlock $this.Platform $action $command $this.DebugOutputForwarder
     }
 
     [hashtable] CreateSessionInfo() {
@@ -316,7 +318,7 @@ class DeviceProvider {
         $startDate = Get-Date
         try {
             $PSNativeCommandUseErrorActionPreference = $false
-            $result = Invoke-Expression "$command | Tee-Object -variable capturedOutput | Foreach-Object { Write-Debug `$_ } ; `$capturedOutput"
+            $result = Invoke-Expression "$command | $($this.DebugOutputForwarder)"
             $exitCode = $LASTEXITCODE
         } finally {
             $PSNativeCommandUseErrorActionPreference = $true
