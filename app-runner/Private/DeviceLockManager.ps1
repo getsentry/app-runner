@@ -108,21 +108,35 @@ function Request-DeviceAccess {
     # try to create the same mutex concurrently with initial ownership.
     $createdNew = $false
     $mutex = $null
+    $maxAttempts = 3
+    $attempt = 0
 
-    try {
-        # Try to open existing mutex first
-        $mutex = [System.Threading.Mutex]::OpenExisting($mutexName)
-        Write-Debug "Opened existing mutex: $mutexName"
-    } catch [System.Threading.WaitHandleCannotBeOpenedException] {
-        # Mutex doesn't exist yet, create it without requesting initial ownership
-        # We'll acquire it separately with WaitOne() to handle race conditions properly
-        Write-Debug "Mutex doesn't exist, creating: $mutexName"
-        $mutex = New-Object System.Threading.Mutex($false, $mutexName, [ref]$createdNew)
-        Write-Debug "Created new mutex: $mutexName (createdNew: $createdNew)"
-    } catch [System.UnauthorizedAccessException] {
-        throw "Access denied when accessing mutex '$mutexName'. This may require elevated privileges. Error: $($_.Exception.Message)"
-    } catch {
-        throw "Failed to open or create mutex '$mutexName': $($_.Exception.Message)"
+    while ($attempt -lt $maxAttempts -and -not $mutex) {
+        $attempt++
+
+        try {
+            # Try to open existing mutex first
+            $mutex = [System.Threading.Mutex]::OpenExisting($mutexName)
+            Write-Debug "Opened existing mutex: $mutexName (attempt $attempt)"
+        } catch [System.Threading.WaitHandleCannotBeOpenedException] {
+            # Mutex doesn't exist yet, try to create it without requesting initial ownership
+            # We'll acquire it separately with WaitOne() to handle race conditions properly
+            Write-Debug "Mutex doesn't exist, creating: $mutexName (attempt $attempt)"
+            $mutex = New-Object System.Threading.Mutex($false, $mutexName, [ref]$createdNew)
+            Write-Debug "Created new mutex: $mutexName (createdNew: $createdNew)"
+        } catch [System.UnauthorizedAccessException] {
+            # Race condition: another process created the mutex between our OpenExisting and New-Object calls
+            # This can happen during creation or when opening, retry in both cases
+            if ($attempt -lt $maxAttempts) {
+                Write-Debug "UnauthorizedAccessException on attempt $attempt - another process likely created mutex, retrying..."
+                Start-Sleep -Milliseconds 50
+                continue
+            } else {
+                throw "Access denied when accessing mutex '$mutexName' after $maxAttempts attempts. This may require elevated privileges. Error: $($_.Exception.Message)"
+            }
+        } catch {
+            throw "Failed to open or create mutex '$mutexName': $($_.Exception.Message)"
+        }
     }
 
     # Now acquire the mutex (whether we just created it or opened existing)
