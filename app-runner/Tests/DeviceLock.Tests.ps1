@@ -56,13 +56,25 @@ Describe 'DeviceLockManager' {
             $resourceName | Should -Be "Xbox-$longTarget"
         }
 
-        It 'Rejects forward slash in target name for cross-platform compatibility' {
-            { New-DeviceResourceName -Platform 'Xbox' -Target '192.168.1.100/test' } | Should -Throw -ExpectedMessage '*Forward slash*'
+        It 'Sanitizes backslash in target name (reserved for namespace)' {
+            $resourceName = New-DeviceResourceName -Platform 'Xbox' -Target 'foo\bar'
+            $resourceName | Should -Be 'Xbox-foo-bar'
         }
 
-        It 'Rejects NUL character in target name' {
+        It 'Sanitizes forward slash in target name for cross-platform compatibility' {
+            $resourceName = New-DeviceResourceName -Platform 'Xbox' -Target '192.168.1.100/test'
+            $resourceName | Should -Be 'Xbox-192.168.1.100-test'
+        }
+
+        It 'Sanitizes NUL character in target name' {
             $invalidTarget = "test`0name"
-            { New-DeviceResourceName -Platform 'Xbox' -Target $invalidTarget } | Should -Throw -ExpectedMessage '*NUL*'
+            $resourceName = New-DeviceResourceName -Platform 'Xbox' -Target $invalidTarget
+            $resourceName | Should -Be 'Xbox-test-name'
+        }
+
+        It 'Sanitizes multiple invalid characters' {
+            $resourceName = New-DeviceResourceName -Platform 'Xbox' -Target 'path/to\file'
+            $resourceName | Should -Be 'Xbox-path-to-file'
         }
     }
 

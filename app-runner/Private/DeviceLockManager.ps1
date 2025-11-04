@@ -36,11 +36,16 @@ function New-DeviceResourceName {
 
     $targetName = if ($Target) { $Target } else { 'Default' }
 
-    # Validate mutex name characters for cross-platform compatibility
-    # On Unix systems, mutex names map to filenames where forward slash (/) is invalid
-    # NUL character is also invalid but unlikely in practice
-    if ($targetName -match '[/\x00]') {
-        throw "Invalid characters in target name '$targetName'. Forward slash (/) and NUL are not allowed in mutex names on Unix systems."
+    # Sanitize mutex name characters for cross-platform compatibility
+    # Backslash (\) is reserved for namespace specification only (Global\, Local\)
+    # Forward slash (/) is invalid in Unix filenames (where mutexes map to files)
+    # NUL character is invalid everywhere
+    # Replace invalid characters with hyphen to ensure valid mutex names
+    $originalTargetName = $targetName
+    $targetName = $targetName -replace '[/\\\x00]', '-'
+
+    if ($targetName -ne $originalTargetName) {
+        Write-Debug "Sanitized target name from '$originalTargetName' to '$targetName' (replaced invalid characters)"
     }
 
     $resourceName = "$Platform-$targetName"
