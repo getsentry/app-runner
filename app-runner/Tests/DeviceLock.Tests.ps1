@@ -55,6 +55,15 @@ Describe 'DeviceLockManager' {
             $resourceName = New-DeviceResourceName -Platform 'Xbox' -Target $longTarget
             $resourceName | Should -Be "Xbox-$longTarget"
         }
+
+        It 'Rejects forward slash in target name for cross-platform compatibility' {
+            { New-DeviceResourceName -Platform 'Xbox' -Target '192.168.1.100/test' } | Should -Throw -ExpectedMessage '*Forward slash*'
+        }
+
+        It 'Rejects NUL character in target name' {
+            $invalidTarget = "test`0name"
+            { New-DeviceResourceName -Platform 'Xbox' -Target $invalidTarget } | Should -Throw -ExpectedMessage '*NUL*'
+        }
     }
 
     Context 'Mutex Acquisition and Release' {
