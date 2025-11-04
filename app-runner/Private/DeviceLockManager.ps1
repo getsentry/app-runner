@@ -108,7 +108,7 @@ function Request-DeviceAccess {
     # try to create the same mutex concurrently with initial ownership.
     $createdNew = $false
     $mutex = $null
-    $maxAttempts = 3
+    $maxAttempts = 10
     $attempt = 0
 
     while ($attempt -lt $maxAttempts -and -not $mutex) {
@@ -129,7 +129,7 @@ function Request-DeviceAccess {
             # This can happen during creation or when opening, retry in both cases
             if ($attempt -lt $maxAttempts) {
                 Write-Debug "UnauthorizedAccessException on attempt $attempt - another process likely created mutex, retrying..."
-                Start-Sleep -Milliseconds 50
+                Start-Sleep -Milliseconds 100 * $attempt
                 continue
             } else {
                 throw "Access denied when accessing mutex '$mutexName' after $maxAttempts attempts. This may require elevated privileges. Error: $($_.Exception.Message)"
