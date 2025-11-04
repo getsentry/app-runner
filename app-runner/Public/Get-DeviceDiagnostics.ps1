@@ -37,6 +37,9 @@ function Get-DeviceDiagnostics {
         New-Item -Path $OutputDirectory -ItemType Directory -Force | Out-Null
     }
 
+    # Show full path for output directory
+    Write-Debug "Output directory full path: $(Resolve-Path $OutputDirectory)"
+
     # Use the provider to collect diagnostics
     $provider = $script:CurrentSession.Provider
     $results = $provider.GetDiagnostics($OutputDirectory)
