@@ -91,18 +91,30 @@ function Request-DeviceAccess {
 
     Write-Debug "Attempting to acquire device access for resource: $ResourceName (timeout: ${TimeoutSeconds}s)"
 
-    # Try to open existing mutex or create new one.
-    # Request initial ownership by passing true for the first parameter
+    # Try to open existing mutex first to avoid permission issues when multiple processes
+    # try to create the same mutex concurrently with initial ownership.
     $createdNew = $false
-    $mutex = New-Object System.Threading.Mutex($true, $mutexName, [ref]$createdNew)
-
-    if ($createdNew) {
-        Write-Debug "Created new mutex with exclusive access: $mutexName"
-        return $mutex
-    }
+    $mutex = $null
 
     try {
-        Write-Debug "Mutex already exists, will attempt to acquire: $mutexName"
+        # Try to open existing mutex first
+        $mutex = [System.Threading.Mutex]::OpenExisting($mutexName)
+        Write-Debug "Opened existing mutex: $mutexName"
+    } catch [System.Threading.WaitHandleCannotBeOpenedException] {
+        # Mutex doesn't exist yet, create it without requesting initial ownership
+        # We'll acquire it separately with WaitOne() to handle race conditions properly
+        Write-Debug "Mutex doesn't exist, creating: $mutexName"
+        $mutex = New-Object System.Threading.Mutex($false, $mutexName, [ref]$createdNew)
+        Write-Debug "Created new mutex: $mutexName (createdNew: $createdNew)"
+    } catch [System.UnauthorizedAccessException] {
+        throw "Access denied when accessing mutex '$mutexName'. This may require elevated privileges. Error: $($_.Exception.Message)"
+    } catch {
+        throw "Failed to open or create mutex '$mutexName': $($_.Exception.Message)"
+    }
+
+    # Now acquire the mutex (whether we just created it or opened existing)
+    try {
+        Write-Debug "Attempting to acquire mutex: $mutexName"
 
         # Try to acquire mutex with periodic progress messages
         $startTime = Get-Date
