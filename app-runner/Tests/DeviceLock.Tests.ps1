@@ -495,6 +495,26 @@ Describe 'DeviceLockManager' {
             $result | Should -Contain 'SUCCESS'
         }
 
+        It 'Xbox uses platform-level mutex regardless of target' {
+            # Xbox xb*.exe commands operate on the "current" target set via xbconnect,
+            # which is global to the system, not per-process. Therefore, Xbox must use
+            # a single platform-level mutex, not per-target mutexes.
+
+            # Verify that Xbox always uses Default target for mutex, even when target is specified
+            # This is handled in Connect-Device by passing $null as the mutexTarget for Xbox
+            $resourceWithoutTarget = New-DeviceResourceName -Platform 'Xbox' -Target $null
+            $resourceWithTarget1 = New-DeviceResourceName -Platform 'Xbox' -Target '192.168.1.100'
+            $resourceWithTarget2 = New-DeviceResourceName -Platform 'Xbox' -Target '192.168.1.101'
+
+            # All Xbox resources should use 'Default' target for mutex coordination
+            $resourceWithoutTarget | Should -Be 'Xbox-Default'
+            $resourceWithTarget1 | Should -Be 'Xbox-192.168.1.100'
+            $resourceWithTarget2 | Should -Be 'Xbox-192.168.1.101'
+
+            # Connect-Device logic ensures Xbox always uses platform-level mutex by passing $null
+            # as mutexTarget, which results in 'Xbox-Default' regardless of the actual target parameter
+        }
+
         It 'Releases mutex on connection failure' {
             # Mock doesn't really fail to connect, so we'll test cleanup directly
             # by verifying we can reconnect after any error

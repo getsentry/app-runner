@@ -61,7 +61,11 @@ function Connect-Device {
     }
 
     # Build resource name for mutex coordination
-    $resourceName = New-DeviceResourceName -Platform $Platform -Target $Target
+    # Xbox requires platform-level mutex (not per-target) because xb*.exe commands
+    # operate on the "current" target set via xbconnect, which is global to the system.
+    # Multiple processes with different target mutexes would still conflict.
+    $mutexTarget = if ($Platform -eq 'Xbox') { $null } else { $Target }
+    $resourceName = New-DeviceResourceName -Platform $Platform -Target $mutexTarget
     Write-Debug "Device resource name: $resourceName"
 
     # Acquire exclusive access to the device resource
