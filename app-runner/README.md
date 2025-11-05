@@ -74,7 +74,7 @@ The module uses named semaphores to enforce exclusive access to device resources
 
 - Each device connection acquires an exclusive system-wide lock based on `Platform-Target`
 - Only one connection can hold a device at a time
-- Other processes wait (with progress updates) or timeout after 30 minutes
+- Other processes wait (with progress updates) or timeout after 60 minutes
 - Lock is released on disconnect, connection failure, or when the PowerShell session ends
 
 **Resource naming:**

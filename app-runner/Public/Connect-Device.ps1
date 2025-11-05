@@ -15,7 +15,7 @@ function Connect-Device {
     If not specified, the system will auto-discover an available Xbox target.
 
     .PARAMETER TimeoutSeconds
-    Maximum time to wait for exclusive device access. Default is 1800 seconds (30 minutes).
+    Maximum time to wait for exclusive device access. Default is 3600 seconds (60 minutes).
     Progress messages are displayed every minute during long waits.
 
     .EXAMPLE
@@ -44,7 +44,7 @@ function Connect-Device {
         [string]$Target,
 
         [Parameter(Mandatory = $false)]
-        [int]$TimeoutSeconds = 1800
+        [int]$TimeoutSeconds = 3600
     )
 
     Write-Debug "Connecting to device platform: $Platform"
@@ -69,7 +69,7 @@ function Connect-Device {
     Write-Debug "Device resource name: $resourceName"
 
     # Acquire exclusive access to the device resource
-    # Default 30-minute timeout with progress messages every minute
+    # Default 60-minute timeout with progress messages every minute
     $mutex = $null
     try {
         $mutex = Request-DeviceAccess -ResourceName $resourceName -TimeoutSeconds $TimeoutSeconds -ProgressIntervalSeconds 60
