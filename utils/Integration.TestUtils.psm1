@@ -53,7 +53,39 @@ function Get-EventIds {
     )
 
     $eventCapturedLines = $AppOutput | Where-Object { $_ -match 'EVENT_CAPTURED:' }
-    $eventCapturedLines | Should -HaveCount $ExpectedCount
+
+    # Provide detailed error message if count doesn't match
+    if ($eventCapturedLines.Count -ne $ExpectedCount) {
+        $errorMsg = "Expected $ExpectedCount EVENT_CAPTURED line(s) but found $($eventCapturedLines.Count).`n"
+        $errorMsg += "`nSearched for lines matching: 'EVENT_CAPTURED:'`n"
+
+        if ($eventCapturedLines.Count -gt 0) {
+            $errorMsg += "`nFound lines:`n"
+            $eventCapturedLines | ForEach-Object { $errorMsg += "  $_`n" }
+        } else {
+            $errorMsg += "`nNo EVENT_CAPTURED lines found in output.`n"
+
+            # Show first and last few lines of output for debugging
+            $outputArray = @($AppOutput)
+            if ($outputArray.Count -gt 0) {
+                $errorMsg += "`nApp output preview (first 10 lines):`n"
+                $outputArray | Select-Object -First 10 | ForEach-Object { $errorMsg += "  $_`n" }
+
+                if ($outputArray.Count -gt 20) {
+                    $errorMsg += "`n  ... ($($outputArray.Count - 20) lines omitted) ...`n"
+                }
+
+                if ($outputArray.Count -gt 10) {
+                    $errorMsg += "`nApp output preview (last 10 lines):`n"
+                    $outputArray | Select-Object -Last 10 | ForEach-Object { $errorMsg += "  $_`n" }
+                }
+            } else {
+                $errorMsg += "`nApp output was completely empty. The test app may have failed to run or produce output.`n"
+            }
+        }
+
+        throw $errorMsg
+    }
 
     [array]$eventIds = @()
     foreach ($eventLine in $eventCapturedLines) {
