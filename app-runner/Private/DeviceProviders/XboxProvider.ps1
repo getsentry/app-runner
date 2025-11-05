@@ -36,25 +36,27 @@ class XboxProvider : DeviceProvider {
 
         # Configure Xbox specific commands using Command objects
         $this.Commands = @{
-            'connect'     = @($this.ConnectTool, '')
-            'setTarget'   = @($this.ConnectTool, '/N "{0}"')
-            'disconnect'  = $null
+            'connect'            = @($this.ConnectTool, '')
+            'setTarget'          = @($this.ConnectTool, '/N "{0}"')
+            'disconnect'         = $null
             # Xbox has two "powermode" values: "energysaving" which is basically always on or "instanton" which support sleep/wakeup
-            'powerState'  = @($this.PowerTool, '/Q')
-            'wakeup'      = @($this.PowerTool, '/W') # Wake up
-            'sleep'       = @($this.PowerTool, '/P') # Sleep
-            'poweron'     = $null
-            'poweroff'    = $null # Xbox cannot recover from full power-off via CLI, so we don't implement power off.
-            'reset'       = @($this.PowerTool, '')
-            'getstatus'   = @($this.ConnectTool, '')
-            'screenshot'  = @('xbcapture.exe', '"{0}/{1}"')
-            'diaginfo'    = @('xbdiaginfo.exe', '')
-            'xbtlist'     = @('xbtlist.exe', '')
-            'xbcopy'      = @('xbcopy.exe', '"{0}" "{1}" /mirror')
-            'launch'      = @('xbrun.exe', '/O /D:"{0}" "{1}" {2}')
-            'install-app' = @($this.AppTool, 'install {0}')
-            'stop-app'    = @($this.AppTool, 'terminate {0}')
-            'launch-app'  = @($this.AppTool, 'launch /O "{0}" {1}')
+            'powerState'         = @($this.PowerTool, '/Q')
+            'wakeup'             = @($this.PowerTool, '/W') # Wake up
+            'sleep'              = @($this.PowerTool, '/P') # Sleep
+            'poweron'            = $null
+            'poweroff'           = $null # Xbox cannot recover from full power-off via CLI, so we don't implement power off.
+            'reset'              = @($this.PowerTool, '')
+            'getstatus'          = @($this.ConnectTool, '')
+            'screenshot'         = @('xbcapture.exe', '"{0}/{1}"')
+            'diaginfo'           = @('xbdiaginfo.exe', '')
+            'xbtlist'            = @('xbtlist.exe', '')
+            'xbcopy'             = @('xbcopy.exe', '"{0}" "{1}" /mirror')
+            'launch'             = @('xbrun.exe', '/O /D:"{0}" "{1}" {2}')
+            'get-installed-apps' = @($this.AppTool, 'list /JSON')
+            'install-app'        = @($this.AppTool, 'install {0}')
+            'uninstall-app'      = @($this.AppTool, 'uninstall {0}')
+            'stop-app'           = @($this.AppTool, 'terminate {0}')
+            'launch-app'         = @($this.AppTool, 'launch /O "{0}" {1}')
         }
 
         # Configure action-specific timeouts (app launch commands need more time)
@@ -168,6 +170,14 @@ class XboxProvider : DeviceProvider {
         return $processes
     }
 
+    # Helper method to find an installed package by base name
+    # Returns the package object if found, null otherwise
+    [object] GetInstalledPackage([string]$packageBaseName) {
+        $listOutput = $this.InvokeCommand('get-installed-apps', @())
+        $installedPackages = $listOutput | ConvertFrom-Json
+        return $installedPackages.Packages | Where-Object -Property FullName -Match $packageBaseName | Select-Object -First 1
+    }
+
     # Install a packaged application (.xvc)
     [hashtable] InstallApp([string]$PackagePath) {
         if (-not (Test-Path $PackagePath)) {
@@ -178,8 +188,47 @@ class XboxProvider : DeviceProvider {
             throw "Package must be a .xvc file. Got: $PackagePath"
         }
 
+        # Extract package base name for matching
+        $packageBaseName = [System.IO.Path]::GetFileNameWithoutExtension($PackagePath) -split '\.' | Select-Object -First 1
+
+        # Uninstall existing package to ensure clean state
+        Write-Debug "$($this.Platform): Checking for existing package matching '$packageBaseName'"
+        $existingPackage = $this.GetInstalledPackage($packageBaseName)
+        if ($existingPackage) {
+            Write-Host "Uninstalling existing package: $($existingPackage.FullName)" -ForegroundColor Yellow
+            $this.InvokeCommand('stop-app', @($existingPackage.FullName))
+            $this.InvokeCommand('uninstall-app', @($existingPackage.FullName))
+        }
+
+        # Install package
+        Write-Host 'Installing package to Xbox...' -ForegroundColor Yellow
         $this.InvokeCommand('install-app', @($PackagePath))
-        return @{}
+
+        # Verify package installation with retry logic (wait up to 60 seconds)
+        Write-Host 'Verifying package installation...' -ForegroundColor Yellow
+        $timeout = 60
+        $checkInterval = 2
+        $elapsed = 0
+
+        while ($elapsed -lt $timeout) {
+            $installedPackage = $this.GetInstalledPackage($packageBaseName)
+
+            if ($installedPackage) {
+                Write-Host "Package verified to be installed on device: $($installedPackage.FullName)" -ForegroundColor Green
+                return @{}
+            }
+
+            Write-Host "Package not yet visible, waiting... ($elapsed/$timeout seconds)" -ForegroundColor Gray
+            Start-Sleep -Seconds $checkInterval
+            $elapsed += $checkInterval
+        }
+
+        # Installation verification failed - gather diagnostics
+        Write-Warning "The package doesn't appear to be installed after $timeout seconds. Installed packages:"
+        $listOutput = $this.InvokeCommand('get-installed-apps', @())
+        $installedPackages = $listOutput | ConvertFrom-Json
+        $installedPackages.Packages | ForEach-Object { Write-Warning " - $($_.FullName)" }
+        throw "Failed to verify package installation: $packageBaseName"
     }
 
     # Launch an already-installed packaged application
