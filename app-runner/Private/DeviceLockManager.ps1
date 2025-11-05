@@ -100,7 +100,7 @@ function Request-DeviceAccess {
         [int]$ProgressIntervalSeconds = 60
     )
 
-    $mutexName = "Global\SentryAppRunner-Device-$ResourceName"
+    $mutexName = "Global\SentryAppRunner-mutex-device-$ResourceName"
 
     Write-Debug "Attempting to acquire device access for resource: $ResourceName (timeout: ${TimeoutSeconds}s)"
 
