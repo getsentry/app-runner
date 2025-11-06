@@ -404,10 +404,100 @@ function TryEdit-SentryScope {
     }
 }
 
+<#
+.SYNOPSIS
+Wrapper for Start-SentryTransaction that fails silently if Sentry is unavailable.
+
+.DESCRIPTION
+Starts a performance monitoring transaction to track operation duration and create spans.
+Returns a transaction object that can be used to create child spans and finish the transaction.
+Automatically ensures Sentry is ready before starting.
+
+.PARAMETER Name
+The name of the transaction (e.g., "Connect-Device", "Deploy-App").
+
+.PARAMETER Operation
+The operation type (e.g., "device.connect", "app.deploy", "http.request").
+
+.PARAMETER CustomSamplingContext
+Optional hashtable with additional context for sampling decisions.
+
+.EXAMPLE
+$transaction = TryStart-SentryTransaction -Name "Connect-Device" -Operation "device.connect"
+try {
+    # Create a span for a sub-operation
+    $span = $transaction?.StartChild("device.lock.acquire")
+    # ... perform lock acquisition ...
+    $span?.Finish()
+
+    # Create another span
+    $span = $transaction?.StartChild("device.connection.establish")
+    # ... establish connection ...
+    $span?.Finish()
+}
+finally {
+    # Always finish the transaction
+    $transaction?.Finish()
+}
+
+.EXAMPLE
+$transaction = TryStart-SentryTransaction -Name "Build-App" -Operation "build" -CustomSamplingContext @{
+    target = "Xbox"
+    preset = "Debug"
+}
+try {
+    # ... build operations ...
+}
+finally {
+    $transaction?.Finish()
+}
+
+.OUTPUTS
+[Sentry.ITransaction] Transaction object if successful, $null otherwise.
+#>
+function TryStart-SentryTransaction {
+    [CmdletBinding()]
+    [OutputType([object])]
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Name,
+
+        [Parameter(Mandatory = $true)]
+        [string]$Operation,
+
+        [Parameter(Mandatory = $false)]
+        [hashtable]$CustomSamplingContext = @{}
+    )
+
+    if (-not (Ensure-SentryReady)) {
+        return $null
+    }
+
+    try {
+        $transactionParams = @{
+            Name      = $Name
+            Operation = $Operation
+        }
+
+        if ($CustomSamplingContext.Count -gt 0) {
+            $transactionParams['CustomSamplingContext'] = $CustomSamplingContext
+        }
+
+        $transaction = Start-SentryTransaction @transactionParams
+        Write-Debug "Sentry transaction started: $Name ($Operation)"
+        return $transaction
+    }
+    catch {
+        Write-Debug "Failed to start Sentry transaction: $_"
+        return $null
+    }
+}
+
 # Export public functions
 Export-ModuleMember -Function @(
     'TryStart-Sentry',
     'TryOut-Sentry',
     'TryAdd-SentryBreadcrumb',
-    'TryEdit-SentryScope'
+    'TryEdit-SentryScope',
+    'TryStart-SentryTransaction'
 )
