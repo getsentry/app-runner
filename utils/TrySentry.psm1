@@ -52,12 +52,20 @@ function Ensure-SentryReady {
     # Try to import Sentry module if type not available
     if (-not $sentryTypeAvailable) {
         try {
-            Import-Module Sentry -ErrorAction Stop
-            $null = [Sentry.SentrySdk]  # Verify type is now available
-            Write-Debug 'Sentry module imported successfully'
-            $sentryTypeAvailable = $true
+            # Load bundled Sentry module from vendor directory
+            $bundledSentryPath = Join-Path $PSScriptRoot '..\vendor\Sentry\Sentry.psd1'
+            if (Test-Path $bundledSentryPath) {
+                Import-Module $bundledSentryPath -ErrorAction Stop
+                $null = [Sentry.SentrySdk]  # Verify type is now available
+                Write-Debug 'Bundled Sentry module imported successfully'
+                $sentryTypeAvailable = $true
+            } else {
+                Write-Debug "Bundled Sentry module not found at: $bundledSentryPath"
+                $script:SentryAvailable = $false
+                return $false
+            }
         } catch {
-            Write-Debug "Failed to import Sentry module: $_"
+            Write-Debug "Failed to import bundled Sentry module: $_"
             $script:SentryAvailable = $false
             return $false
         }

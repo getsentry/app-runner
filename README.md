@@ -54,13 +54,7 @@ See [Sentry DSN documentation](https://docs.sentry.io/product/sentry-basics/dsn-
 
 ### Dependencies
 
-Telemetry requires the optional `Sentry` PowerShell module:
-
-```powershell
-Install-Module -Name Sentry -Repository PSGallery -Force
-```
-
-If the module is not installed, telemetry is automatically disabled and all functionality works normally. The toolkit has no hard dependency on Sentry.
+The `Sentry` PowerShell module (v0.4.0) is bundled in the `vendor/Sentry` directory, so no installation is required. Telemetry works out of the box.
 
 **Learn more:** [sentry-powershell on GitHub](https://github.com/getsentry/sentry-powershell)
 
