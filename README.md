@@ -20,6 +20,46 @@ Future support planned:
 - Mobile platforms (iOS, Android)
 - Desktop platforms (Windows, macOS, Linux)
 
+## Telemetry
+
+This toolkit automatically collects operational telemetry using [Sentry](https://sentry.io) to improve reliability and diagnose issues. Telemetry helps identify test infrastructure failures, device connection problems, and automation bottlenecks.
+
+### What's Collected
+
+- Module errors and exceptions with context (platform, session ID, error category)
+- Device connection failures and lock acquisition issues
+- Test infrastructure problems (missing event captures, polling timeouts)
+- Diagnostic operation breadcrumbs showing the sequence of operations leading to failures
+- Performance metrics for critical operations (device connections, app deployments)
+
+### Privacy & Control
+
+**Telemetry is optional and controlled by environment variables:**
+
+**To disable telemetry completely:**
+```powershell
+$env:SENTRY_DSN = $null  # or empty string
+```
+
+**To use your own Sentry project:**
+```powershell
+$env:SENTRY_DSN = 'https://your-key@o123.ingest.sentry.io/your-project'
+```
+
+**Note:** DSNs are public client keys that are safe to expose in code or configuration. They cannot be used to access your Sentry account or data. See [Sentry DSN documentation](https://docs.sentry.io/product/sentry-basics/dsn-explainer/) for details.
+
+### Dependencies
+
+Telemetry requires the optional `Sentry` PowerShell module:
+
+```powershell
+Install-Module -Name Sentry
+```
+
+If the module is not installed, telemetry is automatically disabled and all functionality works normally. The toolkit has no hard dependency on Sentry.
+
+**Learn more:** [sentry-powershell on GitHub](https://github.com/getsentry/sentry-powershell)
+
 ## Requirements
 
 ### Platform-Specific Prerequisites
