@@ -1,3 +1,15 @@
+# Initialize Sentry telemetry (optional, graceful degradation if unavailable)
+try {
+    Import-Module (Join-Path $PSScriptRoot '..\utils\TrySentry.psm1') -ErrorAction SilentlyContinue
+    if (Get-Module -Name TrySentry) {
+        $moduleManifest = Import-PowerShellDataFile (Join-Path $PSScriptRoot 'SentryApiClient.psd1')
+        TryStart-Sentry -ModuleName 'SentryApiClient' -ModuleVersion $moduleManifest.ModuleVersion
+    }
+}
+catch {
+    Write-Debug "Sentry telemetry initialization skipped: $_"
+}
+
 $Script:SentryApiConfig = @{
     BaseUrl = 'https://sentry.io/api/0'
     ApiToken = $null
