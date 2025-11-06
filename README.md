@@ -26,6 +26,8 @@ This toolkit automatically collects operational telemetry using [Sentry](https:/
 
 ### What's Collected
 
+Examples of the types of telemetry data collected:
+
 - Module errors and exceptions with context (platform, session ID, error category)
 - Device connection failures and lock acquisition issues
 - Test infrastructure problems (missing event captures, polling timeouts)
@@ -34,7 +36,7 @@ This toolkit automatically collects operational telemetry using [Sentry](https:/
 
 ### Privacy & Control
 
-**Telemetry is optional and controlled by environment variables:**
+**Telemetry is optional, enabled by default, and controllably by environment variable:**
 
 **To disable telemetry completely:**
 ```powershell
@@ -46,14 +48,16 @@ $env:SENTRY_DSN = $null  # or empty string
 $env:SENTRY_DSN = 'https://your-key@o123.ingest.sentry.io/your-project'
 ```
 
-**Note:** DSNs are public client keys that are safe to expose in code or configuration. They cannot be used to access your Sentry account or data. See [Sentry DSN documentation](https://docs.sentry.io/product/sentry-basics/dsn-explainer/) for details.
+**Note:** DSNs are public client keys that are safe to expose in code or configuration.
+They cannot be used to access your Sentry account or data.
+See [Sentry DSN documentation](https://docs.sentry.io/product/sentry-basics/dsn-explainer/) for details.
 
 ### Dependencies
 
 Telemetry requires the optional `Sentry` PowerShell module:
 
 ```powershell
-Install-Module -Name Sentry
+Install-Module -Name Sentry -Repository PSGallery -Force
 ```
 
 If the module is not installed, telemetry is automatically disabled and all functionality works normally. The toolkit has no hard dependency on Sentry.
