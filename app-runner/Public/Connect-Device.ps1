@@ -49,6 +49,11 @@ function Connect-Device {
 
     Write-Debug "Connecting to device platform: $Platform"
 
+    TryAdd-SentryBreadcrumb -Message "Starting device connection" -Category "device" -Data @{
+        platform = $Platform
+        target = $Target
+    }
+
     # Validate platform is supported
     if (-not [DeviceProviderFactory]::IsPlatformSupported($Platform)) {
         throw "Unsupported platform: $Platform. Supported platforms: $([DeviceProviderFactory]::GetSupportedPlatforms() -join ', ')"
@@ -68,6 +73,11 @@ function Connect-Device {
     $resourceName = New-DeviceResourceName -Platform $Platform -Target $mutexTarget
     Write-Debug "Device resource name: $resourceName"
 
+    TryAdd-SentryBreadcrumb -Message "Acquiring device lock" -Category "device" -Data @{
+        resource_name = $resourceName
+        timeout_seconds = $TimeoutSeconds
+    }
+
     # Acquire exclusive access to the device resource
     # Default 60-minute timeout with progress messages every minute
     $mutex = $null
@@ -75,10 +85,23 @@ function Connect-Device {
         $mutex = Request-DeviceAccess -ResourceName $resourceName -TimeoutSeconds $TimeoutSeconds -ProgressIntervalSeconds 60
         Write-Output "Acquired exclusive access to device: $resourceName"
 
+        TryAdd-SentryBreadcrumb -Message "Device lock acquired" -Category "device" -Data @{
+            resource_name = $resourceName
+        }
+
         # Create provider for the specified platform
+        TryAdd-SentryBreadcrumb -Message "Creating device provider" -Category "device" -Data @{
+            platform = $Platform
+        }
+
         $provider = [DeviceProviderFactory]::CreateProvider($Platform)
 
         # Connect using the provider
+        TryAdd-SentryBreadcrumb -Message "Establishing device connection" -Category "device" -Data @{
+            platform = $Platform
+            target = $Target
+        }
+
         $sessionInfo = $provider.Connect($Target)
 
         # Store the provider instance and mutex with the session
@@ -86,6 +109,11 @@ function Connect-Device {
         $script:CurrentSession.Provider = $provider
         $script:CurrentSession.Mutex = $mutex
         $script:CurrentSession.ResourceName = $resourceName
+
+        TryAdd-SentryBreadcrumb -Message "Device connection established" -Category "device" -Data @{
+            platform = $Platform
+            device_id = $script:CurrentSession.Identifier
+        }
 
         Write-Debug "Successfully connected to $Platform device (Device: $($script:CurrentSession.Identifier))"
 

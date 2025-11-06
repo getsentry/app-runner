@@ -122,6 +122,34 @@ class ErrorHandler {
 
         # Log to debug stream for troubleshooting
         Write-Debug "Error logged with ID: $errorId"
+
+        # Send to Sentry for operational visibility
+        if (Get-Command -Name TryOut-Sentry -ErrorAction SilentlyContinue) {
+            $sentryTags = @{
+                error_id = $errorId
+                category = $exception.Category.ToString()
+            }
+
+            if ($exception.Platform) {
+                $sentryTags['platform'] = $exception.Platform
+            }
+
+            if ($exception.SessionId) {
+                $sentryTags['session_id'] = $exception.SessionId
+            }
+
+            # Add context as extra data in scope
+            $message = $exception.GetDetailedMessage()
+            if ($exception.Context.Count -gt 0) {
+                TryEdit-SentryScope {
+                    foreach ($key in $exception.Context.Keys) {
+                        $_.SetExtra($key, $exception.Context[$key])
+                    }
+                }
+            }
+
+            TryOut-Sentry -InputObject $message -Tag $sentryTags -Level Error
+        }
     }
 
     static [void]LogError([string]$message, [ConsoleErrorCategory]$category) {
