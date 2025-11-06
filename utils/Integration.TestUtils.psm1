@@ -56,15 +56,6 @@ function Get-EventIds {
 
     # Provide detailed error message if count doesn't match
     if ($eventCapturedLines.Count -ne $ExpectedCount) {
-        # Add breadcrumb for diagnostic purposes
-        if (Get-Command -Name TrySentry\Add-SentryBreadcrumb -ErrorAction SilentlyContinue) {
-            TrySentry\Add-SentryBreadcrumb -Message "EVENT_CAPTURED lines mismatch" -Category "test" -Level Error -Data @{
-                expected_count = $ExpectedCount
-                found_count = $eventCapturedLines.Count
-                output_line_count = @($AppOutput).Count
-            }
-        }
-
         $errorMsg = "Expected $ExpectedCount EVENT_CAPTURED line(s) but found $($eventCapturedLines.Count).`n"
         $errorMsg += "`nSearched for lines matching: 'EVENT_CAPTURED:'`n"
 
@@ -130,22 +121,9 @@ function Get-SentryTestEvent {
     if ($EventId) {
         Write-Host "Fetching Sentry event by ID: $EventId" -ForegroundColor Yellow
         $progressActivity = "Waiting for Sentry event $EventId"
-        if (Get-Command -Name TrySentry\Add-SentryBreadcrumb -ErrorAction SilentlyContinue) {
-            TrySentry\Add-SentryBreadcrumb -Message "Starting Sentry event polling" -Category "test" -Data @{
-                event_id = $EventId
-                timeout_seconds = $TimeoutSeconds
-            }
-        }
     } elseif ($TagName -and $TagValue) {
         Write-Host "Fetching Sentry event by tag: $TagName=$TagValue" -ForegroundColor Yellow
         $progressActivity = "Waiting for Sentry event with tag $TagName=$TagValue"
-        if (Get-Command -Name TrySentry\Add-SentryBreadcrumb -ErrorAction SilentlyContinue) {
-            TrySentry\Add-SentryBreadcrumb -Message "Starting Sentry event polling by tag" -Category "test" -Data @{
-                tag_name = $TagName
-                tag_value = $TagValue
-                timeout_seconds = $TimeoutSeconds
-            }
-        }
     } else {
         throw 'Must specify either EventId or both TagName and TagValue'
     }
@@ -199,17 +177,6 @@ function Get-SentryTestEvent {
         } while ($currentTime -lt $endTime)
     } finally {
         Write-Progress -Activity $progressActivity -Completed
-    }
-
-    # Add breadcrumb for timeout
-    if (Get-Command -Name TrySentry\Add-SentryBreadcrumb -ErrorAction SilentlyContinue) {
-        TrySentry\Add-SentryBreadcrumb -Message "Sentry event polling timed out" -Category "test" -Level Error -Data @{
-            event_id = $EventId
-            tag_name = $TagName
-            tag_value = $TagValue
-            timeout_seconds = $TimeoutSeconds
-            last_error = $lastError
-        }
     }
 
     if ($EventId) {

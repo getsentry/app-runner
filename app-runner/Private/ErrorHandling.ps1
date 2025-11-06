@@ -138,16 +138,7 @@ class ErrorHandler {
                 $sentryTags['session_id'] = $exception.SessionId
             }
 
-            # Add context as extra data in scope
             $message = $exception.GetDetailedMessage()
-            if ($exception.Context.Count -gt 0) {
-                TrySentry\Edit-SentryScope {
-                    foreach ($key in $exception.Context.Keys) {
-                        $_.SetExtra($key, $exception.Context[$key])
-                    }
-                }
-            }
-
             TrySentry\Out-Sentry -InputObject $message -Tag $sentryTags -Level Error
         }
     }

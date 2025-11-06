@@ -25,9 +25,10 @@ function Ensure-SentryReady {
     [OutputType([bool])]
     param()
 
-    # Check if disabled via environment variable
-    if ([string]::IsNullOrEmpty($env:SENTRY_DSN) -and $env:SENTRY_DSN -ne $null) {
-        Write-Debug "Sentry disabled: SENTRY_DSN environment variable is explicitly set to empty"
+    # Check if explicitly disabled via environment variable (set to empty string)
+    # If not set at all, we'll use the default DSN
+    if ((Test-Path env:SENTRY_DSN) -and [string]::IsNullOrEmpty($env:SENTRY_DSN)) {
+        Write-Debug 'Sentry disabled: SENTRY_DSN environment variable is explicitly set to empty'
         return $false
     }
 
@@ -43,10 +44,9 @@ function Ensure-SentryReady {
     try {
         $null = [Sentry.SentrySdk]
         $sentryTypeAvailable = $true
-        Write-Debug "Sentry SDK type already available"
-    }
-    catch {
-        Write-Debug "Sentry SDK type not available, attempting to load module"
+        Write-Debug 'Sentry SDK type already available'
+    } catch {
+        Write-Debug 'Sentry SDK type not available, attempting to load module'
     }
 
     # Try to import Sentry module if type not available
@@ -54,10 +54,9 @@ function Ensure-SentryReady {
         try {
             Import-Module Sentry -ErrorAction Stop
             $null = [Sentry.SentrySdk]  # Verify type is now available
-            Write-Debug "Sentry module imported successfully"
+            Write-Debug 'Sentry module imported successfully'
             $sentryTypeAvailable = $true
-        }
-        catch {
+        } catch {
             Write-Debug "Failed to import Sentry module: $_"
             $script:SentryAvailable = $false
             return $false
@@ -66,7 +65,7 @@ function Ensure-SentryReady {
 
     # Check if already initialized
     if ([Sentry.SentrySdk]::IsEnabled) {
-        Write-Debug "Sentry SDK already initialized"
+        Write-Debug 'Sentry SDK already initialized'
         $script:SentryAvailable = $true
         return $true
     }
@@ -76,27 +75,25 @@ function Ensure-SentryReady {
         $dsn = if ($env:SENTRY_DSN) { $env:SENTRY_DSN } else { $script:DefaultDsn }
 
         if ([string]::IsNullOrEmpty($dsn) -or $dsn -eq 'https://TODO@TODO.ingest.sentry.io/TODO') {
-            Write-Debug "Sentry DSN not configured, telemetry disabled"
+            Write-Debug 'Sentry DSN not configured, telemetry disabled'
             $script:SentryAvailable = $false
             return $false
         }
 
         Write-Debug "Initializing Sentry with DSN: $($dsn -replace '(?<=https://)([^@]+)(?=@)', '***')"
 
-        Start-Sentry -Dsn $dsn
+        Sentry\Start-Sentry -Dsn $dsn
 
         if ([Sentry.SentrySdk]::IsEnabled) {
-            Write-Debug "Sentry SDK initialized successfully"
+            Write-Debug 'Sentry SDK initialized successfully'
             $script:SentryAvailable = $true
             return $true
-        }
-        else {
-            Write-Debug "Sentry SDK initialization completed but IsEnabled is false"
+        } else {
+            Write-Debug 'Sentry SDK initialization completed but IsEnabled is false'
             $script:SentryAvailable = $false
             return $false
         }
-    }
-    catch {
+    } catch {
         Write-Debug "Failed to initialize Sentry SDK: $_"
         $script:SentryAvailable = $false
         return $false
@@ -181,8 +178,7 @@ function Start-Sentry {
 
         Write-Debug "Sentry context initialized with module: $ModuleName, version: $ModuleVersion"
         return $true
-    }
-    catch {
+    } catch {
         Write-Debug "Failed to set Sentry context: $_"
         return $false
     }
@@ -256,14 +252,12 @@ function Out-Sentry {
 
             # Send to Sentry based on input type
             if ($InputObject -is [System.Management.Automation.ErrorRecord]) {
-                $eventId = $InputObject | Out-Sentry @outSentryParams
-            }
-            elseif ($InputObject -is [System.Exception]) {
-                $eventId = Out-Sentry -Exception $InputObject @outSentryParams
-            }
-            else {
+                $eventId = $InputObject | Sentry\Out-Sentry @outSentryParams
+            } elseif ($InputObject -is [System.Exception]) {
+                $eventId = Sentry\Out-Sentry -Exception $InputObject @outSentryParams
+            } else {
                 # Treat as message
-                $eventId = Out-Sentry -Message $InputObject.ToString() @outSentryParams
+                $eventId = Sentry\Out-Sentry -Message $InputObject.ToString() @outSentryParams
             }
 
             if ($eventId) {
@@ -271,8 +265,7 @@ function Out-Sentry {
             }
 
             return $eventId
-        }
-        catch {
+        } catch {
             Write-Debug "Failed to send event to Sentry: $_"
             return $null
         }
@@ -350,10 +343,9 @@ function Add-SentryBreadcrumb {
                 $breadcrumbParams['Level'] = $Level
             }
 
-            Add-SentryBreadcrumb @breadcrumbParams
+            Sentry\Add-SentryBreadcrumb @breadcrumbParams
             Write-Debug "Breadcrumb added: $Message"
-        }
-        catch {
+        } catch {
             Write-Debug "Failed to add Sentry breadcrumb: $_"
         }
     }
@@ -396,10 +388,9 @@ function Edit-SentryScope {
     }
 
     try {
-        Edit-SentryScope -ScopeSetup $ScopeSetup
-        Write-Debug "Sentry scope edited"
-    }
-    catch {
+        Sentry\Edit-SentryScope -ScopeSetup $ScopeSetup
+        Write-Debug 'Sentry scope edited'
+    } catch {
         Write-Debug "Failed to edit Sentry scope: $_"
     }
 }
@@ -483,11 +474,10 @@ function Start-SentryTransaction {
             $transactionParams['CustomSamplingContext'] = $CustomSamplingContext
         }
 
-        $transaction = Start-SentryTransaction @transactionParams
+        $transaction = Sentry\Start-SentryTransaction @transactionParams
         Write-Debug "Sentry transaction started: $Name ($Operation)"
         return $transaction
-    }
-    catch {
+    } catch {
         Write-Debug "Failed to start Sentry transaction: $_"
         return $null
     }
