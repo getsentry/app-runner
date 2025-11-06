@@ -31,7 +31,7 @@ function Invoke-DeviceApp {
     Write-Debug "Running application: $ExecutablePath with arguments: $Arguments"
     Write-Debug "Target platform: $($script:CurrentSession.Platform)"
 
-    TryAdd-SentryBreadcrumb -Message "Starting application deployment" -Category "app" -Data @{
+    TrySentry\Add-SentryBreadcrumb -Message "Starting application deployment" -Category "app" -Data @{
         executable = (Split-Path -Leaf $ExecutablePath)
         platform = $script:CurrentSession.Platform
         has_arguments = ($Arguments.Length -gt 0)
@@ -40,14 +40,14 @@ function Invoke-DeviceApp {
     # Use the provider to run the application
     $provider = $script:CurrentSession.Provider
 
-    TryAdd-SentryBreadcrumb -Message "Invoking application on device" -Category "app" -Data @{
+    TrySentry\Add-SentryBreadcrumb -Message "Invoking application on device" -Category "app" -Data @{
         executable = (Split-Path -Leaf $ExecutablePath)
         platform = $script:CurrentSession.Platform
     }
 
     $result = $provider.RunApplication($ExecutablePath, $Arguments)
 
-    TryAdd-SentryBreadcrumb -Message "Application execution completed" -Category "app" -Data @{
+    TrySentry\Add-SentryBreadcrumb -Message "Application execution completed" -Category "app" -Data @{
         executable = (Split-Path -Leaf $ExecutablePath)
         exit_code = $result.ExitCode
     }

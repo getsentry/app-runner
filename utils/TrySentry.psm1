@@ -122,10 +122,10 @@ Version of the module.
 Additional custom tags to set on all events.
 
 .EXAMPLE
-TryStart-Sentry -ModuleName 'SentryAppRunner' -ModuleVersion '1.0.0'
+Start-Sentry -ModuleName 'SentryAppRunner' -ModuleVersion '1.0.0'
 
 .EXAMPLE
-TryStart-Sentry -ModuleName 'MyModule' -ModuleVersion '2.1.0' -Tags @{
+Start-Sentry -ModuleName 'MyModule' -ModuleVersion '2.1.0' -Tags @{
     environment = 'ci'
     build_id = '12345'
 }
@@ -133,7 +133,7 @@ TryStart-Sentry -ModuleName 'MyModule' -ModuleVersion '2.1.0' -Tags @{
 .OUTPUTS
 [bool] True if Sentry was initialized successfully, false otherwise.
 #>
-function TryStart-Sentry {
+function Start-Sentry {
     [CmdletBinding()]
     [OutputType([bool])]
     param(
@@ -210,19 +210,19 @@ try {
     Get-Item "nonexistent.txt"
 }
 catch {
-    $_ | TryOut-Sentry
+    $_ | Out-Sentry
 }
 
 .EXAMPLE
-"Something important happened" | TryOut-Sentry -Level Info
+"Something important happened" | Out-Sentry -Level Info
 
 .EXAMPLE
-$error[0] | TryOut-Sentry -Tag @{operation = "device_connect"; platform = "Xbox"}
+$error[0] | Out-Sentry -Tag @{operation = "device_connect"; platform = "Xbox"}
 
 .OUTPUTS
 [Guid] Event ID if sent successfully, $null otherwise.
 #>
-function TryOut-Sentry {
+function Out-Sentry {
     [CmdletBinding()]
     [OutputType([System.Nullable[Guid]])]
     param(
@@ -300,18 +300,18 @@ Optional hashtable of additional data to attach to the breadcrumb.
 Optional breadcrumb level (Debug, Info, Warning, Error, Critical).
 
 .EXAMPLE
-TryAdd-SentryBreadcrumb -Message "Acquiring device lock" -Category "device"
+Add-SentryBreadcrumb -Message "Acquiring device lock" -Category "device"
 
 .EXAMPLE
-TryAdd-SentryBreadcrumb -Message "HTTP request completed" -Category "network" -Data @{
+Add-SentryBreadcrumb -Message "HTTP request completed" -Category "network" -Data @{
     status_code = 200
     duration_ms = 150
 }
 
 .EXAMPLE
-"Starting application installation" | TryAdd-SentryBreadcrumb -Category "app"
+"Starting application installation" | Add-SentryBreadcrumb -Category "app"
 #>
-function TryAdd-SentryBreadcrumb {
+function Add-SentryBreadcrumb {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $true, ValueFromPipeline = $true)]
@@ -371,20 +371,20 @@ Automatically ensures Sentry is ready before editing.
 Scriptblock that receives the scope object and modifies it.
 
 .EXAMPLE
-TryEdit-SentryScope {
+Edit-SentryScope {
     $_.SetTag('operation', 'device_connect')
     $_.SetExtra('target', '192.168.1.100')
 }
 
 .EXAMPLE
-TryEdit-SentryScope {
+Edit-SentryScope {
     $_.User = @{
         id = $env:USERNAME
         username = $env:USERNAME
     }
 }
 #>
-function TryEdit-SentryScope {
+function Edit-SentryScope {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $true)]
@@ -423,7 +423,7 @@ The operation type (e.g., "device.connect", "app.deploy", "http.request").
 Optional hashtable with additional context for sampling decisions.
 
 .EXAMPLE
-$transaction = TryStart-SentryTransaction -Name "Connect-Device" -Operation "device.connect"
+$transaction = Start-SentryTransaction -Name "Connect-Device" -Operation "device.connect"
 try {
     # Create a span for a sub-operation
     $span = $transaction?.StartChild("device.lock.acquire")
@@ -441,7 +441,7 @@ finally {
 }
 
 .EXAMPLE
-$transaction = TryStart-SentryTransaction -Name "Build-App" -Operation "build" -CustomSamplingContext @{
+$transaction = Start-SentryTransaction -Name "Build-App" -Operation "build" -CustomSamplingContext @{
     target = "Xbox"
     preset = "Debug"
 }
@@ -455,7 +455,7 @@ finally {
 .OUTPUTS
 [Sentry.ITransaction] Transaction object if successful, $null otherwise.
 #>
-function TryStart-SentryTransaction {
+function Start-SentryTransaction {
     [CmdletBinding()]
     [OutputType([object])]
     param(
@@ -495,9 +495,9 @@ function TryStart-SentryTransaction {
 
 # Export public functions
 Export-ModuleMember -Function @(
-    'TryStart-Sentry',
-    'TryOut-Sentry',
-    'TryAdd-SentryBreadcrumb',
-    'TryEdit-SentryScope',
-    'TryStart-SentryTransaction'
+    'Start-Sentry',
+    'Out-Sentry',
+    'Add-SentryBreadcrumb',
+    'Edit-SentryScope',
+    'Start-SentryTransaction'
 )

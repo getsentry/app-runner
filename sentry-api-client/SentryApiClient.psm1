@@ -3,7 +3,7 @@ try {
     Import-Module (Join-Path $PSScriptRoot '..\utils\TrySentry.psm1') -ErrorAction SilentlyContinue
     if (Get-Module -Name TrySentry) {
         $moduleManifest = Import-PowerShellDataFile (Join-Path $PSScriptRoot 'SentryApiClient.psd1')
-        TryStart-Sentry -ModuleName 'SentryApiClient' -ModuleVersion $moduleManifest.ModuleVersion
+        TrySentry\Start-Sentry -ModuleName 'SentryApiClient' -ModuleVersion $moduleManifest.ModuleVersion
     }
 }
 catch {

@@ -6,7 +6,7 @@ try {
     Import-Module (Join-Path $PSScriptRoot '..\utils\TrySentry.psm1') -ErrorAction SilentlyContinue
     if (Get-Module -Name TrySentry) {
         $moduleManifest = Import-PowerShellDataFile (Join-Path $PSScriptRoot 'SentryAppRunner.psd1')
-        TryStart-Sentry -ModuleName 'SentryAppRunner' -ModuleVersion $moduleManifest.ModuleVersion
+        TrySentry\Start-Sentry -ModuleName 'SentryAppRunner' -ModuleVersion $moduleManifest.ModuleVersion
     }
 }
 catch {

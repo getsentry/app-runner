@@ -124,7 +124,7 @@ class ErrorHandler {
         Write-Debug "Error logged with ID: $errorId"
 
         # Send to Sentry for operational visibility
-        if (Get-Command -Name TryOut-Sentry -ErrorAction SilentlyContinue) {
+        if (Get-Command -Name TrySentry\Out-Sentry -ErrorAction SilentlyContinue) {
             $sentryTags = @{
                 error_id = $errorId
                 category = $exception.Category.ToString()
@@ -141,14 +141,14 @@ class ErrorHandler {
             # Add context as extra data in scope
             $message = $exception.GetDetailedMessage()
             if ($exception.Context.Count -gt 0) {
-                TryEdit-SentryScope {
+                TrySentry\Edit-SentryScope {
                     foreach ($key in $exception.Context.Keys) {
                         $_.SetExtra($key, $exception.Context[$key])
                     }
                 }
             }
 
-            TryOut-Sentry -InputObject $message -Tag $sentryTags -Level Error
+            TrySentry\Out-Sentry -InputObject $message -Tag $sentryTags -Level Error
         }
     }
 
