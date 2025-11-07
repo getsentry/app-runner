@@ -7,7 +7,7 @@ try {
     $moduleManifest = Import-PowerShellDataFile (Join-Path $PSScriptRoot 'SentryAppRunner.psd1')
     TrySentry\Start-Sentry -ModuleName 'SentryAppRunner' -ModuleVersion $moduleManifest.ModuleVersion
 } catch {
-    Write-Debug "Sentry telemetry initialization failed: $_"
+    Write-Warning "Sentry telemetry initialization failed: $_"
 }
 
 # Import device providers in the correct order (base provider first, then implementations, then factory)

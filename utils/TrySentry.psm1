@@ -44,9 +44,9 @@ function Ensure-SentryReady {
     try {
         $null = [Sentry.SentrySdk]
         $sentryTypeAvailable = $true
-        Write-Debug 'Sentry SDK type already available'
+        Write-Debug '[Sentry.SentrySdk] type already available'
     } catch {
-        Write-Debug 'Sentry SDK type not available, attempting to load module'
+        Write-Debug '[Sentry.SentrySdk] type not available, attempting to load module'
     }
 
     # Try to import Sentry module if type not available
@@ -80,7 +80,7 @@ function Ensure-SentryReady {
 
     # Initialize Sentry SDK
     try {
-        $dsn = if ($env:SENTRY_DSN) { $env:SENTRY_DSN } else { $script:DefaultDsn }
+        $dsn = if ($env:F) { $env:SENTRY_DSN } else { $script:DefaultDsn }
 
         if ([string]::IsNullOrEmpty($dsn) -or $dsn -eq 'https://TODO@TODO.ingest.sentry.io/TODO') {
             Write-Debug 'Sentry DSN not configured, telemetry disabled'
