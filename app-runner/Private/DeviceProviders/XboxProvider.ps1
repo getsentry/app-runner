@@ -149,9 +149,10 @@ class XboxProvider : DeviceProvider {
     # Get a file from the device
     [object] GetDeviceFile([string]$DeviceFilePath, [string]$OutputDirectory) {
         $fileName = Split-Path $DeviceFilePath -Leaf
+        $deviceDirectory = Split-Path $DeviceFilePath -Parent
 
-        Write-Debug "$($this.Platform): Copying file from device: $DeviceFilePath"
-        $this.InvokeCommand('xbcopy', @("x$DeviceFilePath", $OutputDirectory))
+        Write-Debug "$($this.Platform): Copying directory from device: $deviceDirectory"
+        $this.InvokeCommand('xbcopy', @("x$deviceDirectory", $OutputDirectory))
 
         $localFile = Join-Path $OutputDirectory $fileName
         if (Test-Path $localFile) {
