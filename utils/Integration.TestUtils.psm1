@@ -186,5 +186,37 @@ function Get-SentryTestEvent {
     }
 }
 
+function Get-PackageAumid {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$PackageDir
+    )
+
+    if (-not (Test-Path $PackageDir -PathType Container)) {
+        throw "Package directory not found: $PackageDir"
+    }
+
+    $manifest = Get-ChildItem -Path $PackageDir -Filter "*_appxmanifest.xml" | Select-Object -First 1
+    if (-not $manifest) {
+        throw "No appxmanifest.xml found in $PackageDir"
+    }
+
+    if ($manifest.Name -match '^(.+)_\d+\.\d+\.\d+\.\d+_neutral__([^_]+)_') {
+        $packageName = $matches[1]
+        $familyNameHash = $matches[2]
+    } else {
+        throw "Unable to parse package family name from manifest filename: $($manifest.Name)"
+    }
+
+    [xml]$xml = Get-Content $manifest.FullName
+    $appId = $xml.Package.Applications.Application.Id
+    if (-not $appId) {
+        throw "Unable to extract Application ID from manifest"
+    }
+
+    return "${packageName}_${familyNameHash}!${appId}"
+}
+
 # Export module functions
-Export-ModuleMember -Function Invoke-CMakeConfigure, Invoke-CMakeBuild, Get-OutputFilePath, Get-EventIds, Get-SentryTestEvent
+Export-ModuleMember -Function Invoke-CMakeConfigure, Invoke-CMakeBuild, Get-OutputFilePath, Get-EventIds, Get-SentryTestEvent, Get-PackageAumid
