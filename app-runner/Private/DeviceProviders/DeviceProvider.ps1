@@ -368,6 +368,13 @@ class DeviceProvider {
         return $null
     }
 
+    # Platforms should override this to provide file retrieval from device
+    # Returns file content as string array, or empty array if not supported
+    [object] GetDeviceFile([string]$DeviceFilePath, [string]$OutputDirectory) {
+        Write-Warning "GetDeviceFile is not available for $($this.Platform) devices."
+        return @()
+    }
+
     [hashtable] GetDiagnostics([string]$OutputDirectory) {
         Write-Debug "$($this.Platform): Collecting diagnostics to directory: $OutputDirectory"
 
