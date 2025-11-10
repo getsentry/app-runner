@@ -31,7 +31,7 @@ class SwitchProvider : DeviceProvider {
 
         # Configure Nintendo Switch specific commands using Command objects
         $this.Commands = @{
-            'connect'            = @($this.TargetControlTool, 'connect -t {0}')
+            'connect'            = @($this.TargetControlTool, 'connect')
             'disconnect'         = @($this.TargetControlTool, 'disconnect')
             'poweron'            = @($this.TargetControlTool, 'power-on -t {0}')
             'poweroff'           = @($this.TargetControlTool, 'power-off')
