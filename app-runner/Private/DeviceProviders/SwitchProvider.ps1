@@ -31,10 +31,9 @@ class SwitchProvider : DeviceProvider {
 
         # Configure Nintendo Switch specific commands using Command objects
         $this.Commands = @{
-            'connect'            = @($this.TargetControlTool, 'connect --force')
+            'connect'            = @($this.TargetControlTool, 'connect -t {0}')
             'disconnect'         = @($this.TargetControlTool, 'disconnect')
-            'poweron'            = @($this.TargetControlTool, 'power-on')
-            'poweron-target'     = @($this.TargetControlTool, 'power-on -t {0}')
+            'poweron'            = @($this.TargetControlTool, 'power-on -t {0}')
             'poweroff'           = @($this.TargetControlTool, 'power-off')
             'press-power-button' = @($this.TargetControlTool, 'press-power-button')
             'reset'              = @($this.TargetControlTool, 'reset')
@@ -66,7 +65,10 @@ class SwitchProvider : DeviceProvider {
         }
 
         Write-Warning "Attempting to power on devkit at $targetId..."
-        $this.InvokeCommand('poweron-target', @($targetId))
+        $this.InvokeCommand('poweron', @($targetId))
+        Start-Sleep -Seconds 5
+        Write-Warning "Attempting to connect to devkit at $targetId..."
+        $this.InvokeCommand('connect', @($targetId))
     }
 
     # Override GetDeviceStatus to provide Switch specific wakeup
@@ -91,7 +93,7 @@ class SwitchProvider : DeviceProvider {
         $job = Start-Job { param($cmd) Invoke-Expression $cmd } -ArgumentList $connectCommand
 
         $nextTimeout = 20
-        for ($i = 0; $i -le 3; $i++) {
+        for ($i = 0; $i -le 2; $i++) {
             $jobStatus = Wait-Job $job -Timeout 20
 
             # Get device status using base class method
@@ -110,17 +112,10 @@ class SwitchProvider : DeviceProvider {
 
             switch ($i) {
                 0 {
-                    Write-Warning 'Attempting to wake up the Devkit from sleep...'
+                    Write-Warning 'Attempting to detect and initialize default Devkit...'
                     $this.HandleMissingDefaultDevkit()
                 }
                 1 {
-                    Write-Warning 'Attempting to start the Devkit...'
-                    $targetId = $info.IpAddress
-                    if ($targetId) {
-                        $this.InvokeCommand('poweron-target', @($targetId))
-                    }
-                }
-                2 {
                     Write-Warning 'Attempting to reboot the Devkit...'
                     $job2 = Start-Job {
                         ControlTarget power-off
@@ -129,7 +124,7 @@ class SwitchProvider : DeviceProvider {
                     }
                     Wait-Job $job2 -Timeout 20 | Out-Null
                 }
-                3 {
+                2 {
                     if ($info.IpAddress -ne $null) {
                         Write-Warning 'Attempting to reboot host bridge...'
                         Invoke-WebRequest -Uri "http://$($info.IpAddress)/cgi-bin/config?reboot"
