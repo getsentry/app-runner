@@ -34,14 +34,39 @@ class SwitchProvider : DeviceProvider {
             'connect'            = @($this.TargetControlTool, 'connect --force')
             'disconnect'         = @($this.TargetControlTool, 'disconnect')
             'poweron'            = @($this.TargetControlTool, 'power-on')
+            'poweron-target'     = @($this.TargetControlTool, 'power-on -t {0}')
             'poweroff'           = @($this.TargetControlTool, 'power-off')
             'press-power-button' = @($this.TargetControlTool, 'press-power-button')
             'reset'              = @($this.TargetControlTool, 'reset')
             'getstatus'          = @($this.TargetControlTool, 'get-default --detail --json')
+            'detect-target'      = @($this.TargetControlTool, 'detect-target --detail --json')
             'launch'             = @($this.ApplicationRunnerTool, '"{0}" {1}')
             'screenshot'         = @($this.TargetControlTool, 'take-screenshot --directory "{0}" --file-name "{1}"')
             'test-internet'      = @($this.TargetControlTool, 'devmenu -- network confirm-internet-connection')
         }
+    }
+
+    [void] HandleMissingDefaultDevkit() {
+        Write-Warning 'No default devkit found. Attempting to detect available devkits on the network...'
+
+        # Run detect-target to find available devkits
+        $detectResult = $this.InvokeCommand('detect-target', @())
+
+        if ([string]::IsNullOrWhiteSpace($detectResult)) {
+            throw 'No default devkit is set and no devkits were detected on the network.'
+        }
+
+        $detectedTargets = $detectResult | ConvertFrom-Json
+        Write-Debug "Detected targets: $($detectedTargets | ConvertTo-Json -Compress)"
+
+        # Extract target name
+        $targetId = $detectedTargets[0].Name
+        if ([string]::IsNullOrWhiteSpace($targetId)) {
+            throw 'No detected Devkit on the network.'
+        }
+
+        Write-Warning "Attempting to power on devkit at $targetId..."
+        $this.InvokeCommand('poweron-target', @($targetId))
     }
 
     # Override GetDeviceStatus to provide Switch specific wakeup
@@ -86,7 +111,7 @@ class SwitchProvider : DeviceProvider {
             switch ($i) {
                 0 {
                     Write-Warning 'Attempting to wake up the Devkit from sleep...'
-                    $this.InvokeCommand('press-power-button', @())
+                    $this.HandleMissingDefaultDevkit()
                 }
                 1 {
                     Write-Warning 'Attempting to start the Devkit...'
