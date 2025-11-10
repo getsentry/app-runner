@@ -115,7 +115,9 @@ class SwitchProvider : DeviceProvider {
                 }
                 1 {
                     Write-Warning 'Attempting to start the Devkit...'
-                    $this.StartDevice(20)
+                    if ($info.IpAddress) {
+                        $this.InvokeCommand('poweron-target', @($targetId))
+                    }
                 }
                 2 {
                     Write-Warning 'Attempting to reboot the Devkit...'
