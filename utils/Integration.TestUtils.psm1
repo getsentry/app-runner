@@ -195,21 +195,15 @@ function Get-PackageAumid {
 
     if (Test-Path $PackagePath -PathType Container) {
         # PackagePath is a directory
-        $packageDir = $PackagePath
+        $manifest = Get-ChildItem -Path $PackagePath -Filter "*_appxmanifest.xml"
     } elseif (Test-Path $PackagePath -PathType Leaf) {
         # PackagePath is a file (e.g., .xvc package), will look for manifest alongside it
-        $packageDir = Split-Path -Parent $PackagePath
-        if ([string]::IsNullOrEmpty($packageDir)) {
-            $packageDir = "."
-        }
+        $manifest = Get-Item "$([System.IO.Path]::GetFileNameWithoutExtension($PackagePath))_appxmanifest.xml"
     } else {
         throw "Package path not found: $PackagePath"
     }
 
-    $manifest = Get-ChildItem -Path $packageDir -Filter "*_appxmanifest.xml" | Select-Object -First 1
-    if (-not $manifest) {
-        throw "No appxmanifest.xml found in $packageDir"
-    }
+    @($manifest).count | Should -Be 1 -Because "There must be a single appmanifest.xml for $PackagePath"
 
     if ($manifest.Name -match '^(.+)_\d+\.\d+\.\d+\.\d+_neutral__([^_]+)_') {
         $packageName = $matches[1]
