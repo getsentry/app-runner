@@ -146,21 +146,12 @@ class XboxProvider : DeviceProvider {
         return @{}
     }
 
-    # Get a file from the device
-    [object] GetDeviceFile([string]$DeviceFilePath, [string]$OutputDirectory) {
-        $fileName = Split-Path $DeviceFilePath -Leaf
-        $deviceDirectory = Split-Path $DeviceFilePath -Parent
+    # Copy an item (file or directory) from the device to local filesystem
+    [void] CopyDeviceItem([string]$DevicePath, [string]$Destination) {
+        $deviceDirectory = Split-Path $DevicePath -Parent
 
-        Write-Debug "$($this.Platform): Copying directory from device: $deviceDirectory"
-        $this.InvokeCommand('xbcopy', @("x$deviceDirectory", $OutputDirectory))
-
-        $localFile = Join-Path $OutputDirectory $fileName
-        if (Test-Path $localFile) {
-            return Get-Content -Path $localFile
-        }
-
-        Write-Warning "File not found after copy: $localFile"
-        return @()
+        Write-Debug "$($this.Platform): Copying from device: $deviceDirectory to $Destination"
+        $this.InvokeCommand('xbcopy', @("x$deviceDirectory", $Destination))
     }
 
     # Override GetRunningProcesses to provide Xbox process list via xbtlist

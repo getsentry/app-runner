@@ -368,11 +368,9 @@ class DeviceProvider {
         return $null
     }
 
-    # Platforms should override this to provide file retrieval from device
-    # Returns file content as string array, or empty array if not supported
-    [object] GetDeviceFile([string]$DeviceFilePath, [string]$OutputDirectory) {
-        Write-Warning "GetDeviceFile is not available for $($this.Platform) devices."
-        return @()
+    # Platforms should override this to provide item copying from device
+    [void] CopyDeviceItem([string]$DevicePath, [string]$Destination) {
+        Write-Warning "CopyDeviceItem is not available for $($this.Platform) devices."
     }
 
     [hashtable] GetDiagnostics([string]$OutputDirectory) {

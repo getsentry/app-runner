@@ -65,5 +65,5 @@ Export-ModuleMember -Function @(
     'Get-DeviceLogs',
     'Get-DeviceScreenshot',
     'Get-DeviceDiagnostics',
-    'Get-DeviceFile'
+    'Copy-DeviceItem'
 )
