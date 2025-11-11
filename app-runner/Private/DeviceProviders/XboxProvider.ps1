@@ -146,6 +146,14 @@ class XboxProvider : DeviceProvider {
         return @{}
     }
 
+    # Copy an item (file or directory) from the device to local filesystem
+    [void] CopyDeviceItem([string]$DevicePath, [string]$Destination) {
+        $deviceDirectory = Split-Path $DevicePath -Parent
+
+        Write-Debug "$($this.Platform): Copying from device: $deviceDirectory to $Destination"
+        $this.InvokeCommand('xbcopy', @("x$deviceDirectory", $Destination))
+    }
+
     # Override GetRunningProcesses to provide Xbox process list via xbtlist
     # Returns array of objects with Id, Name, ParentPid (null), and Path (null) properties
     [object] GetRunningProcesses() {

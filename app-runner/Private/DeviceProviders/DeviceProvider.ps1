@@ -368,6 +368,11 @@ class DeviceProvider {
         return $null
     }
 
+    # Platforms should override this to provide item copying from device
+    [void] CopyDeviceItem([string]$DevicePath, [string]$Destination) {
+        Write-Warning "CopyDeviceItem is not available for $($this.Platform) devices."
+    }
+
     [hashtable] GetDiagnostics([string]$OutputDirectory) {
         Write-Debug "$($this.Platform): Collecting diagnostics to directory: $OutputDirectory"
 
