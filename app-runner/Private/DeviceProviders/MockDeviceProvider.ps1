@@ -63,19 +63,20 @@ class MockDeviceProvider : DeviceProvider {
             throw "Mock command execution failed"
         }
 
-        # Handle target management commands with proper JSON responses
+        # Handle target management commands - return objects directly (matching ConvertFrom-Yaml behavior)
         $result = switch ($action) {
             "get-default-target" {
-                # Return the current default target as JSON, or null if none set
+                # Return the current default target object, or null if none set
                 if ($this.MockConfig.Targets.DefaultTarget) {
+                    # Return as JSON string to match prospero-ctrl behavior
                     $this.MockConfig.Targets.DefaultTarget | ConvertTo-Json -Compress
                 } else {
                     $null
                 }
             }
             "list-target" {
-                # Return array of registered targets as JSON
-                $this.MockConfig.Targets.RegisteredTargets | ConvertTo-Json -Compress
+                # Return array of registered targets as objects (comma preserves empty arrays)
+                , @($this.MockConfig.Targets.RegisteredTargets)
             }
             "set-default-target" {
                 # Set the specified target as default
@@ -90,8 +91,8 @@ class MockDeviceProvider : DeviceProvider {
                 }
             }
             "detect-target" {
-                # Return array of detectable targets as JSON
-                $this.MockConfig.Targets.DetectableTargets | ConvertTo-Json -Compress
+                # Return array of detectable targets as objects (comma preserves empty arrays)
+                , @($this.MockConfig.Targets.DetectableTargets)
             }
             "register-target" {
                 # Add a target to the registered targets list

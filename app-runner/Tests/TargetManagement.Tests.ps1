@@ -136,9 +136,8 @@ Describe 'DetectAndSetDefaultTarget' {
             $mock.ResetTargetState()
 
             $result = $mock.InvokeCommand('list-target', @())
-            # Empty array in JSON is "[]"
-            $parsed = $result | ConvertFrom-Json
-            @($parsed).Count | Should -Be 0
+            # Should return empty array directly (not JSON)
+            @($result).Count | Should -Be 0
         }
 
         It 'list-target returns array of targets when targets are registered' {
@@ -146,19 +145,19 @@ Describe 'DetectAndSetDefaultTarget' {
             $mock.SetTargetScenario('OneRegistered')
 
             $result = $mock.InvokeCommand('list-target', @())
-            $parsed = $result | ConvertFrom-Json
-            @($parsed).Count | Should -Be 1
-            $parsed.IpAddress | Should -Be '192.168.1.100'
+            # Should return objects directly (not JSON)
+            @($result).Count | Should -Be 1
+            $result[0].IpAddress | Should -Be '192.168.1.100'
         }
 
-        It 'detect-target returns available targets as JSON' {
+        It 'detect-target returns available targets as objects' {
             $mock = [MockDeviceProvider]::new()
             $mock.SetTargetScenario('OneDetectable')
 
             $result = $mock.InvokeCommand('detect-target', @())
-            $parsed = $result | ConvertFrom-Json
-            @($parsed).Count | Should -Be 1
-            $parsed.IpAddress | Should -Be '192.168.1.100'
+            # Should return objects directly (not JSON)
+            @($result).Count | Should -Be 1
+            $result[0].IpAddress | Should -Be '192.168.1.100'
         }
 
         It 'register-target adds target to registered list' {
