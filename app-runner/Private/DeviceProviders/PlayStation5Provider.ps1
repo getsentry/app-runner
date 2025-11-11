@@ -31,19 +31,25 @@ class PlayStation5Provider : DeviceProvider {
 
         # Configure PlayStation 5 specific commands using Command objects
         $this.Commands = @{
-            "connect"     = @($this.TargetControlTool, "target connect")
-            "disconnect"  = @($this.TargetControlTool, "target disconnect")
-            "poweron"     = @($this.TargetControlTool, "power on")
-            "poweroff"    = @($this.TargetControlTool, "power off")
-            "reset"       = @($this.TargetControlTool, "power reboot")
-            "getstatus"   = @($this.TargetControlTool, "target info")
-            "launch"      = @($this.ApplicationRunnerTool, '/elf "{0}" {1}')
-            "getlogs"     = @($this.TargetControlTool, "target console /timestamp /history")
-            "screenshot"  = @($this.TargetControlTool, 'target screenshot "{0}/{1}"')
-            "healthcheck" = @($this.TargetControlTool, "diagnostics health-check")
-            "ipconfig"    = @($this.TargetControlTool, "network ip-config")
-            "natinfo"     = @($this.TargetControlTool, "network get-nat-traversal-info")
-            "processlist" = @($this.TargetControlTool, "process list")
+            "connect"            = @($this.TargetControlTool, "target connect")
+            "disconnect"         = @($this.TargetControlTool, "target disconnect")
+            "poweron"            = @($this.TargetControlTool, "power on")
+            "poweroff"           = @($this.TargetControlTool, "power off")
+            "reset"              = @($this.TargetControlTool, "power reboot")
+            "getstatus"          = @($this.TargetControlTool, "target info")
+            "launch"             = @($this.ApplicationRunnerTool, '/elf "{0}" {1}')
+            "getlogs"            = @($this.TargetControlTool, "target console /timestamp /history")
+            "screenshot"         = @($this.TargetControlTool, 'target screenshot "{0}/{1}"')
+            "healthcheck"        = @($this.TargetControlTool, "diagnostics health-check")
+            "ipconfig"           = @($this.TargetControlTool, "network ip-config")
+            "natinfo"            = @($this.TargetControlTool, "network get-nat-traversal-info")
+            "processlist"        = @($this.TargetControlTool, "process list")
+            # Target management commands for DetectAndSetDefaultTarget()
+            "get-default-target" = @($this.TargetControlTool, "target get-default")
+            "set-default-target" = @($this.TargetControlTool, 'target set-default "{0}"')
+            "list-target"        = @($this.TargetControlTool, "target list")
+            "detect-target"      = @($this.TargetControlTool, "target find /start:10.0.203.66 /end:10.0.203.66")
+            "register-target"    = @($this.TargetControlTool, 'target add "{0}"')
         }
     }
 

@@ -237,7 +237,7 @@ class DeviceProvider {
     # Connection management (shared implementation)
     [hashtable] Connect() {
         Write-Debug "$($this.Platform): Connecting to device"
-
+        $this.DetectAndSetDefaultTarget()
         $this.InvokeCommand('connect', @())
         $this.InvokeCommand('poweron', @())
         return $this.CreateSessionInfo()
@@ -481,6 +481,94 @@ SDK Path: $($this.SdkPath)
         Write-Debug "$($this.Platform): Testing internet connection"
         $this.LogNotImplemented('TestInternetConnection')
         return $false
+    }
+
+    [hashtable] GetDeviceLogs([string]$LogType, [int]$MaxEntries) {
+        Write-Debug "$($this.Platform): GetDeviceLogs not implemented for this platform"
+        $this.LogNotImplemented('GetDeviceLogs')
+        return @{}
+    }
+
+    # Target detection and configuration
+    # This method implements a state machine to automatically detect and configure a default target device
+    # Platforms that support target management should configure the following commands:
+    # - 'get-default-target': Check if a default target is set (returns JSON)
+    # - 'list-target': List existing registered targets (returns JSON)
+    # - 'set-default-target': Set a target as default (parameter: target identifier)
+    # - 'detect-target': Detect targets on the network (returns JSON)
+    # - 'register-target': Register a new target (parameter: target identifier)
+    [void] DetectAndSetDefaultTarget() {
+        # This is a simple state-machine
+        # States:
+        # 0. Check if a default target is set.
+        #    If yes, exit,
+        #    if not, go to state 1
+        # 1. Listing existing targets,
+        #    if one exists, set as default, go to state 0
+        #    if multiple exist, throw
+        #    if none exist, go to state 2
+        # 2. Detect targets on the network
+        #    if one exists, add and go to state 1
+        #    if multiple exist, throw
+
+        # Let's have a global timeout as a limit on how long we want to try this.
+        $timeout = [DateTime]::UtcNow.AddSeconds(60)
+        $state = 0
+        while ([DateTime]::UtcNow -lt $timeout) {
+            switch ($state) {
+                0 {
+                    # Check if a default target is set
+                    $defaultTarget = $this.InvokeCommand('get-default-target', @()) | ConvertFrom-Json
+                    if ($null -ne $defaultTarget) {
+                        Write-Debug "Default target is currently set to: $defaultTarget"
+                        return
+                    } else {
+                        Write-Debug 'No default target set, proceeding to list existing targets.'
+                        $state = 1
+                    }
+                }
+                1 {
+                    # List existing targets
+                    $existingTargets = $this.InvokeCommand('list-target', @()) | ConvertFrom-Json
+                    switch (@($existingTargets).Count) {
+                        0 {
+                            Write-Debug 'No existing targets found, proceeding to detect targets on the network.'
+                            $state = 2
+                        }
+                        1 {
+                            Write-Debug "One existing target found, setting as default: $existingTargets"
+                            $this.InvokeCommand('set-default-target', "$($existingTargets.IpAddress)")
+                            $state = 0
+                        }
+                        default {
+                            throw "Multiple ($($existingTargets.Count)) existing targets found in Target Manager, cannot auto-detect."
+                        }
+                    }
+                }
+                2 {
+                    # Detect targets on the network
+                    $detectedTargets = $this.InvokeCommand('detect-target', @()) | ConvertFrom-Json
+                    switch (@($detectedTargets).Count) {
+                        0 {
+                            throw 'No targets detected on the network and no default target set in the Target Manager. Please add a target manually.'
+                        }
+                        1 {
+                            Write-Debug "One target detected on the network, adding: $($detectedTargets)"
+                            $this.InvokeCommand('register-target', "$($detectedTargets.IpAddress)")
+                            $state = 1
+                        }
+                        default {
+                            throw "Multiple ($($detectedTargets.Count)) targets detected on the network, cannot auto-detect."
+                        }
+                    }
+                }
+                default {
+                    throw 'Invalid state in DetectAndSetDefaultTarget state machine.'
+                }
+            }
+        }
+
+        throw 'Timeout reached while trying to detect and set default target.'
     }
 
 }

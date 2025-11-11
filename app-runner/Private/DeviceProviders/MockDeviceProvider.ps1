@@ -22,14 +22,20 @@ class MockDeviceProvider : DeviceProvider {
 
         # Mock commands don't need real CLI tools - just use echo for simulation
         $this.Commands = @{
-            "connect"    = @("echo", "'Mock connect'")
-            "disconnect" = @("echo", "'Mock disconnect'")
-            "poweron"    = @("echo", "'Mock power on'")
-            "poweroff"   = @("echo", "'Mock power off'")
-            "reset"      = @("echo", "'Mock reset'")
-            "getstatus"  = @("echo", "'Mock get status'")
-            "launch"     = @("echo", "'Mock launch {0} {1}'")
-            "screenshot" = @("echo", "'Mock screenshot'")
+            "connect"            = @("echo", "'Mock connect'")
+            "disconnect"         = @("echo", "'Mock disconnect'")
+            "poweron"            = @("echo", "'Mock power on'")
+            "poweroff"           = @("echo", "'Mock power off'")
+            "reset"              = @("echo", "'Mock reset'")
+            "getstatus"          = @("echo", "'Mock get status'")
+            "launch"             = @("echo", "'Mock launch {0} {1}'")
+            "screenshot"         = @("echo", "'Mock screenshot'")
+            # Target management commands for testing DetectAndSetDefaultTarget()
+            "get-default-target" = @("echo", "'Mock get-default-target'")
+            "list-target"        = @("echo", "'Mock list-target'")
+            "set-default-target" = @("echo", "'Mock set-default-target'")
+            "detect-target"      = @("echo", "'Mock detect-target'")
+            "register-target"    = @("echo", "'Mock register-target'")
         }
 
         # Configure mock behavior
@@ -38,6 +44,14 @@ class MockDeviceProvider : DeviceProvider {
             ShouldFailCommands   = $false
             PowerState           = "Off"
             AppRunning           = $false
+            # Target management state for testing
+            Targets              = @{
+                DefaultTarget    = $null  # Set to target object when a default is configured
+                RegisteredTargets = @()   # Array of registered target objects
+                DetectableTargets = @(    # Array of targets that can be detected on network
+                    @{ IpAddress = "192.168.1.100"; Name = "MockDevice1" }
+                )
+            }
         }
     }
 
@@ -49,7 +63,54 @@ class MockDeviceProvider : DeviceProvider {
             throw "Mock command execution failed"
         }
 
-        return "Mock command executed successfully: $action"
+        # Handle target management commands with proper JSON responses
+        $result = switch ($action) {
+            "get-default-target" {
+                # Return the current default target as JSON, or null if none set
+                if ($this.MockConfig.Targets.DefaultTarget) {
+                    $this.MockConfig.Targets.DefaultTarget | ConvertTo-Json -Compress
+                } else {
+                    $null
+                }
+            }
+            "list-target" {
+                # Return array of registered targets as JSON
+                $this.MockConfig.Targets.RegisteredTargets | ConvertTo-Json -Compress
+            }
+            "set-default-target" {
+                # Set the specified target as default
+                $targetIp = $parameters[0]
+                $target = $this.MockConfig.Targets.RegisteredTargets | Where-Object { $_.IpAddress -eq $targetIp } | Select-Object -First 1
+                if ($target) {
+                    $this.MockConfig.Targets.DefaultTarget = $target
+                    Write-Debug "Mock: Set default target to $targetIp"
+                    "Default target set to $targetIp"
+                } else {
+                    throw "Target with IP $targetIp not found in registered targets"
+                }
+            }
+            "detect-target" {
+                # Return array of detectable targets as JSON
+                $this.MockConfig.Targets.DetectableTargets | ConvertTo-Json -Compress
+            }
+            "register-target" {
+                # Add a target to the registered targets list
+                $targetIp = $parameters[0]
+                $target = $this.MockConfig.Targets.DetectableTargets | Where-Object { $_.IpAddress -eq $targetIp } | Select-Object -First 1
+                if ($target) {
+                    $this.MockConfig.Targets.RegisteredTargets += $target
+                    Write-Debug "Mock: Registered target $targetIp"
+                    "Target $targetIp registered"
+                } else {
+                    throw "Target with IP $targetIp not found in detectable targets"
+                }
+            }
+            default {
+                "Mock command executed successfully: $action"
+            }
+        }
+
+        return $result
     }
 
     # Override methods to provide realistic mock behavior
@@ -181,6 +242,64 @@ class MockDeviceProvider : DeviceProvider {
 
     [hashtable] GetMockConfig() {
         return $this.MockConfig.Clone()
+    }
+
+    # Helper methods for configuring target management test scenarios
+    [void] ResetTargetState() {
+        Write-Debug "Mock: Resetting target state"
+        $this.MockConfig.Targets.DefaultTarget = $null
+        $this.MockConfig.Targets.RegisteredTargets = @()
+        $this.MockConfig.Targets.DetectableTargets = @(
+            @{ IpAddress = "192.168.1.100"; Name = "MockDevice1" }
+        )
+    }
+
+    [void] SetTargetScenario([string]$Scenario) {
+        Write-Debug "Mock: Setting target scenario: $Scenario"
+        $this.ResetTargetState()
+
+        switch ($Scenario) {
+            "NoTargets" {
+                # No default, no registered, no detectable targets
+                $this.MockConfig.Targets.DetectableTargets = @()
+            }
+            "OneDetectable" {
+                # No default, no registered, one detectable (default scenario)
+                # Already set by ResetTargetState()
+            }
+            "MultipleDetectable" {
+                # No default, no registered, multiple detectable targets
+                $this.MockConfig.Targets.DetectableTargets = @(
+                    @{ IpAddress = "192.168.1.100"; Name = "MockDevice1" }
+                    @{ IpAddress = "192.168.1.101"; Name = "MockDevice2" }
+                    @{ IpAddress = "192.168.1.102"; Name = "MockDevice3" }
+                )
+            }
+            "OneRegistered" {
+                # No default, one registered, no detectable
+                $target = @{ IpAddress = "192.168.1.100"; Name = "MockDevice1" }
+                $this.MockConfig.Targets.RegisteredTargets = @($target)
+                $this.MockConfig.Targets.DetectableTargets = @()
+            }
+            "MultipleRegistered" {
+                # No default, multiple registered targets
+                $this.MockConfig.Targets.RegisteredTargets = @(
+                    @{ IpAddress = "192.168.1.100"; Name = "MockDevice1" }
+                    @{ IpAddress = "192.168.1.101"; Name = "MockDevice2" }
+                )
+                $this.MockConfig.Targets.DetectableTargets = @()
+            }
+            "DefaultSet" {
+                # Default target already set, one registered
+                $target = @{ IpAddress = "192.168.1.100"; Name = "MockDevice1" }
+                $this.MockConfig.Targets.RegisteredTargets = @($target)
+                $this.MockConfig.Targets.DefaultTarget = $target
+                $this.MockConfig.Targets.DetectableTargets = @()
+            }
+            default {
+                throw "Unknown target scenario: $Scenario"
+            }
+        }
     }
 
     [string] GetDeviceIdentifier() {
