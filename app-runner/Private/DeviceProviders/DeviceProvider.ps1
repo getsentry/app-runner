@@ -24,7 +24,7 @@ class DeviceProvider {
     [int]$MaxRetryAttempts = 2
     [bool]$IsRebooting = $false  # Internal flag to skip retry-on-timeout during reboot
 
-    [string]$DebugOutputForwarder = "ForEach-Object { (`$_ | Out-String).Trim() } | Where-Object { `$_.Length -gt 0 } | Tee-Object -variable capturedOutput | Foreach-Object { Write-Debug `$_ } ; `$capturedOutput"
+    [string]$DebugOutputForwarder = "ForEach-Object { (`$_ | Out-String).TrimEnd() } | Where-Object { `$_.Length -gt 0 } | Tee-Object -variable capturedOutput | Foreach-Object { Write-Debug `$_ } ; `$capturedOutput"
 
     DeviceProvider() {
         $this.Commands = @{}
@@ -70,9 +70,21 @@ class DeviceProvider {
 
         $arguments = $commandObj[1]
         if ($null -ne $parameters) {
-            $arguments = $arguments -f $parameters
+            try {
+                $arguments = $arguments -f $parameters
+            } catch {
+                throw "Failed to format command arguments ($arguments) for action '$action' with parameters $($parameters | Out-String): $_"
+            }
         }
-        return "& '$executablePath' $arguments 2>&1"
+
+        $command = "& '$executablePath' $arguments 2>&1"
+        if ($commandObj.Count -gt 2) {
+            # Additional processing command specified
+            $processingCommand = $commandObj[2]
+            return @($command, $processingCommand)
+        } else {
+            return $command
+        }
     }
 
 
@@ -82,7 +94,7 @@ class DeviceProvider {
 
     # Helper method to invoke a command with timeout and retry handling
     # This method is used internally when TimeoutSeconds > 0
-    [object] InvokeCommandWithTimeoutAndRetry([scriptblock]$scriptBlock, [string]$platform, [string]$action, [string]$command) {
+    [object] InvokeCommandWithTimeoutAndRetry([scriptblock]$scriptBlock, [string]$platform, [string]$action, [object]$command) {
         $attempt = 1
 
         while ($attempt -le $this.MaxRetryAttempts) {
@@ -187,8 +199,13 @@ class DeviceProvider {
             param($platform, $act, $cmd, $debugForwarder)
             try {
                 $PSNativeCommandUseErrorActionPreference = $false
-                Write-Debug "${platform}: Invoking ($act) command $cmd"
-                $result = Invoke-Expression "$cmd | $debugForwarder"
+                if ($cmd -is [string]) {
+                    Write-Debug "${platform}: Invoking ($act) command $cmd"
+                    $result = Invoke-Expression "$cmd | $debugForwarder"
+                } else {
+                    Write-Debug "${platform}: Invoking ($act) command $($cmd[0]) | $($cmd[1])"
+                    $result = Invoke-Expression "$($cmd[0]) | $debugForwarder | $($cmd[1])"
+                }
                 if ($LASTEXITCODE -ne 0) {
                     Write-Warning "Command ($act`: $cmd) failed with exit code $($LASTEXITCODE) $($result.Length -gt 0 ? 'and output:' : '')"
                     $result | ForEach-Object { Write-Warning $_ }
@@ -310,7 +327,7 @@ class DeviceProvider {
         return $this.InvokeApplicationCommand($command, $ExecutablePath, $Arguments)
     }
 
-    [hashtable] InvokeApplicationCommand([string]$command, [string]$ExecutablePath, [string]$Arguments) {
+    [hashtable] InvokeApplicationCommand([object]$command, [string]$ExecutablePath, [string]$Arguments) {
         Write-Debug "$($this.Platform): Invoking $command"
 
         $result = $null
@@ -318,7 +335,11 @@ class DeviceProvider {
         $startDate = Get-Date
         try {
             $PSNativeCommandUseErrorActionPreference = $false
-            $result = Invoke-Expression "$command | $($this.DebugOutputForwarder)"
+            if ($command -is [string]) {
+                $result = Invoke-Expression "$command | $($this.DebugOutputForwarder)"
+            } else {
+                $result = Invoke-Expression "$($command[0]) | $($this.DebugOutputForwarder) | $($command[1])"
+            }
             $exitCode = $LASTEXITCODE
         } finally {
             $PSNativeCommandUseErrorActionPreference = $true
@@ -513,12 +534,14 @@ SDK Path: $($this.SdkPath)
 
         # Let's have a global timeout as a limit on how long we want to try this.
         $timeout = [DateTime]::UtcNow.AddSeconds(60)
-        $state = 0
+
+        # Start in state 1 (check if targets are registered) as trying to get default will fail if none are registered on some platforms.
+        $state = 1
         while ([DateTime]::UtcNow -lt $timeout) {
             switch ($state) {
                 0 {
                     # Check if a default target is set
-                    $defaultTarget = $this.InvokeCommand('get-default-target', @()) | ConvertFrom-Json
+                    $defaultTarget = $this.InvokeCommand('get-default-target', @())
                     if ($null -ne $defaultTarget) {
                         Write-Debug "Default target is currently set to: $defaultTarget"
                         return
@@ -529,26 +552,28 @@ SDK Path: $($this.SdkPath)
                 }
                 1 {
                     # List existing targets
-                    $existingTargets = $this.InvokeCommand('list-target', @()) | ConvertFrom-Json
-                    switch (@($existingTargets).Count) {
+                    $existingTargets = $this.InvokeCommand('list-target', @())
+                    $count = $null -eq $existingTargets ? 0 : @($existingTargets).Count
+                    switch ($count) {
                         0 {
                             Write-Debug 'No existing targets found, proceeding to detect targets on the network.'
                             $state = 2
                         }
                         1 {
-                            Write-Debug "One existing target found, setting as default: $existingTargets"
+                            Write-Debug "One existing target found, setting as default: $($existingTargets)"
                             $this.InvokeCommand('set-default-target', "$($existingTargets.IpAddress)")
                             $state = 0
                         }
                         default {
-                            throw "Multiple ($($existingTargets.Count)) existing targets found in Target Manager, cannot auto-detect."
+                            throw "Multiple ($count) existing targets found in Target Manager, cannot auto-detect."
                         }
                     }
                 }
                 2 {
                     # Detect targets on the network
-                    $detectedTargets = $this.InvokeCommand('detect-target', @()) | ConvertFrom-Json
-                    switch (@($detectedTargets).Count) {
+                    $detectedTargets = $this.InvokeCommand('detect-target', @())
+                    $count = $null -eq $detectedTargets ? 0 : @($detectedTargets).Count
+                    switch ($count) {
                         0 {
                             throw 'No targets detected on the network and no default target set in the Target Manager. Please add a target manually.'
                         }
@@ -558,7 +583,7 @@ SDK Path: $($this.SdkPath)
                             $state = 1
                         }
                         default {
-                            throw "Multiple ($($detectedTargets.Count)) targets detected on the network, cannot auto-detect."
+                            throw "Multiple ($count) targets detected on the network, cannot auto-detect."
                         }
                     }
                 }
