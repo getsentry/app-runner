@@ -1,8 +1,8 @@
-# Initialize Sentry telemetry
+# Initialize Sentry telemetry (opt-in)
 try {
     Import-Module (Join-Path $PSScriptRoot '..\utils\TrySentry.psm1') -ErrorAction Stop
     $moduleManifest = Import-PowerShellDataFile (Join-Path $PSScriptRoot 'SentryApiClient.psd1')
-    TrySentry\Start-Sentry -ModuleName 'SentryApiClient' -ModuleVersion $moduleManifest.ModuleVersion
+    TrySentry\Start-Sentry -Dsn $env:SENTRY_API_CLIENT_DSN -ModuleName 'SentryApiClient' -ModuleVersion $moduleManifest.ModuleVersion
 } catch {
     Write-Debug "Sentry telemetry initialization failed: $_"
 }

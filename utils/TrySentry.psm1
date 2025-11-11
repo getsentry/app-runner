@@ -1,13 +1,11 @@
 # Sentry PowerShell SDK wrapper module
 # Provides graceful degradation when Sentry module is unavailable
-
-# Default DSN for app-runner telemetry
-# Override with $env:SENTRY_DSN or disable with $env:SENTRY_DSN = $null
-$script:DefaultDsn = 'https://8e7867b699467018c4f8a64a5a0b5b43@o447951.ingest.us.sentry.io/4510317734854656'
+# Telemetry is opt-in and requires explicit DSN configuration
 
 # Track initialization state to avoid repeated attempts
 $script:InitializationAttempted = $false
 $script:SentryAvailable = $false
+$script:ConfiguredDsn = $null
 
 <#
 .SYNOPSIS
@@ -24,13 +22,6 @@ function Ensure-SentryReady {
     [CmdletBinding()]
     [OutputType([bool])]
     param()
-
-    # Check if explicitly disabled via environment variable (set to empty string)
-    # If not set at all, we'll use the default DSN
-    if ((Test-Path env:SENTRY_DSN) -and [string]::IsNullOrEmpty($env:SENTRY_DSN)) {
-        Write-Debug 'Sentry disabled: SENTRY_DSN environment variable is explicitly set to empty'
-        return $false
-    }
 
     # Return cached result if we already attempted initialization
     if ($script:InitializationAttempted) {
@@ -80,9 +71,10 @@ function Ensure-SentryReady {
 
     # Initialize Sentry SDK
     try {
-        $dsn = if ($env:F) { $env:SENTRY_DSN } else { $script:DefaultDsn }
+        # Use configured DSN (must be explicitly set via Start-Sentry)
+        $dsn = $script:ConfiguredDsn
 
-        if ([string]::IsNullOrEmpty($dsn) -or $dsn -eq 'https://TODO@TODO.ingest.sentry.io/TODO') {
+        if ([string]::IsNullOrEmpty($dsn)) {
             Write-Debug 'Sentry DSN not configured, telemetry disabled'
             $script:SentryAvailable = $false
             return $false
@@ -114,8 +106,10 @@ Optionally initialize Sentry with module context and tags.
 
 .DESCRIPTION
 Ensures Sentry is ready and sets contextual tags like module name, version,
-PowerShell version, and OS. This is optional - Sentry will auto-initialize
-on first use of any Try* function if not already started.
+PowerShell version, and OS. Requires a DSN to be provided for telemetry to be enabled.
+
+.PARAMETER Dsn
+The Sentry DSN (Data Source Name) for telemetry. If not provided, telemetry is disabled.
 
 .PARAMETER ModuleName
 Name of the module using Sentry (e.g., 'SentryAppRunner').
@@ -127,10 +121,10 @@ Version of the module.
 Additional custom tags to set on all events.
 
 .EXAMPLE
-Start-Sentry -ModuleName 'SentryAppRunner' -ModuleVersion '1.0.0'
+Start-Sentry -Dsn $env:SENTRY_APP_RUNNER_DSN -ModuleName 'SentryAppRunner' -ModuleVersion '1.0.0'
 
 .EXAMPLE
-Start-Sentry -ModuleName 'MyModule' -ModuleVersion '2.1.0' -Tags @{
+Start-Sentry -Dsn $env:SENTRY_API_CLIENT_DSN -ModuleName 'MyModule' -ModuleVersion '2.1.0' -Tags @{
     environment = 'ci'
     build_id = '12345'
 }
@@ -143,6 +137,9 @@ function Start-Sentry {
     [OutputType([bool])]
     param(
         [Parameter(Mandatory = $false)]
+        [string]$Dsn,
+
+        [Parameter(Mandatory = $false)]
         [string]$ModuleName,
 
         [Parameter(Mandatory = $false)]
@@ -151,6 +148,17 @@ function Start-Sentry {
         [Parameter(Mandatory = $false)]
         [hashtable]$Tags = @{}
     )
+
+    # If DSN is provided, configure it before initialization
+    if (-not [string]::IsNullOrEmpty($Dsn)) {
+        $script:ConfiguredDsn = $Dsn
+    }
+
+    # Telemetry is opt-in - DSN must be explicitly provided
+    if ([string]::IsNullOrEmpty($script:ConfiguredDsn)) {
+        Write-Debug 'Sentry DSN not provided, telemetry disabled'
+        return $false
+    }
 
     if (-not (Ensure-SentryReady)) {
         return $false

@@ -22,7 +22,7 @@ Future support planned:
 
 ## Telemetry
 
-This toolkit automatically collects operational telemetry using [Sentry](https://sentry.io) to improve reliability and diagnose issues. Telemetry helps identify test infrastructure failures, device connection problems, and automation bottlenecks.
+This toolkit supports optional operational telemetry using [Sentry](https://sentry.io) to improve reliability and diagnose issues. When enabled, telemetry helps identify test infrastructure failures, device connection problems, and automation bottlenecks.
 
 ### What's Collected
 
@@ -36,25 +36,25 @@ Examples of the types of telemetry data collected:
 
 ### Privacy & Control
 
-**Telemetry is optional, enabled by default, and controllably by environment variable:**
+**Telemetry is opt-in and requires explicit configuration:**
 
-**To disable telemetry completely:**
+Telemetry is disabled by default. To enable it, set one of the following environment variables with your Sentry DSN:
+
+**To enable telemetry for app-runner:**
 ```powershell
-$env:SENTRY_DSN = $null  # or empty string
+$env:SENTRY_APP_RUNNER_DSN = 'https://your-key@o123.ingest.sentry.io/your-project'
 ```
 
-**To use your own Sentry project:**
+**To enable telemetry for sentry-api-client:**
 ```powershell
-$env:SENTRY_DSN = 'https://your-key@o123.ingest.sentry.io/your-project'
+$env:SENTRY_API_CLIENT_DSN = 'https://your-key@o123.ingest.sentry.io/your-project'
 ```
 
-**Note:** DSNs are public client keys that are safe to expose in code or configuration.
-They cannot be used to access your Sentry account or data.
-See [Sentry DSN documentation](https://docs.sentry.io/product/sentry-basics/dsn-explainer/) for details.
+**Note:** You can use the same DSN for both.
 
 ### Dependencies
 
-The `Sentry` PowerShell module (v0.4.0) is bundled in the `vendor/Sentry` directory, so no installation is required. Telemetry works out of the box.
+The `Sentry` PowerShell module (v0.4.0) is bundled in the `vendor/Sentry` directory, so no installation is required. Telemetry will work automatically when a DSN is configured via environment variable.
 
 **Learn more:** [sentry-powershell on GitHub](https://github.com/getsentry/sentry-powershell)
 
