@@ -1,6 +1,9 @@
 # Desktop Provider Integration Tests
 # Tests the PowerShell module's public API against local desktop platforms
 # Ensures consistent behavior across Windows, MacOS, and Linux
+#
+# NOTE: This file tests LOCAL desktop platforms (Windows, macOS, Linux) that require no SDK installations.
+# For REMOTE gaming consoles (Xbox, PS5, Switch), see Device.Tests.ps1 which requires platform SDKs.
 $ErrorActionPreference = 'Stop'
 
 BeforeDiscovery {

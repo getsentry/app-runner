@@ -1,6 +1,9 @@
 # Provider Public API Tests
 # Tests the PowerShell module's public API against all real device providers
 # Ensures consistent behavior across Xbox, PlayStation5, and Switch
+#
+# NOTE: This file tests REMOTE gaming consoles that require SDK installations and network connectivity.
+# For LOCAL desktop platforms (Windows, macOS, Linux), see Desktop.Tests.ps1 which has no SDK requirements.
 $ErrorActionPreference = 'Stop'
 
 BeforeDiscovery {
