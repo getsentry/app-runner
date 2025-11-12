@@ -8,7 +8,7 @@ function Connect-Device {
     automatically handles devkit selection and IP address resolution.
 
     .PARAMETER Platform
-    The platform to connect to. Valid values: Xbox, PlayStation5, Switch
+    The platform to connect to. Valid values: Xbox, PlayStation5, Switch, Windows, MacOS, Linux
 
     .PARAMETER Target
     For Xbox platform, specifies the target to connect to. Can be either a name or IP address.
@@ -37,7 +37,7 @@ function Connect-Device {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $true)]
-        [ValidateSet('Xbox', 'PlayStation5', 'Switch', 'Mock')]
+        [ValidateSet('Xbox', 'PlayStation5', 'Switch', 'Windows', 'MacOS', 'Linux', 'Mock')]
         [string]$Platform,
 
         [Parameter(Mandatory = $false)]
