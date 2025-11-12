@@ -7,6 +7,10 @@ $ProviderFiles = @(
     "$PSScriptRoot\Private\DeviceProviders\XboxProvider.ps1",
     "$PSScriptRoot\Private\DeviceProviders\PlayStation5Provider.ps1",
     "$PSScriptRoot\Private\DeviceProviders\SwitchProvider.ps1",
+    "$PSScriptRoot\Private\DeviceProviders\LocalComputerProvider.ps1",
+    "$PSScriptRoot\Private\DeviceProviders\WindowsProvider.ps1",
+    "$PSScriptRoot\Private\DeviceProviders\MacOSProvider.ps1",
+    "$PSScriptRoot\Private\DeviceProviders\LinuxProvider.ps1",
     "$PSScriptRoot\Private\DeviceProviders\MockDeviceProvider.ps1",
     "$PSScriptRoot\Private\DeviceProviders\DeviceProviderFactory.ps1"
 )
