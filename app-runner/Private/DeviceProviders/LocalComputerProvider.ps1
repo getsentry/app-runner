@@ -22,14 +22,9 @@ Key differences from remote device providers (Xbox, PlayStation5, Switch):
 
 class LocalComputerProvider : DeviceProvider {
 
-    # Override GetDeviceIdentifier to return localhost or computer name
+    # Override GetDeviceIdentifier to return computer name
     [string] GetDeviceIdentifier() {
-        # Try to get computer name, fall back to localhost
-        try {
-            return [System.Environment]::MachineName
-        } catch {
-            return 'localhost'
-        }
+        return [System.Environment]::MachineName
     }
 
     # Override CopyDeviceItem to use local filesystem operations
