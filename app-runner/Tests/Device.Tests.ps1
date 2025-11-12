@@ -365,6 +365,10 @@ Describe '<TargetName>' -Tag 'RequiresDevice' -ForEach $TestTargets {
                 $natInfoFile = $files | Where-Object { $_.Name -like '*-network-nat-traversal-info.txt' } | Select-Object -First 1
                 $natInfoFile | Should -Not -BeNullOrEmpty
                 $natInfoFile.Length | Should -BeGreaterThan 0
+
+                $settingsFile = $files | Where-Object { $_.Name -like '*-settings.xml' } | Select-Object -First 1
+                $settingsFile | Should -Not -BeNullOrEmpty
+                $settingsFile.Length | Should -BeGreaterThan 0
             }
 
             # Verify process list file exists for platforms that support it (Xbox, PlayStation5)

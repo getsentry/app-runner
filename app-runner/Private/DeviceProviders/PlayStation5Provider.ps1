@@ -43,6 +43,7 @@ class PlayStation5Provider : DeviceProvider {
             'healthcheck'        = @($this.TargetControlTool, 'diagnostics health-check')
             'ipconfig'           = @($this.TargetControlTool, 'network ip-config')
             'natinfo'            = @($this.TargetControlTool, 'network get-nat-traversal-info')
+            'settingsexport'     = @($this.TargetControlTool, 'settings export "{0}"')
             'processlist'        = @($this.TargetControlTool, 'process list', 'ConvertFrom-Yaml')
             # Target management commands for DetectAndSetDefaultTarget()
             'get-default-target' = @($this.TargetControlTool, 'target get-default')
@@ -162,6 +163,16 @@ class PlayStation5Provider : DeviceProvider {
             Write-Debug "NAT traversal info saved to: $natInfoFile"
         } catch {
             Write-Warning "Failed to collect NAT traversal info: $_"
+        }
+
+        # Run prospero-ctrl settings export
+        try {
+            $settingsFile = Join-Path $OutputDirectory "$datePrefix-settings.xml"
+            $this.InvokeCommand('settingsexport', @($settingsFile))
+            $results.Files += $settingsFile
+            Write-Debug "Settings exported to: $settingsFile"
+        } catch {
+            Write-Warning "Failed to export settings: $_"
         }
 
         return $results
