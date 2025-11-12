@@ -22,19 +22,6 @@ Key differences from remote device providers (Xbox, PlayStation5, Switch):
 
 class LocalComputerProvider : DeviceProvider {
 
-    LocalComputerProvider() {
-        # Initialize base Commands hashtable with local execution defaults
-        # Lifecycle operations are not supported for local desktop platforms
-        $this.Commands = @{
-            'connect'    = $null  # No-op: Already on local machine
-            'disconnect' = $null  # No-op: Nothing to disconnect
-            'poweron'    = $null  # Not supported: Don't power on local machine
-            'poweroff'   = $null  # Not supported: Don't shut down local machine
-            'reset'      = $null  # Not supported: Don't reboot local machine
-            'getstatus'  = $null  # Local status provided by GetDeviceStatus override
-        }
-    }
-
     # Override GetDeviceIdentifier to return localhost or computer name
     [string] GetDeviceIdentifier() {
         # Try to get computer name, fall back to localhost
