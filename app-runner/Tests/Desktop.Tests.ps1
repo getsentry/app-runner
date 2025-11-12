@@ -30,13 +30,9 @@ BeforeDiscovery {
     # Only test the current platform
     $TestTargets = @()
     $currentPlatform = Get-CurrentDesktopPlatform
-
-    if ($currentPlatform) {
-        $TestTargets += New-TestTarget -Platform $currentPlatform
-        Write-Host "Desktop integration tests will run on: $currentPlatform"
-    } else {
-        Write-Warning "Could not detect desktop platform. Tests will be skipped."
-    }
+    $currentPlatform | Should -Not -Be $null
+    $TestTargets += New-TestTarget -Platform $currentPlatform
+    Write-Debug "Desktop integration tests will run on: $currentPlatform"
 }
 
 BeforeAll {
