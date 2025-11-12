@@ -31,7 +31,7 @@ class PlayStation5Provider : DeviceProvider {
 
         # Configure PlayStation 5 specific commands using Command objects
         $this.Commands = @{
-            'connect'            = @($this.TargetControlTool, 'target connect')
+            'connect'            = @($this.TargetControlTool, 'target connect /force')
             'disconnect'         = @($this.TargetControlTool, 'target disconnect')
             'poweron'            = @($this.TargetControlTool, 'power on')
             'poweroff'           = @($this.TargetControlTool, 'power off')
