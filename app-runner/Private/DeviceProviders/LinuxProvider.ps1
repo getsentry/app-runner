@@ -27,17 +27,32 @@ class LinuxProvider : LocalComputerProvider {
     LinuxProvider() {
         $this.Platform = 'Linux'
 
+        # Validate environment immediately
+        if (-not $global:IsLinux) {
+            throw "LinuxProvider can only run on Linux platforms"
+        }
+
         # Detect available screenshot tool
         $screenshotTool = $this.DetectScreenshotTool()
 
         # Define Linux-specific commands
         $this.Commands = @{
-            # Inherited from LocalComputerProvider (all $null):
-            # connect, disconnect, poweron, poweroff, reset, getstatus
+            # Local execution operations (all no-ops)
+            'connect'    = $null
+            'disconnect' = $null
+            'poweron'    = $null
+            'poweroff'   = $null
+            'reset'      = $null
+            'getstatus'  = $null
 
-            # Linux-specific implementations:
+            # Linux-specific implementations
             'launch'     = @('{0}', '{1}')
             'screenshot' = $screenshotTool
+        }
+
+        # Warn if no screenshot tool is available (non-fatal)
+        if ($null -eq $screenshotTool) {
+            Write-Warning "No screenshot tool available. Install gnome-screenshot, scrot, or ImageMagick for screenshot support."
         }
     }
 
@@ -98,20 +113,6 @@ class LinuxProvider : LocalComputerProvider {
         } catch {
             Write-Warning "$($this.Platform): Failed to get running processes: $_"
             return $null
-        }
-    }
-
-    # Override ValidateLocalEnvironment to add Linux-specific checks
-    [void] ValidateLocalEnvironment() {
-        Write-Debug "$($this.Platform): Validating Linux environment"
-
-        if (-not $global:IsLinux) {
-            throw "LinuxProvider can only run on Linux platforms"
-        }
-
-        # Just log a warning if no screenshot tool is available (non-fatal)
-        if ($null -eq $this.Commands['screenshot']) {
-            Write-Warning "No screenshot tool available. Install gnome-screenshot, scrot, or ImageMagick for screenshot support."
         }
     }
 

@@ -27,12 +27,22 @@ class WindowsProvider : LocalComputerProvider {
     WindowsProvider() {
         $this.Platform = 'Windows'
 
+        # Validate environment immediately
+        if (-not $global:IsWindows) {
+            throw "WindowsProvider can only run on Windows platforms"
+        }
+
         # Define Windows-specific commands
         $this.Commands = @{
-            # Inherited from LocalComputerProvider (all $null):
-            # connect, disconnect, poweron, poweroff, reset, getstatus
+            # Local execution operations (all no-ops)
+            'connect'    = $null
+            'disconnect' = $null
+            'poweron'    = $null
+            'poweroff'   = $null
+            'reset'      = $null
+            'getstatus'  = $null
 
-            # Windows-specific implementations:
+            # Windows-specific implementations
             'launch'     = @('{0}', '{1}')
             'screenshot' = $null  # TODO: Implement proper Windows screenshot
         }
@@ -60,15 +70,6 @@ class WindowsProvider : LocalComputerProvider {
         } catch {
             Write-Warning "$($this.Platform): Failed to get running processes: $_"
             return $null
-        }
-    }
-
-    # Override ValidateLocalEnvironment to add Windows-specific checks
-    [void] ValidateLocalEnvironment() {
-        Write-Debug "$($this.Platform): Validating Windows environment"
-
-        if (-not $global:IsWindows) {
-            throw "WindowsProvider can only run on Windows platforms"
         }
     }
 

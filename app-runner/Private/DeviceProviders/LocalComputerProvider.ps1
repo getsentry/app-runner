@@ -31,45 +31,7 @@ class LocalComputerProvider : DeviceProvider {
             'poweron'    = $null  # Not supported: Don't power on local machine
             'poweroff'   = $null  # Not supported: Don't shut down local machine
             'reset'      = $null  # Not supported: Don't reboot local machine
-            'getstatus'  = $null  # Will be overridden by platform providers if needed
-        }
-    }
-
-    # Override Connect to skip target detection and network operations
-    [hashtable] Connect() {
-        Write-Debug "$($this.Platform): Connecting to local computer"
-
-        # Validate local environment (platform-specific providers can add validation)
-        $this.ValidateLocalEnvironment()
-
-        # No actual connection needed for local execution
-        return $this.CreateSessionInfo()
-    }
-
-    [hashtable] Connect([string]$target) {
-        if (-not [string]::IsNullOrEmpty($target) -and $target -ne 'localhost' -and $target -ne 'Local') {
-            Write-Warning "$($this.Platform): LocalComputerProvider only supports local execution. Target parameter '$target' is ignored."
-        }
-
-        return $this.Connect()
-    }
-
-    # Override Disconnect to be a noop (just for consistency)
-    [void] Disconnect() {
-        Write-Debug "$($this.Platform): Disconnecting from local computer"
-        # Nothing to disconnect for local execution
-    }
-
-    # Override TestConnection to just validate local environment
-    [bool] TestConnection() {
-        Write-Debug "$($this.Platform): Testing local computer connection"
-
-        try {
-            $this.ValidateLocalEnvironment()
-            return $true
-        } catch {
-            Write-Warning "$($this.Platform): Local environment validation failed: $_"
-            return $false
+            'getstatus'  = $null  # Local status provided by GetDeviceStatus override
         }
     }
 
@@ -106,15 +68,6 @@ class LocalComputerProvider : DeviceProvider {
         # No-op: Local execution doesn't need target management
     }
 
-    # Virtual method for platform-specific environment validation
-    # Platform providers can override this to add specific checks
-    [void] ValidateLocalEnvironment() {
-        Write-Debug "$($this.Platform): Validating local environment"
-        # Base validation: just verify we can get system info
-        # Platform-specific providers can add more checks
-    }
-
-
     # Override GetDeviceStatus to provide local system status
     [hashtable] GetDeviceStatus() {
         Write-Debug "$($this.Platform): Getting local computer status"
@@ -134,12 +87,5 @@ class LocalComputerProvider : DeviceProvider {
             StatusData = $statusData
             Timestamp  = Get-Date
         }
-    }
-
-    # GetDeviceLogs is not implemented for local providers (at least initially)
-    # Platform providers can override if they want to implement log collection
-    [hashtable] GetDeviceLogs([string]$LogType, [int]$MaxEntries) {
-        Write-Debug "$($this.Platform): GetDeviceLogs not implemented for local computer providers"
-        return @{}
     }
 }

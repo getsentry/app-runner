@@ -27,12 +27,28 @@ class MacOSProvider : LocalComputerProvider {
     MacOSProvider() {
         $this.Platform = 'MacOS'
 
+        # Validate environment immediately
+        if (-not $global:IsMacOS) {
+            throw "MacOSProvider can only run on macOS platforms"
+        }
+
+        # Verify screencapture tool exists
+        $screencaptureExists = Get-Command screencapture -ErrorAction SilentlyContinue
+        if (-not $screencaptureExists) {
+            Write-Warning "screencapture command not found. Screenshot functionality may not work."
+        }
+
         # Define macOS-specific commands
         $this.Commands = @{
-            # Inherited from LocalComputerProvider (all $null):
-            # connect, disconnect, poweron, poweroff, reset, getstatus
+            # Local execution operations (all no-ops)
+            'connect'    = $null
+            'disconnect' = $null
+            'poweron'    = $null
+            'poweroff'   = $null
+            'reset'      = $null
+            'getstatus'  = $null
 
-            # macOS-specific implementations:
+            # macOS-specific implementations
             'launch'     = @('{0}', '{1}')
             'screenshot' = @('screencapture', '-x ''{0}/{1}''')
         }
@@ -74,21 +90,6 @@ class MacOSProvider : LocalComputerProvider {
         } catch {
             Write-Warning "$($this.Platform): Failed to get running processes: $_"
             return $null
-        }
-    }
-
-    # Override ValidateLocalEnvironment to add macOS-specific checks
-    [void] ValidateLocalEnvironment() {
-        Write-Debug "$($this.Platform): Validating macOS environment"
-
-        if (-not $global:IsMacOS) {
-            throw "MacOSProvider can only run on macOS platforms"
-        }
-
-        # Verify screencapture tool exists
-        $screencaptureExists = Get-Command screencapture -ErrorAction SilentlyContinue
-        if (-not $screencaptureExists) {
-            Write-Warning "screencapture command not found. Screenshot functionality may not work."
         }
     }
 
