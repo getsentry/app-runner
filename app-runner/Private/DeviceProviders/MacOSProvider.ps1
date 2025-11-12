@@ -133,8 +133,14 @@ class MacOSProvider : LocalComputerProvider {
     [void] ValidateLocalEnvironment() {
         Write-Debug "$($this.Platform): Validating macOS environment"
 
-        if (-not $IsMacOS) {
-            throw "MacOSProvider can only run on macOS platforms"
+        # Check if running on macOS by attempting to access macOS-specific API
+        try {
+            $isMacOS = [System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform([System.Runtime.InteropServices.OSPlatform]::OSX)
+            if (-not $isMacOS) {
+                throw "MacOSProvider can only run on macOS platforms"
+            }
+        } catch {
+            Write-Warning "Could not validate macOS platform: $_"
         }
 
         # Verify screencapture tool exists
@@ -166,8 +172,6 @@ class MacOSProvider : LocalComputerProvider {
 === macOS System Information ===
 Computer Name: $hostname
 OS Version: macOS $osVersion (Build $buildVersion)
-PowerShell Version: $($PSVersionTable.PSVersion)
-PowerShell Edition: $($PSVersionTable.PSEdition)
 Current Directory: $(Get-Location)
 Collection Time: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')
 

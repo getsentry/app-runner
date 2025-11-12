@@ -45,6 +45,8 @@ class WindowsProvider : LocalComputerProvider {
         $startDate = Get-Date
         $result = $null
         $exitCode = $null
+        $tempOutput = $null
+        $tempError = $null
 
         try {
             # Use Start-Process with redirection for better Windows compatibility
@@ -132,13 +134,14 @@ class WindowsProvider : LocalComputerProvider {
     [void] ValidateLocalEnvironment() {
         Write-Debug "$($this.Platform): Validating Windows environment"
 
-        if (-not $IsWindows) {
-            throw "WindowsProvider can only run on Windows platforms"
-        }
-
-        # Verify PowerShell version is sufficient
-        if ($PSVersionTable.PSVersion.Major -lt 5) {
-            throw "WindowsProvider requires PowerShell 5.0 or higher"
+        # Check if running on Windows by attempting to access Windows-specific API
+        try {
+            $isWindows = [System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform([System.Runtime.InteropServices.OSPlatform]::Windows)
+            if (-not $isWindows) {
+                throw "WindowsProvider can only run on Windows platforms"
+            }
+        } catch {
+            Write-Warning "Could not validate Windows platform: $_"
         }
     }
 
@@ -154,6 +157,8 @@ class WindowsProvider : LocalComputerProvider {
         # Add Windows-specific system information
         try {
             $sysInfoFile = Join-Path $OutputDirectory "$datePrefix-windows-sysinfo.txt"
+            # Build system info string
+            $memInfo = Get-CimInstance Win32_OperatingSystem
             $sysInfo = @"
 === Windows System Information ===
 Computer Name: $env:COMPUTERNAME
@@ -162,13 +167,11 @@ OS Version: $([System.Environment]::OSVersion.VersionString)
 OS Architecture: $([System.Environment]::Is64BitOperatingSystem ? '64-bit' : '32-bit')
 Processor Count: $([System.Environment]::ProcessorCount)
 System Directory: $([System.Environment]::SystemDirectory)
-PowerShell Version: $($PSVersionTable.PSVersion)
-PowerShell Edition: $($PSVersionTable.PSEdition)
 CLR Version: $([System.Environment]::Version)
 .NET Framework: $([System.Runtime.InteropServices.RuntimeInformation]::FrameworkDescription)
 Current Directory: $(Get-Location)
-Available Memory: $([math]::Round((Get-CimInstance Win32_OperatingSystem).FreePhysicalMemory / 1MB, 2)) GB
-Total Memory: $([math]::Round((Get-CimInstance Win32_OperatingSystem).TotalVisibleMemorySize / 1MB, 2)) GB
+Available Memory: $([math]::Round($memInfo.FreePhysicalMemory / 1MB, 2)) GB
+Total Memory: $([math]::Round($memInfo.TotalVisibleMemorySize / 1MB, 2)) GB
 Collection Time: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')
 "@
             $sysInfo | Out-File -FilePath $sysInfoFile -Encoding UTF8

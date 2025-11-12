@@ -157,8 +157,14 @@ class LinuxProvider : LocalComputerProvider {
     [void] ValidateLocalEnvironment() {
         Write-Debug "$($this.Platform): Validating Linux environment"
 
-        if (-not $IsLinux) {
-            throw "LinuxProvider can only run on Linux platforms"
+        # Check if running on Linux by attempting to access Linux-specific API
+        try {
+            $isLinux = [System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform([System.Runtime.InteropServices.OSPlatform]::Linux)
+            if (-not $isLinux) {
+                throw "LinuxProvider can only run on Linux platforms"
+            }
+        } catch {
+            Write-Warning "Could not validate Linux platform: $_"
         }
 
         # Just log a warning if no screenshot tool is available (non-fatal)
@@ -195,8 +201,6 @@ Computer Name: $hostname
 Kernel Version: $kernelVersion
 OS Information:
 $($osInfo -join "`n")
-PowerShell Version: $($PSVersionTable.PSVersion)
-PowerShell Edition: $($PSVersionTable.PSEdition)
 Current Directory: $(Get-Location)
 Collection Time: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')
 

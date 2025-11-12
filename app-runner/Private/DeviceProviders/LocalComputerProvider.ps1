@@ -76,15 +76,11 @@ class LocalComputerProvider : DeviceProvider {
     # Override GetDeviceIdentifier to return localhost or computer name
     [string] GetDeviceIdentifier() {
         # Try to get computer name, fall back to localhost
-        $computerName = if ($IsWindows) {
-            $env:COMPUTERNAME
-        } elseif ($IsMacOS -or $IsLinux) {
-            hostname
-        } else {
-            'localhost'
+        try {
+            return [System.Environment]::MachineName
+        } catch {
+            return 'localhost'
         }
-
-        return $computerName ?? 'localhost'
     }
 
     # Override CopyDeviceItem to use local filesystem operations
@@ -122,19 +118,13 @@ class LocalComputerProvider : DeviceProvider {
     [hashtable] GetDeviceStatus() {
         Write-Debug "$($this.Platform): Getting local computer status"
 
-        $statusData = @{
+        # Create a custom object with basic information
+        # Platform-specific providers can override to add more details
+        $statusData = [PSCustomObject]@{
             ComputerName = $this.GetDeviceIdentifier()
             Platform     = $this.Platform
-            OSVersion    = if ($IsWindows) {
-                [System.Environment]::OSVersion.VersionString
-            } elseif ($IsMacOS) {
-                "macOS $(sw_vers -productVersion)"
-            } elseif ($IsLinux) {
-                (Get-Content /etc/os-release | Select-String -Pattern '^PRETTY_NAME' | ForEach-Object { $_ -replace 'PRETTY_NAME=|"', '' })
-            } else {
-                'Unknown'
-            }
-            PSVersion    = $PSVersionTable.PSVersion.ToString()
+            OSVersion    = [System.Environment]::OSVersion.VersionString
+            OSArchitecture = [System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture.ToString()
         }
 
         return @{
