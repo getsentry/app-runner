@@ -81,14 +81,8 @@ class MacOSProvider : LocalComputerProvider {
     [void] ValidateLocalEnvironment() {
         Write-Debug "$($this.Platform): Validating macOS environment"
 
-        # Check if running on macOS by attempting to access macOS-specific API
-        try {
-            $runningOnMacOS = [System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform([System.Runtime.InteropServices.OSPlatform]::OSX)
-            if (-not $runningOnMacOS) {
-                throw "MacOSProvider can only run on macOS platforms"
-            }
-        } catch {
-            Write-Warning "Could not validate macOS platform: $_"
+        if (-not $global:IsMacOS) {
+            throw "MacOSProvider can only run on macOS platforms"
         }
 
         # Verify screencapture tool exists

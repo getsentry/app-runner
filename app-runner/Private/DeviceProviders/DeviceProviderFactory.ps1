@@ -18,12 +18,12 @@ class DeviceProviderFactory {
     The detected platform name (Windows, MacOS, or Linux).
     #>
     static [string] DetectLocalPlatform() {
-        # Use .NET API to detect OS
-        if ([System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform([System.Runtime.InteropServices.OSPlatform]::Windows)) {
+        # Use PowerShell automatic variables to detect OS
+        if ($global:IsWindows) {
             return 'Windows'
-        } elseif ([System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform([System.Runtime.InteropServices.OSPlatform]::OSX)) {
+        } elseif ($global:IsMacOS) {
             return 'MacOS'
-        } elseif ([System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform([System.Runtime.InteropServices.OSPlatform]::Linux)) {
+        } elseif ($global:IsLinux) {
             return 'Linux'
         } else {
             throw "Unable to detect local platform. Platform is not Windows, MacOS, or Linux."

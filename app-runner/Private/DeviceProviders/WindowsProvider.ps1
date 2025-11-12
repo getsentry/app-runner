@@ -67,14 +67,8 @@ class WindowsProvider : LocalComputerProvider {
     [void] ValidateLocalEnvironment() {
         Write-Debug "$($this.Platform): Validating Windows environment"
 
-        # Check if running on Windows by attempting to access Windows-specific API
-        try {
-            $runningOnWindows = [System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform([System.Runtime.InteropServices.OSPlatform]::Windows)
-            if (-not $runningOnWindows) {
-                throw "WindowsProvider can only run on Windows platforms"
-            }
-        } catch {
-            Write-Warning "Could not validate Windows platform: $_"
+        if (-not $global:IsWindows) {
+            throw "WindowsProvider can only run on Windows platforms"
         }
     }
 

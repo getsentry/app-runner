@@ -105,14 +105,8 @@ class LinuxProvider : LocalComputerProvider {
     [void] ValidateLocalEnvironment() {
         Write-Debug "$($this.Platform): Validating Linux environment"
 
-        # Check if running on Linux by attempting to access Linux-specific API
-        try {
-            $runningOnLinux = [System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform([System.Runtime.InteropServices.OSPlatform]::Linux)
-            if (-not $runningOnLinux) {
-                throw "LinuxProvider can only run on Linux platforms"
-            }
-        } catch {
-            Write-Warning "Could not validate Linux platform: $_"
+        if (-not $global:IsLinux) {
+            throw "LinuxProvider can only run on Linux platforms"
         }
 
         # Just log a warning if no screenshot tool is available (non-fatal)
