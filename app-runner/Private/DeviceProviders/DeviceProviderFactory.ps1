@@ -12,6 +12,26 @@ It handles provider instantiation and ensures the correct provider is used for e
 class DeviceProviderFactory {
     <#
     .SYNOPSIS
+    Detects the current operating system platform.
+
+    .RETURNS
+    The detected platform name (Windows, MacOS, or Linux).
+    #>
+    static [string] DetectLocalPlatform() {
+        # Use .NET API to detect OS
+        if ([System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform([System.Runtime.InteropServices.OSPlatform]::Windows)) {
+            return 'Windows'
+        } elseif ([System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform([System.Runtime.InteropServices.OSPlatform]::OSX)) {
+            return 'MacOS'
+        } elseif ([System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform([System.Runtime.InteropServices.OSPlatform]::Linux)) {
+            return 'Linux'
+        } else {
+            throw "Unable to detect local platform. Platform is not Windows, MacOS, or Linux."
+        }
+    }
+
+    <#
+    .SYNOPSIS
     Creates a device provider for the specified platform.
 
     .PARAMETER Platform
@@ -22,6 +42,12 @@ class DeviceProviderFactory {
     #>
     static [DeviceProvider] CreateProvider([string]$Platform) {
         Write-Debug "DeviceProviderFactory: Creating provider for platform: $Platform"
+
+        # Handle "Local" alias by auto-detecting the current platform
+        if ($Platform -eq 'Local') {
+            $Platform = [DeviceProviderFactory]::DetectLocalPlatform()
+            Write-Debug "DeviceProviderFactory: 'Local' resolved to $Platform"
+        }
 
         switch ($Platform) {
             "Xbox" {
@@ -53,7 +79,7 @@ class DeviceProviderFactory {
                 return [MockDeviceProvider]::new()
             }
             default {
-                $errorMessage = "Unsupported platform: $Platform. Supported platforms: Xbox, PlayStation5, Switch, Windows, MacOS, Linux, Mock"
+                $errorMessage = "Unsupported platform: $Platform. Supported platforms: Xbox, PlayStation5, Switch, Windows, MacOS, Linux, Local, Mock"
                 Write-Error "DeviceProviderFactory: $errorMessage"
                 throw $errorMessage
             }
@@ -71,7 +97,7 @@ class DeviceProviderFactory {
     An array of supported platform names.
     #>
     static [string[]] GetSupportedPlatforms() {
-        return @("Xbox", "PlayStation5", "Switch", "Windows", "MacOS", "Linux", "Mock")
+        return @("Xbox", "PlayStation5", "Switch", "Windows", "MacOS", "Linux", "Local", "Mock")
     }
 
     <#

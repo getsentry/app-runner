@@ -30,8 +30,11 @@ Disconnect-Device
 ### Desktop Platform Example
 
 ```powershell
-# Connect to local computer
-Connect-Device -Platform "Windows"  # or "MacOS" or "Linux"
+# Connect to local computer (auto-detects OS)
+Connect-Device -Platform "Local"
+
+# Or specify explicitly:
+# Connect-Device -Platform "Windows"  # or "MacOS" or "Linux"
 
 # Run application locally
 Invoke-DeviceApp -ExecutablePath "MyApp.exe" -Arguments "--test-mode"
