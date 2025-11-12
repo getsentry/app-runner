@@ -36,7 +36,7 @@ class LinuxProvider : LocalComputerProvider {
             # connect, disconnect, poweron, poweroff, reset, getstatus
 
             # Linux-specific implementations:
-            'launch'     = @('/bin/sh', '-c "\"''{0}''\" {1}"')
+            'launch'     = @('{0}', '{1}')
             'screenshot' = $screenshotTool
         }
     }
@@ -61,58 +61,6 @@ class LinuxProvider : LocalComputerProvider {
         # No screenshot tool available
         Write-Warning "No screenshot tool found (gnome-screenshot, scrot, or ImageMagick). Screenshot functionality will not work."
         return $null
-    }
-
-    # Override RunApplication for Linux shell execution
-    [hashtable] RunApplication([string]$ExecutablePath, [string]$Arguments) {
-        Write-Debug "$($this.Platform): Running application: $ExecutablePath with arguments: $Arguments"
-
-        $startDate = Get-Date
-        $result = $null
-        $exitCode = $null
-
-        try {
-            $PSNativeCommandUseErrorActionPreference = $false
-
-            # Build the command - handle both absolute and relative paths
-            $command = if ([System.IO.Path]::IsPathRooted($ExecutablePath)) {
-                "$ExecutablePath"
-            } else {
-                "./$ExecutablePath"
-            }
-
-            # Add arguments if provided
-            if (-not [string]::IsNullOrWhiteSpace($Arguments)) {
-                $command = "$command $Arguments"
-            }
-
-            # Execute the command
-            $result = Invoke-Expression "$command 2>&1" | ForEach-Object {
-                ($_ | Out-String).Trim()
-            } | Where-Object {
-                $_.Length -gt 0
-            }
-
-            $exitCode = $LASTEXITCODE
-
-            # Output to debug for visibility
-            if ($result) {
-                $result | ForEach-Object { Write-Debug $_ }
-            }
-
-        } finally {
-            $PSNativeCommandUseErrorActionPreference = $true
-        }
-
-        return @{
-            Platform       = $this.Platform
-            ExecutablePath = $ExecutablePath
-            Arguments      = $Arguments
-            StartedAt      = $startDate
-            FinishedAt     = Get-Date
-            Output         = $result
-            ExitCode       = $exitCode
-        }
     }
 
     # Override GetRunningProcesses to use ps
@@ -159,8 +107,8 @@ class LinuxProvider : LocalComputerProvider {
 
         # Check if running on Linux by attempting to access Linux-specific API
         try {
-            $isLinux = [System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform([System.Runtime.InteropServices.OSPlatform]::Linux)
-            if (-not $isLinux) {
+            $runningOnLinux = [System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform([System.Runtime.InteropServices.OSPlatform]::Linux)
+            if (-not $runningOnLinux) {
                 throw "LinuxProvider can only run on Linux platforms"
             }
         } catch {

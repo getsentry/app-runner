@@ -33,75 +33,8 @@ class WindowsProvider : LocalComputerProvider {
             # connect, disconnect, poweron, poweroff, reset, getstatus
 
             # Windows-specific implementations:
-            'launch'     = @('pwsh.exe', '-Command "& ''{0}'' {1}"')
-            'screenshot' = @('pwsh.exe', '-Command "[System.Reflection.Assembly]::LoadWithPartialName(''System.Windows.Forms'') | Out-Null; [System.Reflection.Assembly]::LoadWithPartialName(''System.Drawing'') | Out-Null; $bounds = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds; $bmp = New-Object System.Drawing.Bitmap $bounds.Width, $bounds.Height; $graphics = [System.Drawing.Graphics]::FromImage($bmp); $graphics.CopyFromScreen($bounds.Location, [System.Drawing.Point]::Empty, $bounds.Size); $bmp.Save(''{0}\{1}''); $graphics.Dispose(); $bmp.Dispose()"')
-        }
-    }
-
-    # Override RunApplication to use Start-Process with proper output capture
-    [hashtable] RunApplication([string]$ExecutablePath, [string]$Arguments) {
-        Write-Debug "$($this.Platform): Running application: $ExecutablePath with arguments: $Arguments"
-
-        $startDate = Get-Date
-        $result = $null
-        $exitCode = $null
-        $tempOutput = $null
-        $tempError = $null
-
-        try {
-            # Use Start-Process with redirection for better Windows compatibility
-            $tempOutput = [System.IO.Path]::GetTempFileName()
-            $tempError = [System.IO.Path]::GetTempFileName()
-
-            $processParams = @{
-                FilePath              = $ExecutablePath
-                Wait                  = $true
-                NoNewWindow           = $true
-                RedirectStandardOutput = $tempOutput
-                RedirectStandardError  = $tempError
-                PassThru              = $true
-            }
-
-            if (-not [string]::IsNullOrWhiteSpace($Arguments)) {
-                $processParams['ArgumentList'] = $Arguments
-            }
-
-            $process = Start-Process @processParams
-            $exitCode = $process.ExitCode
-
-            # Combine stdout and stderr
-            $output = @()
-            if (Test-Path $tempOutput) {
-                $output += Get-Content $tempOutput
-            }
-            if (Test-Path $tempError) {
-                $errorContent = Get-Content $tempError
-                if ($errorContent) {
-                    $output += $errorContent
-                }
-            }
-
-            $result = $output | Where-Object { $_.Length -gt 0 }
-
-            # Output to debug for visibility
-            if ($result) {
-                $result | ForEach-Object { Write-Debug $_ }
-            }
-
-        } finally {
-            # Clean up temp files
-            if (Test-Path $tempOutput) { Remove-Item $tempOutput -Force -ErrorAction SilentlyContinue }
-            if (Test-Path $tempError) { Remove-Item $tempError -Force -ErrorAction SilentlyContinue }
-        }
-
-        return @{
-            Platform       = $this.Platform
-            ExecutablePath = $ExecutablePath
-            Arguments      = $Arguments
-            StartedAt      = $startDate
-            FinishedAt     = Get-Date
-            Output         = $result
-            ExitCode       = $exitCode
+            'launch'     = @('{0}', '{1}')
+            'screenshot' = $null  # TODO: Implement proper Windows screenshot
         }
     }
 
@@ -136,8 +69,8 @@ class WindowsProvider : LocalComputerProvider {
 
         # Check if running on Windows by attempting to access Windows-specific API
         try {
-            $isWindows = [System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform([System.Runtime.InteropServices.OSPlatform]::Windows)
-            if (-not $isWindows) {
+            $runningOnWindows = [System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform([System.Runtime.InteropServices.OSPlatform]::Windows)
+            if (-not $runningOnWindows) {
                 throw "WindowsProvider can only run on Windows platforms"
             }
         } catch {

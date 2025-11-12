@@ -33,60 +33,8 @@ class MacOSProvider : LocalComputerProvider {
             # connect, disconnect, poweron, poweroff, reset, getstatus
 
             # macOS-specific implementations:
-            'launch'     = @('/bin/sh', '-c "\"''{0}''\" {1}"')
+            'launch'     = @('{0}', '{1}')
             'screenshot' = @('screencapture', '-x ''{0}/{1}''')
-        }
-    }
-
-    # Override RunApplication for macOS shell execution
-    [hashtable] RunApplication([string]$ExecutablePath, [string]$Arguments) {
-        Write-Debug "$($this.Platform): Running application: $ExecutablePath with arguments: $Arguments"
-
-        $startDate = Get-Date
-        $result = $null
-        $exitCode = $null
-
-        try {
-            $PSNativeCommandUseErrorActionPreference = $false
-
-            # Build the command - handle both absolute and relative paths
-            $command = if ([System.IO.Path]::IsPathRooted($ExecutablePath)) {
-                "$ExecutablePath"
-            } else {
-                "./$ExecutablePath"
-            }
-
-            # Add arguments if provided
-            if (-not [string]::IsNullOrWhiteSpace($Arguments)) {
-                $command = "$command $Arguments"
-            }
-
-            # Execute the command
-            $result = Invoke-Expression "$command 2>&1" | ForEach-Object {
-                ($_ | Out-String).Trim()
-            } | Where-Object {
-                $_.Length -gt 0
-            }
-
-            $exitCode = $LASTEXITCODE
-
-            # Output to debug for visibility
-            if ($result) {
-                $result | ForEach-Object { Write-Debug $_ }
-            }
-
-        } finally {
-            $PSNativeCommandUseErrorActionPreference = $true
-        }
-
-        return @{
-            Platform       = $this.Platform
-            ExecutablePath = $ExecutablePath
-            Arguments      = $Arguments
-            StartedAt      = $startDate
-            FinishedAt     = Get-Date
-            Output         = $result
-            ExitCode       = $exitCode
         }
     }
 
@@ -135,8 +83,8 @@ class MacOSProvider : LocalComputerProvider {
 
         # Check if running on macOS by attempting to access macOS-specific API
         try {
-            $isMacOS = [System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform([System.Runtime.InteropServices.OSPlatform]::OSX)
-            if (-not $isMacOS) {
+            $runningOnMacOS = [System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform([System.Runtime.InteropServices.OSPlatform]::OSX)
+            if (-not $runningOnMacOS) {
                 throw "MacOSProvider can only run on macOS platforms"
             }
         } catch {
