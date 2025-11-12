@@ -241,8 +241,15 @@ Describe '<TargetName>' -Tag 'Desktop', 'Integration' -ForEach $TestTargets {
             Invoke-TestCleanup
         }
 
-        It 'Get-DeviceScreenshot captures screenshot' -Skip:($Platform -eq 'Windows') {
-            # TODO: Windows screenshot command needs to be fixed (currently has PowerShell syntax issues)
+        It 'Get-DeviceScreenshot captures screenshot' {
+            # Skip if screenshot command is not available for this platform
+            # - Windows: screenshot command needs to be implemented
+            # - Linux: screenshot tool may not be installed in CI (gnome-screenshot, scrot, or imagemagick)
+            $session = Get-DeviceSession
+            if ($null -eq $session.Provider.Commands['screenshot']) {
+                Set-ItResult -Skipped -Because "Screenshot command not available for $Platform"
+            }
+
             $outputPath = Join-Path $TestDrive "test_screenshot_$Platform.png"
 
             try {
