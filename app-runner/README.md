@@ -1,6 +1,6 @@
 # SentryAppRunner PowerShell Module
 
-PowerShell module for automating device lifecycle management, app deployment, and diagnostics collection for Sentry SDK testing across multiple platforms (Xbox, PlayStation 5, Nintendo Switch, mobile, desktop).
+PowerShell module for automating device lifecycle management, app deployment, and diagnostics collection for Sentry SDK testing across multiple platforms (Xbox, PlayStation 5, Nintendo Switch, Windows, macOS, Linux).
 
 ## Installation
 
@@ -9,6 +9,8 @@ Import-Module ./SentryAppRunner.psd1
 ```
 
 ## Quick Start
+
+### Gaming Console Example
 
 ```powershell
 # Connect to device
@@ -25,11 +27,38 @@ Get-DeviceScreenshot -OutputPath "screenshot.png"
 Disconnect-Device
 ```
 
+### Desktop Platform Example
+
+```powershell
+# Connect to local computer
+Connect-Device -Platform "Windows"  # or "MacOS" or "Linux"
+
+# Run application locally
+Invoke-DeviceApp -ExecutablePath "MyApp.exe" -Arguments "--test-mode"
+
+# Collect diagnostics
+Get-DeviceScreenshot -OutputPath "screenshot.png"
+Get-DeviceDiagnostics -OutputDirectory "./diagnostics"
+
+# Disconnect
+Disconnect-Device
+```
+
 ## Supported Platforms
+
+### Gaming Consoles
 
 - **Xbox** - Xbox One and Xbox Series X/S development kits
 - **PlayStation5** - PS5 development kits
 - **Switch** - Nintendo Switch development units
+
+### Desktop Platforms
+
+- **Windows** - Local Windows machines
+- **MacOS** - Local macOS machines
+- **Linux** - Local Linux machines
+
+Note: Desktop platforms execute applications locally on the same machine running the module. Device lifecycle operations (power on/off, reboot) are not supported for desktop platforms.
 
 ## Functions
 
@@ -106,10 +135,20 @@ Connect-Device -Platform "Xbox" -TimeoutSeconds 300  # 5 minutes
 ## Requirements
 
 - PowerShell 7+
-- Platform-specific SDKs:
-  - Xbox: GameDK (`$env:GameDK`)
-  - PlayStation 5: Prospero SDK (`$env:SCE_ROOT_DIR`)
-  - Switch: Nintendo SDK (`$env:NINTENDO_SDK_ROOT`)
+
+### Console Platform SDKs
+
+- Xbox: GameDK (`$env:GameDK`)
+- PlayStation 5: Prospero SDK (`$env:SCE_ROOT_DIR`)
+- Switch: Nintendo SDK (`$env:NINTENDO_SDK_ROOT`)
+
+### Desktop Platform Requirements
+
+- **Windows:** PowerShell 5.0+ (included with Windows)
+- **MacOS:** PowerShell 7+ and `screencapture` command (built-in)
+- **Linux:** PowerShell 7+ and optional screenshot tools (`gnome-screenshot`, `scrot`, or ImageMagick)
+
+Desktop platforms don't require additional SDKs and execute applications locally.
 
 ## Contributing
 

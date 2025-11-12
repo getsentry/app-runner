@@ -12,13 +12,19 @@ This repository contains PowerShell modules for automating application testing a
 ## Supported Platforms
 
 Currently supported:
-- Xbox (One, Series X/S)
-- PlayStation 5
-- Nintendo Switch
+
+- **Gaming Consoles:**
+  - Xbox (One, Series X/S)
+  - PlayStation 5
+  - Nintendo Switch
+- **Desktop Platforms:**
+  - Windows
+  - macOS
+  - Linux
 
 Future support planned:
+
 - Mobile platforms (iOS, Android)
-- Desktop platforms (Windows, macOS, Linux)
 
 ## Requirements
 
