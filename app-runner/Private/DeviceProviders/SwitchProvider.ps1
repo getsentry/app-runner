@@ -37,18 +37,16 @@ class SwitchProvider : DeviceProvider {
             'poweroff'           = @($this.TargetControlTool, 'power-off')
             'press-power-button' = @($this.TargetControlTool, 'press-power-button')
             'reset'              = @($this.TargetControlTool, 'reset')
-            'getstatus'          = @($this.TargetControlTool, 'get-default --detail --json')
+            'getstatus'          = @($this.TargetControlTool, 'get-default --detail --json', 'ConvertFrom-Json')
+            'get-default-target' = @($this.TargetControlTool, 'get-default --json', 'ConvertFrom-Json')
+            'set-default-target' = @($this.TargetControlTool, 'set-default --target "{0}"')
+            'list-target'        = @($this.TargetControlTool, 'list-target --json', 'ConvertFrom-Json')
+            'detect-target'      = @($this.TargetControlTool, 'detect-target --json', 'ConvertFrom-Json')
+            'register-target'    = @($this.TargetControlTool, 'register --target "{0}"')
             'launch'             = @($this.ApplicationRunnerTool, '"{0}" {1}')
             'screenshot'         = @($this.TargetControlTool, 'take-screenshot --directory "{0}" --file-name "{1}"')
             'test-internet'      = @($this.TargetControlTool, 'devmenu -- network confirm-internet-connection')
         }
-    }
-
-    # Override GetDeviceStatus to provide Switch specific wakeup
-    [hashtable] GetDeviceStatus() {
-        $status = ([DeviceProvider] $this).GetDeviceStatus()
-        $status.StatusData = $status.StatusData | ConvertFrom-Json
-        return $status
     }
 
     [string] GetDeviceIdentifier() {
@@ -60,6 +58,8 @@ class SwitchProvider : DeviceProvider {
     # Override Connect to provide Switch specific wakeup
     [hashtable] Connect() {
         Write-Debug 'Connecting to Switch Devkit...'
+
+        $this.DetectAndSetDefaultTarget()
 
         # Note: Connect may hang so we run it in a background job and manually time out.
         $connectCommand = $this.BuildCommand('connect', @())
@@ -90,7 +90,7 @@ class SwitchProvider : DeviceProvider {
                 }
                 1 {
                     Write-Warning 'Attempting to start the Devkit...'
-                    $this.StartDevice(20)
+                    $this.StartDevice()
                 }
                 2 {
                     Write-Warning 'Attempting to reboot the Devkit...'

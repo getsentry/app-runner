@@ -14,36 +14,42 @@ This provider implements PlayStation 5 specific device operations using the Play
 It handles connection management, device lifecycle operations, and application management.
 #>
 class PlayStation5Provider : DeviceProvider {
-    [string]$TargetControlTool = "prospero-ctrl.exe"
-    [string]$ApplicationRunnerTool = "prospero-run.exe"
+    [string]$TargetControlTool = 'prospero-ctrl.exe'
+    [string]$ApplicationRunnerTool = 'prospero-run.exe'
 
     PlayStation5Provider() {
-        $this.Platform = "PlayStation5"
+        $this.Platform = 'PlayStation5'
 
         # Set SDK path if SCE_ROOT_DIR environment variable is available
         $sceRootDir = $env:SCE_ROOT_DIR
         if ($sceRootDir) {
-            $this.SdkPath = Join-Path $sceRootDir "Prospero\Tools\Target Manager Server\bin"
+            $this.SdkPath = Join-Path $sceRootDir 'Prospero\Tools\Target Manager Server\bin'
         } else {
-            Write-Warning "SCE_ROOT_DIR environment variable not set. Assuming PlayStation SDK tools are in PATH."
+            Write-Warning 'SCE_ROOT_DIR environment variable not set. Assuming PlayStation SDK tools are in PATH.'
             $this.SdkPath = $null
         }
 
         # Configure PlayStation 5 specific commands using Command objects
         $this.Commands = @{
-            "connect"     = @($this.TargetControlTool, "target connect")
-            "disconnect"  = @($this.TargetControlTool, "target disconnect")
-            "poweron"     = @($this.TargetControlTool, "power on")
-            "poweroff"    = @($this.TargetControlTool, "power off")
-            "reset"       = @($this.TargetControlTool, "power reboot")
-            "getstatus"   = @($this.TargetControlTool, "target info")
-            "launch"      = @($this.ApplicationRunnerTool, '/elf "{0}" {1}')
-            "getlogs"     = @($this.TargetControlTool, "target console /timestamp /history")
-            "screenshot"  = @($this.TargetControlTool, 'target screenshot "{0}/{1}"')
-            "healthcheck" = @($this.TargetControlTool, "diagnostics health-check")
-            "ipconfig"    = @($this.TargetControlTool, "network ip-config")
-            "natinfo"     = @($this.TargetControlTool, "network get-nat-traversal-info")
-            "processlist" = @($this.TargetControlTool, "process list")
+            'connect'            = @($this.TargetControlTool, 'target connect')
+            'disconnect'         = @($this.TargetControlTool, 'target disconnect')
+            'poweron'            = @($this.TargetControlTool, 'power on')
+            'poweroff'           = @($this.TargetControlTool, 'power off')
+            'reset'              = @($this.TargetControlTool, 'power reboot')
+            'getstatus'          = @($this.TargetControlTool, 'target info')
+            'launch'             = @($this.ApplicationRunnerTool, '/elf "{0}" {1}')
+            'getlogs'            = @($this.TargetControlTool, 'target console /timestamp /history')
+            'screenshot'         = @($this.TargetControlTool, 'target screenshot "{0}/{1}"')
+            'healthcheck'        = @($this.TargetControlTool, 'diagnostics health-check')
+            'ipconfig'           = @($this.TargetControlTool, 'network ip-config')
+            'natinfo'            = @($this.TargetControlTool, 'network get-nat-traversal-info')
+            'processlist'        = @($this.TargetControlTool, 'process list', 'ConvertFrom-Yaml')
+            # Target management commands for DetectAndSetDefaultTarget()
+            'get-default-target' = @($this.TargetControlTool, 'target get-default')
+            'set-default-target' = @($this.TargetControlTool, 'target set-default "{0}"')
+            'list-target'        = @($this.TargetControlTool, 'target list', 'ConvertFrom-Yaml | Foreach-Object { $_ | Select-Object *, @{Name="IpAddress";Expression={$_.HostName}} }')
+            'detect-target'      = @($this.TargetControlTool, 'target find', 'ConvertFrom-Yaml | Foreach-Object { $_ | Select-Object *, @{Name="IpAddress";Expression={$_.Host}} }')
+            'register-target'    = @($this.TargetControlTool, 'target add "{0}"')
         }
     }
 
@@ -52,7 +58,7 @@ class PlayStation5Provider : DeviceProvider {
         $result = @{}
         if ($LogType -eq 'System' -or $LogType -eq 'All') {
             # prospero-ctrl target console waits for ctrl+c to exit so we run it as a job and stop it after an arbitrary timeout
-            Write-Debug "Retrieving system logs"
+            Write-Debug 'Retrieving system logs'
             $job = Start-Job { param($cmd)
                 Write-Debug "Executing command: $cmd"
                 return Invoke-Expression $cmd
@@ -103,59 +109,19 @@ class PlayStation5Provider : DeviceProvider {
     # Returns array of objects with Id, ParentPid, Name, and Path properties
     [object] GetRunningProcesses() {
         Write-Debug "$($this.Platform): Collecting running processes via prospero-ctrl process list"
-        $output = $this.InvokeCommand('processlist', @())
+        $processes = $this.InvokeCommand('processlist', @())
 
-        # Parse prospero-ctrl process list output (YAML-like format)
-        # Format: Lines starting with "-" begin a new object, followed by key-value pairs
-        # Example:
-        # - Id: 0x00000063
-        #   ParentPid: 0x0000003b
-        #   Name: eboot.bin
-        #   Path: /app0/eboot.bin
-        $processes = @()
-        $currentObject = $null
-
-        foreach ($line in $output) {
-            $trimmedLine = $line.Trim()
-
-            # Check for start of new YAML object (line starting with "-")
-            if ($trimmedLine -match '^-\s+(.+):\s*(.*)$') {
-                # Save previous object if it exists
-                if ($currentObject) {
-                    $processes += [PSCustomObject]$currentObject
+        # ConvertFrom-Yaml already parsed the output, but we need to convert hex values to decimal
+        return @($processes | ForEach-Object {
+                $process = $_
+                # Convert hex string values to decimal integers for Id and ParentPid
+                foreach ($prop in $process.PSObject.Properties) {
+                    if ($prop.Value -is [string] -and $prop.Value -match '^0x[0-9a-fA-F]+$') {
+                        $process.($prop.Name) = [Convert]::ToInt32($prop.Value, 16)
+                    }
                 }
-                # Start new object with first key-value pair
-                $currentObject = @{}
-                $key = $matches[1]
-                $value = $matches[2].Trim()
-
-                # Convert hex values to decimal
-                if ($value -match '^0x[0-9a-fA-F]+$') {
-                    $currentObject[$key] = [Convert]::ToInt32($value, 16)
-                } else {
-                    $currentObject[$key] = if ($value) { $value } else { $null }
-                }
-            }
-            # Parse additional key-value pairs for current object
-            elseif ($currentObject -and $trimmedLine -match '^([^:]+):\s*(.*)$') {
-                $key = $matches[1].Trim()
-                $value = $matches[2].Trim()
-
-                # Convert hex values to decimal
-                if ($value -match '^0x[0-9a-fA-F]+$') {
-                    $currentObject[$key] = [Convert]::ToInt32($value, 16)
-                } else {
-                    $currentObject[$key] = if ($value) { $value } else { $null }
-                }
-            }
-        }
-
-        # Add the last object if exists
-        if ($currentObject) {
-            $processes += [PSCustomObject]$currentObject
-        }
-
-        return $processes
+                $process
+            })
     }
 
     [hashtable] GetDiagnostics([string]$OutputDirectory) {
