@@ -114,51 +114,6 @@ class LocalComputerProvider : DeviceProvider {
         # Platform-specific providers can add more checks
     }
 
-    # Override RunApplication for local execution (don't use SDK tool pattern)
-    [hashtable] RunApplication([string]$ExecutablePath, [string]$Arguments) {
-        Write-Debug "$($this.Platform): Running application: $ExecutablePath with arguments: $Arguments"
-
-        $startDate = Get-Date
-        $result = $null
-        $exitCode = $null
-
-        try {
-            $PSNativeCommandUseErrorActionPreference = $false
-
-            # Build the command
-            if (-not [string]::IsNullOrWhiteSpace($Arguments)) {
-                $command = "& '$ExecutablePath' $Arguments 2>&1"
-            } else {
-                $command = "& '$ExecutablePath' 2>&1"
-            }
-
-            # Execute and capture output
-            $result = Invoke-Expression "$command | $($this.DebugOutputForwarder)"
-            $exitCode = $LASTEXITCODE
-
-        } finally {
-            $PSNativeCommandUseErrorActionPreference = $true
-        }
-
-        # Convert output to string array
-        if ($result) {
-            $result = $result | ForEach-Object {
-                ($_ | Out-String).Trim()
-            } | Where-Object {
-                $_.Length -gt 0
-            }
-        }
-
-        return @{
-            Platform       = $this.Platform
-            ExecutablePath = $ExecutablePath
-            Arguments      = $Arguments
-            StartedAt      = $startDate
-            FinishedAt     = Get-Date
-            Output         = $result
-            ExitCode       = $exitCode
-        }
-    }
 
     # Override GetDeviceStatus to provide local system status
     [hashtable] GetDeviceStatus() {
