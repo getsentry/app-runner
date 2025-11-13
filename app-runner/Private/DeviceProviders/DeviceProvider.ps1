@@ -66,7 +66,17 @@ class DeviceProvider {
             return $null
         }
 
-        $executablePath = $this.GetToolPath($commandObj[0])
+        # Format executable path if it contains format strings (e.g., {0})
+        $toolName = $commandObj[0]
+        if ($null -ne $parameters -and $toolName -match '\{[0-9]+\}') {
+            try {
+                $toolName = $toolName -f $parameters[0]
+            } catch {
+                throw "Failed to format tool name ($toolName) for action '$action' with parameters $($parameters | Out-String): $_"
+            }
+        }
+
+        $executablePath = $this.GetToolPath($toolName)
 
         $arguments = $commandObj[1]
         if ($null -ne $parameters) {
