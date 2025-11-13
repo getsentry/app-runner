@@ -103,7 +103,6 @@ class LinuxProvider : LocalComputerProvider {
         }
 
         if ($currentDesktop -eq "KDE") {
-            # Universal fallbacks that might work on either session type
             # Try spectacle (KDE)
             if (Get-Command spectacle -ErrorAction SilentlyContinue) {
                 Write-Debug "Using spectacle as fallback"
