@@ -1,6 +1,15 @@
 $ErrorActionPreference = 'Stop'
 $PSNativeCommandUseErrorActionPreference = $true
 
+# Initialize Sentry telemetry (opt-in)
+try {
+    Import-Module (Join-Path $PSScriptRoot '..\utils\TrySentry.psm1') -ErrorAction Stop
+    $moduleManifest = Import-PowerShellDataFile (Join-Path $PSScriptRoot 'SentryAppRunner.psd1')
+    TrySentry\Start-Sentry -Dsn $env:SENTRY_APP_RUNNER_DSN -ModuleName 'SentryAppRunner' -ModuleVersion $moduleManifest.ModuleVersion
+} catch {
+    Write-Debug "Sentry telemetry initialization failed: $_"
+}
+
 # Import device providers in the correct order (base provider first, then implementations, then factory)
 $ProviderFiles = @(
     "$PSScriptRoot\Private\DeviceProviders\DeviceProvider.ps1",
