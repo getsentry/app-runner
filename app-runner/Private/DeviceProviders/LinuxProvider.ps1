@@ -85,7 +85,7 @@ class LinuxProvider : LocalComputerProvider {
             }
 
             # Try xwd as last resort for X11
-            if (Get-Command xwd -ErrorAction SilentlyContinue -and Get-Command convert -ErrorAction SilentlyContinue) {
+            if ((Get-Command xwd -ErrorAction SilentlyContinue) -and (Get-Command convert -ErrorAction SilentlyContinue)) {
                 Write-Debug "Using xwd+convert for X11 capture"
                 return @('sh', '-c "xwd -root | convert xwd:- ''{0}/{1}''"')
             }
