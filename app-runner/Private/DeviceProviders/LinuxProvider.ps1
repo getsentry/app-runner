@@ -11,7 +11,7 @@ collection, and system monitoring for Linux desktop platforms.
 
 Supported operations:
 - Run applications locally with output capture
-- Take screenshots using gnome-screenshot, scrot, or ImageMagick
+- Take screenshots using various Linux utils based on session and desktop type
 - Enumerate running processes
 - Collect system diagnostics
 
@@ -58,23 +58,67 @@ class LinuxProvider : LocalComputerProvider {
 
     # Detect available screenshot tool on Linux
     [object] DetectScreenshotTool() {
-        # Try gnome-screenshot first
-        if (Get-Command gnome-screenshot -ErrorAction SilentlyContinue) {
-            return @('gnome-screenshot', '-f ''{0}/{1}''')
+        # Check session type for optimal tool selection
+        $sessionType = $env:XDG_SESSION_TYPE
+
+        # Wayland display server
+        if ($sessionType -eq "wayland") {
+            # Try grim utility (using screencopy protocol)
+            if (Get-Command grim -ErrorAction SilentlyContinue) {
+                Write-Debug "Using grim for Wayland screenshot capture"
+                return @('grim', '''{0}/{1}''')
+            }
         }
 
-        # Try scrot
-        if (Get-Command scrot -ErrorAction SilentlyContinue) {
-            return @('scrot', '''{0}/{1}''')
+        # X11 or fallback options
+        if ($sessionType -eq "x11" -or $null -eq $sessionType) {
+            # Try scrot (lightweight and fast)
+            if (Get-Command scrot -ErrorAction SilentlyContinue) {
+                Write-Debug "Using scrot for X11 capture"
+                return @('scrot', '''{0}/{1}''')
+            }
+
+            # Try ImageMagick import (universal but slower)
+            if (Get-Command import -ErrorAction SilentlyContinue) {
+                Write-Debug "Using ImageMagick import for X11 capture"
+                return @('import', '-window root ''{0}/{1}''')
+            }
+
+            # Try xwd as last resort for X11
+            if (Get-Command xwd -ErrorAction SilentlyContinue -and Get-Command convert -ErrorAction SilentlyContinue) {
+                Write-Debug "Using xwd+convert for X11 capture"
+                return @('sh', '-c "xwd -root | convert xwd:- ''{0}/{1}''"')
+            }
         }
 
-        # Try ImageMagick import
-        if (Get-Command import -ErrorAction SilentlyContinue) {
-            return @('import', '-window root ''{0}/{1}''')
+        # Try DE-specific options
+        $currentDesktop = $env:XDG_CURRENT_DESKTOP
+
+        if ($currentDesktop -eq 'GNOME') {
+            # Try gnome-screenshot (most reliable on GNOME)
+            if (Get-Command gnome-screenshot -ErrorAction SilentlyContinue) {
+                Write-Debug "Using gnome-screenshot for X11 capture"
+                return @('gnome-screenshot', '-f ''{0}/{1}''')
+            }
+        }
+
+        if ($currentDesktop -eq "KDE") {
+            # Universal fallbacks that might work on either session type
+            # Try spectacle (KDE)
+            if (Get-Command spectacle -ErrorAction SilentlyContinue) {
+                Write-Debug "Using spectacle as fallback"
+                return @('spectacle', '-b -f -o ''{0}/{1}''')
+            }
+        }
+
+        # Try maim (works on X11, some Wayland)
+        if (Get-Command maim -ErrorAction SilentlyContinue) {
+            Write-Debug "Using maim as fallback"
+            return @('maim', '''{0}/{1}''')
         }
 
         # No screenshot tool available
-        Write-Warning "No screenshot tool found (gnome-screenshot, scrot, or ImageMagick). Screenshot functionality will not work."
+        Write-Warning "No screenshot tool found (grim, gnome-screenshot, scrot, or ImageMagick). Screenshot functionality will not work."
         return $null
     }
 
@@ -130,8 +174,8 @@ class LinuxProvider : LocalComputerProvider {
             $sysInfoFile = Join-Path $OutputDirectory "$datePrefix-linux-sysinfo.txt"
 
             # Get basic system info
-            $hostname = hostname
-            $kernelVersion = uname -r
+            $hostname = [System.Environment]::MachineName
+            $kernelVersion = if (Get-Command uname -ErrorAction SilentlyContinue) { & uname -r } else { "Unknown" }
             $osInfo = if (Test-Path /etc/os-release) {
                 Get-Content /etc/os-release | Where-Object { $_ -match '^(NAME|VERSION|ID)=' }
             } else {
