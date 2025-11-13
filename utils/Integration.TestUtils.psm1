@@ -53,7 +53,39 @@ function Get-EventIds {
     )
 
     $eventCapturedLines = $AppOutput | Where-Object { $_ -match 'EVENT_CAPTURED:' }
-    $eventCapturedLines | Should -HaveCount $ExpectedCount
+
+    # Provide detailed error message if count doesn't match
+    if ($eventCapturedLines.Count -ne $ExpectedCount) {
+        $errorMsg = "Expected $ExpectedCount EVENT_CAPTURED line(s) but found $($eventCapturedLines.Count).`n"
+        $errorMsg += "`nSearched for lines matching: 'EVENT_CAPTURED:'`n"
+
+        if ($eventCapturedLines.Count -gt 0) {
+            $errorMsg += "`nFound lines:`n"
+            $eventCapturedLines | ForEach-Object { $errorMsg += "  $_`n" }
+        } else {
+            $errorMsg += "`nNo EVENT_CAPTURED lines found in output.`n"
+
+            # Show first and last few lines of output for debugging
+            $outputArray = @($AppOutput)
+            if ($outputArray.Count -gt 0) {
+                $errorMsg += "`nApp output preview (first 10 lines):`n"
+                $outputArray | Select-Object -First 10 | ForEach-Object { $errorMsg += "  $_`n" }
+
+                if ($outputArray.Count -gt 20) {
+                    $errorMsg += "`n  ... ($($outputArray.Count - 20) lines omitted) ...`n"
+                }
+
+                if ($outputArray.Count -gt 10) {
+                    $errorMsg += "`nApp output preview (last 10 lines):`n"
+                    $outputArray | Select-Object -Last 10 | ForEach-Object { $errorMsg += "  $_`n" }
+                }
+            } else {
+                $errorMsg += "`nApp output was completely empty. The test app may have failed to run or produce output.`n"
+            }
+        }
+
+        throw $errorMsg
+    }
 
     [array]$eventIds = @()
     foreach ($eventLine in $eventCapturedLines) {
@@ -154,5 +186,40 @@ function Get-SentryTestEvent {
     }
 }
 
+function Get-PackageAumid {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$PackagePath
+    )
+
+    if (Test-Path $PackagePath -PathType Container) {
+        # PackagePath is a directory
+        $manifest = Get-ChildItem -Path $PackagePath -Filter "*_appxmanifest.xml"
+    } elseif (Test-Path $PackagePath -PathType Leaf) {
+        # PackagePath is a file (e.g., .xvc package), will look for manifest alongside it
+        $manifest = Get-Item "$([System.IO.Path]::GetFileNameWithoutExtension($PackagePath))_appxmanifest.xml"
+    } else {
+        throw "Package path not found: $PackagePath"
+    }
+
+    @($manifest).count | Should -Be 1 -Because "There must be a single appmanifest.xml for $PackagePath"
+
+    if ($manifest.Name -match '^(.+)_\d+\.\d+\.\d+\.\d+_neutral__([^_]+)_') {
+        $packageName = $matches[1]
+        $familyNameHash = $matches[2]
+    } else {
+        throw "Unable to parse package family name from manifest filename: $($manifest.Name)"
+    }
+
+    [xml]$xml = Get-Content $manifest.FullName
+    $appId = $xml.Package.Applications.Application.Id
+    if (-not $appId) {
+        throw "Unable to extract Application ID from manifest"
+    }
+
+    return "${packageName}_${familyNameHash}!${appId}"
+}
+
 # Export module functions
-Export-ModuleMember -Function Invoke-CMakeConfigure, Invoke-CMakeBuild, Get-OutputFilePath, Get-EventIds, Get-SentryTestEvent
+Export-ModuleMember -Function Invoke-CMakeConfigure, Invoke-CMakeBuild, Get-OutputFilePath, Get-EventIds, Get-SentryTestEvent, Get-PackageAumid

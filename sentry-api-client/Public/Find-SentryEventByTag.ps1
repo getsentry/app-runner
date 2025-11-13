@@ -1,5 +1,4 @@
-function Find-SentryEventByTag
-{
+function Find-SentryEventByTag {
     <#
     .SYNOPSIS
     Finds issues and their associated events filtered by a tag.
@@ -65,8 +64,7 @@ function Find-SentryEventByTag
         sort  = $Sort
     }
 
-    if ($Cursor)
-    {
+    if ($Cursor) {
         $QueryParams.cursor = $Cursor
     }
 
@@ -79,20 +77,17 @@ function Find-SentryEventByTag
     $Issues = if ($Response -is [Array]) { $Response } else { @($Response) }
     $AllEvents = @()
 
-    Write-Debug "Found $($Issues.Count) issues matching tag '$TagName`:$TagValue'. Fetching events..."
+    Write-Debug "Found $(@($Issues).Count) issues matching tag '$TagName`:$TagValue'. Fetching events..."
 
-    foreach ($Issue in $Issues)
-    {
-        try
-        {
+    foreach ($Issue in @($Issues)) {
+        try {
             # Use the organization issues events endpoint with tag filtering
             $EventsQueryParams = @{
                 query = $QueryString
                 full  = $true
             }
 
-            if ($Limit)
-            {
+            if ($Limit) {
                 # Distribute limit across issues, minimum 1 per issue
                 $EventsPerIssue = [Math]::Max(1, [Math]::Floor($Limit / $Issues.Count))
                 $EventsQueryParams.limit = $EventsPerIssue
@@ -102,19 +97,15 @@ function Find-SentryEventByTag
             $EventsUri = Get-SentryOrganizationUrl -Resource "issues/$($Issue.id)/events/" -QueryString $EventsQueryStringParams
 
             $IssueEvents = Invoke-SentryApiRequest -Uri $EventsUri -Method 'GET'
-            $IssueEventsArray = if ($IssueEvents -is [Array]) { $IssueEvents } else { @($IssueEvents) }
-            Write-Debug "Found $($IssueEvents.Count) events for issue $($Issue.id) matching tag '$TagName`:$TagValue', fetching actual event content."
+            Write-Debug "Found $(@($IssueEvents).Count) events for issue $($Issue.id) matching tag '$TagName`:$TagValue', fetching actual event content."
 
             # The response from the API above differs from the Get-SentryEvent so we just grab event IDs and fetch directly.
-            foreach ($_event in $IssueEventsArray)
-            {
+            foreach ($_event in @($IssueEvents)) {
                 $_event = Get-SentryEvent -EventId $_event.eventID
                 $AllEvents += $_event
             }
 
-        }
-        catch
-        {
+        } catch {
             Write-Error "Failed to retrieve events for issue $($Issue.id): $_"
         }
     }

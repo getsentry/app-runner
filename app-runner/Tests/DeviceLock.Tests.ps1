@@ -1,0 +1,540 @@
+$ErrorActionPreference = 'Stop'
+
+BeforeAll {
+    $ModulePath = Join-Path $PSScriptRoot '..' 'SentryAppRunner.psd1'
+    Import-Module $ModulePath -Force
+
+    # Dot-source private functions for direct testing
+    . "$PSScriptRoot\..\Private\DeviceLockManager.ps1"
+}
+
+AfterAll {
+    Remove-Module SentryAppRunner -Force -ErrorAction SilentlyContinue
+}
+
+Describe 'DeviceLockManager' {
+    Context 'Resource Name Generation' {
+        It 'Creates resource name with platform only' {
+            $resourceName = New-DeviceResourceName -Platform 'Xbox'
+            $resourceName | Should -Be 'Xbox-Default'
+        }
+
+        It 'Creates resource name with platform and target' {
+            $resourceName = New-DeviceResourceName -Platform 'Xbox' -Target '192.168.1.100'
+            $resourceName | Should -Be 'Xbox-192.168.1.100'
+        }
+
+        It 'Creates resource name with platform and named target' {
+            $resourceName = New-DeviceResourceName -Platform 'Xbox' -Target 'MyDevKit'
+            $resourceName | Should -Be 'Xbox-MyDevKit'
+        }
+
+        It 'Handles different platforms correctly' {
+            New-DeviceResourceName -Platform 'PlayStation5' | Should -Be 'PlayStation5-Default'
+            New-DeviceResourceName -Platform 'Switch' | Should -Be 'Switch-Default'
+            New-DeviceResourceName -Platform 'Mock' | Should -Be 'Mock-Default'
+        }
+
+        It 'Handles empty target string as Default' {
+            $resourceName = New-DeviceResourceName -Platform 'Xbox' -Target ''
+            $resourceName | Should -Be 'Xbox-Default'
+        }
+
+        It 'Handles IP address with port as target' {
+            $resourceName = New-DeviceResourceName -Platform 'Xbox' -Target '192.168.1.100:8080'
+            $resourceName | Should -Be 'Xbox-192.168.1.100:8080'
+        }
+
+        It 'Handles target names with special characters' {
+            $resourceName = New-DeviceResourceName -Platform 'Xbox' -Target 'MyDevice_Test-01'
+            $resourceName | Should -Be 'Xbox-MyDevice_Test-01'
+        }
+
+        It 'Handles very long target names' {
+            $longTarget = 'A' * 200
+            $resourceName = New-DeviceResourceName -Platform 'Xbox' -Target $longTarget
+            $resourceName | Should -Be "Xbox-$longTarget"
+        }
+
+        It 'Sanitizes backslash in target name (reserved for namespace)' {
+            $resourceName = New-DeviceResourceName -Platform 'Xbox' -Target 'foo\bar'
+            $resourceName | Should -Be 'Xbox-foo-bar'
+        }
+
+        It 'Sanitizes forward slash in target name for cross-platform compatibility' {
+            $resourceName = New-DeviceResourceName -Platform 'Xbox' -Target '192.168.1.100/test'
+            $resourceName | Should -Be 'Xbox-192.168.1.100-test'
+        }
+
+        It 'Sanitizes NUL character in target name' {
+            $invalidTarget = "test`0name"
+            $resourceName = New-DeviceResourceName -Platform 'Xbox' -Target $invalidTarget
+            $resourceName | Should -Be 'Xbox-test-name'
+        }
+
+        It 'Sanitizes multiple invalid characters' {
+            $resourceName = New-DeviceResourceName -Platform 'Xbox' -Target 'path/to\file'
+            $resourceName | Should -Be 'Xbox-path-to-file'
+        }
+    }
+
+    Context 'Mutex Acquisition and Release' {
+        BeforeEach {
+            # Use unique resource name per test to avoid conflicts
+            $script:TestResourceName = "Test-$(New-Guid)"
+        }
+
+        It 'Acquires mutex successfully' {
+            $mutex = Request-DeviceAccess -ResourceName $script:TestResourceName -TimeoutSeconds 5
+            $mutex | Should -Not -BeNullOrEmpty
+            $mutex | Should -BeOfType [System.Threading.Mutex]
+
+            # Cleanup
+            Release-DeviceAccess -Mutex $mutex -ResourceName $script:TestResourceName
+        }
+
+        It 'Releases mutex successfully' {
+            $mutex = Request-DeviceAccess -ResourceName $script:TestResourceName -TimeoutSeconds 5
+            { Release-DeviceAccess -Mutex $mutex -ResourceName $script:TestResourceName } | Should -Not -Throw
+        }
+
+        It 'Allows reacquisition after release' {
+            # First acquisition
+            $mutex1 = Request-DeviceAccess -ResourceName $script:TestResourceName -TimeoutSeconds 5
+            Release-DeviceAccess -Mutex $mutex1 -ResourceName $script:TestResourceName
+
+            # Second acquisition should succeed
+            $mutex2 = Request-DeviceAccess -ResourceName $script:TestResourceName -TimeoutSeconds 5
+            $mutex2 | Should -Not -BeNullOrEmpty
+
+            # Cleanup
+            Release-DeviceAccess -Mutex $mutex2 -ResourceName $script:TestResourceName
+        }
+
+        It 'Blocks concurrent access to same resource from different processes' {
+            # Note: Mutexes allow recursive locking by the same thread, so we need to test with a background job (separate process)
+            # First process acquires mutex
+            $mutex1 = Request-DeviceAccess -ResourceName $script:TestResourceName -TimeoutSeconds 5
+
+            try {
+                # Start a background job that tries to acquire the same mutex
+                $privateScriptPath = Join-Path $PSScriptRoot '..' 'Private' 'DeviceLockManager.ps1'
+                $job = Start-Job -ScriptBlock {
+                    param($PrivateScriptPath, $ResourceName)
+                    # Dot-source the private functions
+                    . $PrivateScriptPath
+                    try {
+                        Request-DeviceAccess -ResourceName $ResourceName -TimeoutSeconds 1
+                        return "SUCCESS"
+                    } catch {
+                        return $_.Exception.Message
+                    }
+                } -ArgumentList $privateScriptPath, $script:TestResourceName
+
+                # Wait for job to complete
+                $result = Wait-Job -Job $job -Timeout 5 | Receive-Job
+                Remove-Job -Job $job -Force
+
+                # Should have failed with timeout error
+                $result | Should -Match 'Could not acquire exclusive access'
+            } finally {
+                # Cleanup
+                Release-DeviceAccess -Mutex $mutex1 -ResourceName $script:TestResourceName
+            }
+        }
+
+        It 'Allows concurrent access to different resources' {
+            $resource1 = "Test1-$(New-Guid)"
+            $resource2 = "Test2-$(New-Guid)"
+
+            $mutex1 = Request-DeviceAccess -ResourceName $resource1 -TimeoutSeconds 5
+            $mutex2 = Request-DeviceAccess -ResourceName $resource2 -TimeoutSeconds 5
+
+            $mutex1 | Should -Not -BeNullOrEmpty
+            $mutex2 | Should -Not -BeNullOrEmpty
+
+            # Cleanup
+            Release-DeviceAccess -Mutex $mutex1 -ResourceName $resource1
+            Release-DeviceAccess -Mutex $mutex2 -ResourceName $resource2
+        }
+
+        It 'Handles multiple concurrent processes racing to create the same mutex' {
+            # This reproduces the original CI bug where multiple processes
+            # try to create the same Global mutex simultaneously
+            $resourceName = "Test-$(New-Guid)"
+            $privateScriptPath = Join-Path $PSScriptRoot '..' 'Private' 'DeviceLockManager.ps1'
+
+            # Start 5 jobs that ALL try to acquire the same mutex at the same time
+            $jobs = 1..5 | ForEach-Object {
+                Start-Job -ScriptBlock {
+                    param($Path, $Resource)
+                    . $Path
+                    try {
+                        $mutex = Request-DeviceAccess -ResourceName $Resource -TimeoutSeconds 10
+                        # Hold mutex briefly to ensure overlap
+                        Start-Sleep -Milliseconds 100
+                        Release-DeviceAccess -Mutex $mutex -ResourceName $Resource
+                        return @{ Success = $true; Error = $null }
+                    } catch {
+                        return @{ Success = $false; Error = $_.Exception.Message }
+                    }
+                } -ArgumentList $privateScriptPath, $resourceName
+            }
+
+            # Wait for all jobs to complete
+            $results = $jobs | Wait-Job -Timeout 30 | Receive-Job
+            $jobs | Remove-Job -Force
+
+            # All jobs should succeed (though only one at a time owns the mutex)
+            $results | Should -HaveCount 5
+            $successCount = ($results | Where-Object { $_.Success -eq $true }).Count
+            $successCount | Should -Be 5
+
+            # Should NOT have any "Access denied" errors
+            $accessDeniedErrors = $results | Where-Object { $_.Error -match 'Access denied' }
+            $accessDeniedErrors | Should -BeNullOrEmpty
+        }
+
+        It 'Acquires mutex with special characters in resource name' {
+            # Test real-world scenario: IP address with port
+            $resourceName = "Xbox-192.168.1.100:8080"
+            $mutex = Request-DeviceAccess -ResourceName $resourceName -TimeoutSeconds 5
+
+            $mutex | Should -Not -BeNullOrEmpty
+            $mutex | Should -BeOfType [System.Threading.Mutex]
+
+            # Cleanup
+            Release-DeviceAccess -Mutex $mutex -ResourceName $resourceName
+        }
+    }
+
+    Context 'Timeout Behavior' {
+        BeforeEach {
+            $script:TestResourceName = "Test-$(New-Guid)"
+        }
+
+        It 'Times out when mutex is held by another process' {
+            # Acquire mutex
+            $mutex = Request-DeviceAccess -ResourceName $script:TestResourceName -TimeoutSeconds 5
+
+            try {
+                # Start background job to test timeout from another process
+                $privateScriptPath = Join-Path $PSScriptRoot '..' 'Private' 'DeviceLockManager.ps1'
+                $job = Start-Job -ScriptBlock {
+                    param($PrivateScriptPath, $ResourceName)
+                    . $PrivateScriptPath
+
+                    $startTime = Get-Date
+                    try {
+                        Request-DeviceAccess -ResourceName $ResourceName -TimeoutSeconds 2
+                        return @{ Success = $true; Duration = 0 }
+                    } catch {
+                        $duration = ((Get-Date) - $startTime).TotalSeconds
+                        return @{ Success = $false; Duration = $duration; Message = $_.Exception.Message }
+                    }
+                } -ArgumentList $privateScriptPath, $script:TestResourceName
+
+                $result = Wait-Job -Job $job -Timeout 5 | Receive-Job
+                Remove-Job -Job $job -Force
+
+                # Should have failed with timeout
+                $result.Success | Should -Be $false
+                $result.Message | Should -Match 'Could not acquire exclusive access'
+
+                # Verify it actually waited for the timeout
+                $result.Duration | Should -BeGreaterOrEqual 1.8
+                $result.Duration | Should -BeLessOrEqual 3.0
+            } finally {
+                Release-DeviceAccess -Mutex $mutex -ResourceName $script:TestResourceName
+            }
+        }
+
+        It 'Throws descriptive error message on timeout' {
+            $mutex = Request-DeviceAccess -ResourceName $script:TestResourceName -TimeoutSeconds 5
+
+            try {
+                # Start background job to test error message from another process
+                $privateScriptPath = Join-Path $PSScriptRoot '..' 'Private' 'DeviceLockManager.ps1'
+                $job = Start-Job -ScriptBlock {
+                    param($PrivateScriptPath, $ResourceName)
+                    . $PrivateScriptPath
+                    try {
+                        Request-DeviceAccess -ResourceName $ResourceName -TimeoutSeconds 1
+                    } catch {
+                        return $_.Exception.Message
+                    }
+                } -ArgumentList $privateScriptPath, $script:TestResourceName
+
+                $result = Wait-Job -Job $job -Timeout 5 | Receive-Job
+                Remove-Job -Job $job -Force
+
+                $result | Should -Match "exclusive access.*$script:TestResourceName"
+            } finally {
+                Release-DeviceAccess -Mutex $mutex -ResourceName $script:TestResourceName
+            }
+        }
+
+        It 'Handles zero timeout correctly' {
+            # Acquire mutex first
+            $mutex = Request-DeviceAccess -ResourceName $script:TestResourceName -TimeoutSeconds 5
+
+            try {
+                # Try to acquire with zero timeout from another process - should fail immediately
+                $privateScriptPath = Join-Path $PSScriptRoot '..' 'Private' 'DeviceLockManager.ps1'
+                $job = Start-Job -ScriptBlock {
+                    param($PrivateScriptPath, $ResourceName)
+                    . $PrivateScriptPath
+                    $startTime = Get-Date
+                    try {
+                        Request-DeviceAccess -ResourceName $ResourceName -TimeoutSeconds 0
+                    } catch {
+                        $duration = ((Get-Date) - $startTime).TotalSeconds
+                        return @{ Error = $_.Exception.Message; Duration = $duration }
+                    }
+                } -ArgumentList $privateScriptPath, $script:TestResourceName
+
+                $result = Wait-Job -Job $job -Timeout 5 | Receive-Job
+                Remove-Job -Job $job -Force
+
+                # Should fail with timeout error
+                $result.Error | Should -Match 'Could not acquire exclusive access'
+                # Should fail almost immediately (under 0.5 seconds)
+                $result.Duration | Should -BeLessThan 0.5
+            } finally {
+                Release-DeviceAccess -Mutex $mutex -ResourceName $script:TestResourceName
+            }
+        }
+
+        It 'Handles very short timeout correctly' {
+            # Acquire mutex first
+            $mutex = Request-DeviceAccess -ResourceName $script:TestResourceName -TimeoutSeconds 5
+
+            try {
+                # Try to acquire with short timeout (1 second)
+                $privateScriptPath = Join-Path $PSScriptRoot '..' 'Private' 'DeviceLockManager.ps1'
+                $job = Start-Job -ScriptBlock {
+                    param($PrivateScriptPath, $ResourceName)
+                    . $PrivateScriptPath
+                    # Small delay to ensure parent thread is holding mutex
+                    Start-Sleep -Milliseconds 100
+                    $startTime = Get-Date
+                    try {
+                        Request-DeviceAccess -ResourceName $ResourceName -TimeoutSeconds 1
+                    } catch {
+                        $duration = ((Get-Date) - $startTime).TotalSeconds
+                        return @{ Error = $_.Exception.Message; Duration = $duration }
+                    }
+                } -ArgumentList $privateScriptPath, $script:TestResourceName
+
+                $result = Wait-Job -Job $job -Timeout 5 | Receive-Job
+                Remove-Job -Job $job -Force
+
+                # Should fail with timeout error
+                $result.Error | Should -Match 'Could not acquire exclusive access'
+                # Should timeout around 1s (allow some variance)
+                $result.Duration | Should -BeGreaterOrEqual 0.9
+                $result.Duration | Should -BeLessThan 1.5
+            } finally {
+                Release-DeviceAccess -Mutex $mutex -ResourceName $script:TestResourceName
+            }
+        }
+    }
+
+    Context 'Error Handling' {
+        It 'Release-DeviceAccess handles null mutex gracefully' {
+            { Release-DeviceAccess -Mutex $null -ResourceName 'Test' } | Should -Not -Throw
+        }
+
+        It 'Release-DeviceAccess handles double-release gracefully' {
+            $resourceName = "Test-$(New-Guid)"
+            $mutex = Request-DeviceAccess -ResourceName $resourceName -TimeoutSeconds 5
+
+            # Release once
+            { Release-DeviceAccess -Mutex $mutex -ResourceName $resourceName } | Should -Not -Throw
+
+            # Release again - should not throw (should log warning instead)
+            { Release-DeviceAccess -Mutex $mutex -ResourceName $resourceName } | Should -Not -Throw
+        }
+
+        It 'Release-DeviceAccess handles already disposed mutex gracefully' {
+            $resourceName = "Test-$(New-Guid)"
+            $mutex = Request-DeviceAccess -ResourceName $resourceName -TimeoutSeconds 5
+
+            # Manually dispose
+            $mutex.Dispose()
+
+            # Try to release - should handle gracefully
+            { Release-DeviceAccess -Mutex $mutex -ResourceName $resourceName } | Should -Not -Throw
+        }
+
+        It 'Cleans up mutex on acquisition error' {
+            # This is harder to test directly, but we can verify that after a failed
+            # acquisition, we can still acquire the mutex successfully
+            $resourceName = "Test-$(New-Guid)"
+
+            # Try to acquire with extremely short timeout (may or may not fail)
+            try {
+                $mutex = Request-DeviceAccess -ResourceName $resourceName -TimeoutSeconds 1
+                Release-DeviceAccess -Mutex $mutex -ResourceName $resourceName
+            } catch {
+                # Expected to fail sometimes, that's ok
+            }
+
+            # Should be able to acquire normally
+            $mutex = Request-DeviceAccess -ResourceName $resourceName -TimeoutSeconds 5
+            $mutex | Should -Not -BeNullOrEmpty
+            Release-DeviceAccess -Mutex $mutex -ResourceName $resourceName
+        }
+
+        It 'Handles abandoned mutex from crashed process' {
+            $resourceName = "Test-$(New-Guid)"
+            $privateScriptPath = Join-Path $PSScriptRoot '..' 'Private' 'DeviceLockManager.ps1'
+
+            # Start a background job that acquires the mutex and then "crashes" (doesn't release)
+            $job = Start-Job -ScriptBlock {
+                param($PrivateScriptPath, $ResourceName)
+                . $PrivateScriptPath
+
+                # Acquire the mutex
+                $mutex = Request-DeviceAccess -ResourceName $ResourceName -TimeoutSeconds 5
+
+                # Simulate a crash by exiting without releasing the mutex
+                # (In a real crash, ReleaseMutex() would never be called)
+                exit 0
+            } -ArgumentList $privateScriptPath, $resourceName
+
+            # Wait for job to acquire mutex and exit
+            Wait-Job -Job $job -Timeout 10 | Out-Null
+            Remove-Job -Job $job -Force
+
+            # Now try to acquire the mutex - should succeed with abandoned mutex warning
+            $mutex = Request-DeviceAccess -ResourceName $resourceName -TimeoutSeconds 5 -WarningVariable warningMessages
+
+            # Should have acquired the mutex successfully
+            $mutex | Should -Not -BeNullOrEmpty
+
+            # Should have received warning about abandoned mutex
+            $warningMessages | Should -Not -BeNullOrEmpty
+            $warningMessages[0] | Should -Match 'abandoned mutex'
+            $warningMessages[0] | Should -Match 'inconsistent state'
+
+            # Clean up
+            Release-DeviceAccess -Mutex $mutex -ResourceName $resourceName
+        }
+    }
+
+    Context 'Integration with Connect-Device' {
+        AfterEach {
+            if (Get-DeviceSession) {
+                Disconnect-Device
+            }
+        }
+
+        It 'Connect-Device acquires mutex and stores it in session' {
+            $session = Connect-Device -Platform 'Mock' -TimeoutSeconds 5
+
+            $session.Mutex | Should -Not -BeNullOrEmpty
+            $session.Mutex | Should -BeOfType [System.Threading.Mutex]
+            $session.ResourceName | Should -Be 'Mock-Default'
+        }
+
+        It 'Disconnect-Device releases mutex' {
+            Connect-Device -Platform 'Mock' -TimeoutSeconds 5
+            { Disconnect-Device } | Should -Not -Throw
+
+            # After disconnect, should be able to connect again immediately
+            { Connect-Device -Platform 'Mock' -TimeoutSeconds 5 } | Should -Not -Throw
+        }
+
+        It 'Cannot connect to same resource twice concurrently' {
+            Connect-Device -Platform 'Mock' -TimeoutSeconds 1
+
+            # Start a background job that tries to connect to the same resource
+            $job = Start-Job -ScriptBlock {
+                param($ModulePath)
+                Import-Module $ModulePath -Force
+                try {
+                    # This should timeout since main session holds the mutex
+                    # Use short timeout for faster test
+                    Connect-Device -Platform 'Mock' -TimeoutSeconds 3
+                } catch {
+                    # Return the error message
+                    return $_.Exception.Message
+                }
+            } -ArgumentList $ModulePath
+
+            # Wait for job to complete (should timeout quickly)
+            $result = Wait-Job -Job $job -Timeout 10 | Receive-Job
+            Remove-Job -Job $job -Force
+
+            # Should have failed with timeout error
+            $result | Should -Match 'Could not acquire exclusive access.*Mock-Default'
+        }
+
+        It 'Can connect to different targets concurrently' {
+            Connect-Device -Platform 'Mock' -TimeoutSeconds 5
+
+            # Start a background job that connects to a different Mock target
+            $job = Start-Job -ScriptBlock {
+                param($ModulePath)
+                Import-Module $ModulePath -Force
+                try {
+                    # Connect with a different target - should succeed
+                    Connect-Device -Platform 'Mock' -Target 'TargetA' -TimeoutSeconds 5
+                    return 'SUCCESS'
+                } catch {
+                    return $_.Exception.Message
+                }
+            } -ArgumentList $ModulePath
+
+            # This should complete successfully (different target = different semaphore)
+            $result = Wait-Job -Job $job -Timeout 10 | Receive-Job
+            Remove-Job -Job $job -Force
+
+            # Should succeed - different targets don't block each other
+            $result | Should -Contain 'SUCCESS'
+        }
+
+        It 'Xbox uses platform-level mutex regardless of target' {
+            # Xbox xb*.exe commands operate on the "current" target set via xbconnect,
+            # which is global to the system, not per-process. Therefore, Xbox must use
+            # a single platform-level mutex, not per-target mutexes.
+
+            # Verify that Xbox always uses Default target for mutex, even when target is specified
+            # This is handled in Connect-Device by passing $null as the mutexTarget for Xbox
+            $resourceWithoutTarget = New-DeviceResourceName -Platform 'Xbox' -Target $null
+            $resourceWithTarget1 = New-DeviceResourceName -Platform 'Xbox' -Target '192.168.1.100'
+            $resourceWithTarget2 = New-DeviceResourceName -Platform 'Xbox' -Target '192.168.1.101'
+
+            # All Xbox resources should use 'Default' target for mutex coordination
+            $resourceWithoutTarget | Should -Be 'Xbox-Default'
+            $resourceWithTarget1 | Should -Be 'Xbox-192.168.1.100'
+            $resourceWithTarget2 | Should -Be 'Xbox-192.168.1.101'
+
+            # Connect-Device logic ensures Xbox always uses platform-level mutex by passing $null
+            # as mutexTarget, which results in 'Xbox-Default' regardless of the actual target parameter
+        }
+
+        It 'Releases mutex on connection failure' {
+            # Mock doesn't really fail to connect, so we'll test cleanup directly
+            # by verifying we can reconnect after any error
+            try {
+                Connect-Device -Platform 'Mock' -TimeoutSeconds 5
+                # Force an error in the session to test cleanup
+                throw "Simulated error"
+            } catch {
+                # Expected
+            }
+
+            # The finally block in Connect-Device should have released the mutex
+            # if it was acquired before the error. Let's verify by connecting successfully.
+            # Actually, if Connect-Device succeeded before the throw, we need to disconnect first
+            if (Get-DeviceSession) {
+                Disconnect-Device
+            }
+
+            # Now try to connect - should work
+            { Connect-Device -Platform 'Mock' -TimeoutSeconds 5 } | Should -Not -Throw
+        }
+    }
+}

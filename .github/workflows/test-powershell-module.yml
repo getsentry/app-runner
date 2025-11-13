@@ -35,6 +35,10 @@ jobs:
     permissions:
       contents: read
       security-events: write
+    defaults:
+      run:
+        working-directory: ${{ inputs.module-path }}
+        shell: pwsh
 
     steps:
       - name: Checkout repository

@@ -14,23 +14,23 @@ AfterAll {
 Describe 'SentryApiClient Tests with Real API Response Fixtures' {
     Context 'Event Operations with Realistic Data' {
         BeforeAll {
-            # Mock Invoke-RestMethod to return fixture data
-            Mock -ModuleName SentryApiClient Invoke-RestMethod {
-                param($Uri, $Method, $Headers, $ContentType, $Body)
-                
+            # Mock Invoke-WebRequest to return fixture data
+            Mock -ModuleName SentryApiClient Invoke-WebRequest {
+                param($Uri)
+
                 switch -Regex ($Uri) {
                     '/events/4f1a9f7e7f7b4f9a8c8d9e0f1a2b3c4d/' {
-                        return $script:Fixtures.event_detail
+                        return @{ Content = ($script:Fixtures.event_detail | ConvertTo-Json -Depth 20) }
                     }
                     '/events/.*query=' {
-                        return $script:Fixtures.event_list
+                        return @{ Content = ($script:Fixtures.event_list | ConvertTo-Json -Depth 20) }
                     }
                     default {
-                        throw [System.Net.WebException]::new("404 Not Found")
+                        throw [System.Net.WebException]::new('404 Not Found')
                     }
                 }
             }
-            
+
             Connect-SentryApi -ApiToken 'test-token' -Organization 'my-org' -Project 'my-app'
         }
         
@@ -90,36 +90,37 @@ Describe 'SentryApiClient Tests with Real API Response Fixtures' {
     
     Context 'Issue Operations with Realistic Data' {
         BeforeAll {
-            Mock -ModuleName SentryApiClient Invoke-RestMethod {
+            Mock -ModuleName SentryApiClient Invoke-WebRequest {
                 param($Uri)
-                
+
                 switch -Regex ($Uri) {
                     '/events/4f1a9f7e7f7b4f9a8c8d9e0f1a2b3c4d/' {
                         # Handle Get-SentryEvent calls - most specific first
-                        return $script:Fixtures.event_detail
+                        return @{ Content = ($script:Fixtures.event_detail | ConvertTo-Json -Depth 20) }
                     }
                     '/issues/[^/]+/events/' {
                         # Handle issues/{id}/events/ endpoint - return event summaries
-                        return @(
+                        $responseData = @(
                             @{
                                 eventID = '4f1a9f7e7f7b4f9a8c8d9e0f1a2b3c4d'
-                                id = 'summary-id'
+                                id      = 'summary-id'
                                 message = 'Event summary'
                             }
                         )
+                        return @{ Content = ($responseData | ConvertTo-Json -Depth 20) }
                     }
                     '/issues/.*query=' {
-                        return $script:Fixtures.issue_list
+                        return @{ Content = ($script:Fixtures.issue_list | ConvertTo-Json -Depth 20) }
                     }
                     '/issues/1234567890/' {
-                        return $script:Fixtures.issue_detail
+                        return @{ Content = ($script:Fixtures.issue_detail | ConvertTo-Json -Depth 20) }
                     }
                     default {
-                        throw [System.Net.WebException]::new("404 Not Found")
+                        throw [System.Net.WebException]::new('404 Not Found')
                     }
                 }
             }
-            
+
             Connect-SentryApi -ApiToken 'test-token' -Organization 'my-org' -Project 'my-app'
         }
         
@@ -149,68 +150,71 @@ Describe 'SentryApiClient Tests with Real API Response Fixtures' {
     
     Context 'Error Response Handling' {
         It 'Should handle 401 Unauthorized correctly' {
-            Mock -ModuleName SentryApiClient Invoke-RestMethod {
+            Mock -ModuleName SentryApiClient Invoke-WebRequest {
                 $response = New-Object System.Net.HttpWebResponse
                 $exception = [System.Net.WebException]::new(
-                    "401 Unauthorized",
+                    '401 Unauthorized',
                     $null,
                     [System.Net.WebExceptionStatus]::ProtocolError,
                     $response
                 )
                 throw $exception
             }
-            
+
             Connect-SentryApi -ApiToken 'invalid-token' -Organization 'my-org' -Project 'my-app'
-            
-            { Get-SentryEvent -EventId 'test' } | Should -Throw "*401 Unauthorized*"
+
+            { Get-SentryEvent -EventId 'test' } | Should -Throw '*401 Unauthorized*'
         }
         
         It 'Should handle 403 Forbidden correctly' {
-            Mock -ModuleName SentryApiClient Invoke-RestMethod {
+            Mock -ModuleName SentryApiClient Invoke-WebRequest {
                 $response = New-Object System.Net.HttpWebResponse
                 $exception = [System.Net.WebException]::new(
-                    "403 Forbidden",
+                    '403 Forbidden',
                     $null,
                     [System.Net.WebExceptionStatus]::ProtocolError,
                     $response
                 )
                 throw $exception
             }
-            
+
             Connect-SentryApi -ApiToken 'test-token' -Organization 'my-org' -Project 'my-app'
-            
-            { Get-SentryEvent -EventId 'forbidden-event' } | Should -Throw "*403 Forbidden*"
+
+            { Get-SentryEvent -EventId 'forbidden-event' } | Should -Throw '*403 Forbidden*'
         }
         
         It 'Should handle 429 Rate Limit correctly' {
-            Mock -ModuleName SentryApiClient Invoke-RestMethod {
+            Mock -ModuleName SentryApiClient Invoke-WebRequest {
                 $response = New-Object System.Net.HttpWebResponse
                 $exception = [System.Net.WebException]::new(
-                    "429 Too Many Requests",
+                    '429 Too Many Requests',
                     $null,
                     [System.Net.WebExceptionStatus]::ProtocolError,
                     $response
                 )
                 throw $exception
             }
-            
+
             Connect-SentryApi -ApiToken 'test-token' -Organization 'my-org' -Project 'my-app'
-            
-            { Get-SentryEventsByTag -TagName 'test' -TagValue 'value' } | Should -Throw "*429 Too Many Requests*"
+
+            { Get-SentryEventsByTag -TagName 'test' -TagValue 'value' } | Should -Throw '*429 Too Many Requests*'
         }
     }
     
     Context 'Pagination Handling' {
         BeforeAll {
-            Mock -ModuleName SentryApiClient Invoke-RestMethod {
-                param($Uri, $Method, $Headers)
-                
-                # Return headers with Link header for pagination
-                $Headers['Link'] = '<https://sentry.io/api/0/projects/my-org/my-app/events/?&cursor=1234:100:0>; rel="next"; results="true"; cursor="1234:100:0"'
-                
-                return $script:Fixtures.event_list
+            Mock -ModuleName SentryApiClient Invoke-WebRequest {
+                param($Uri)
+
+                # Return response with headers and content
+                return @{
+                    Headers = @{
+                        Link = '<https://sentry.io/api/0/projects/my-org/my-app/events/?&cursor=1234:100:0>; rel="next"; results="true"; cursor="1234:100:0"'
+                    }
+                    Content = ($script:Fixtures.event_list | ConvertTo-Json -Depth 20)
+                }
             }
-            
+
             Connect-SentryApi -ApiToken 'test-token' -Organization 'my-org' -Project 'my-app'
         }
         

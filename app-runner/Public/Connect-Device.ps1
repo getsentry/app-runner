@@ -15,7 +15,7 @@ function Connect-Device {
     If not specified, the system will auto-discover an available Xbox target.
 
     .PARAMETER TimeoutSeconds
-    Maximum time to wait for exclusive device access. Default is 1800 seconds (30 minutes).
+    Maximum time to wait for exclusive device access. Default is 3600 seconds (60 minutes).
     Progress messages are displayed every minute during long waits.
 
     .EXAMPLE
@@ -44,7 +44,7 @@ function Connect-Device {
         [string]$Target,
 
         [Parameter(Mandatory = $false)]
-        [int]$TimeoutSeconds = 1800
+        [int]$TimeoutSeconds = 3600
     )
 
     Write-Debug "Connecting to device platform: $Platform"
@@ -60,15 +60,19 @@ function Connect-Device {
         Disconnect-Device
     }
 
-    # Build resource name for semaphore coordination
-    $resourceName = New-DeviceResourceName -Platform $Platform -Target $Target
+    # Build resource name for mutex coordination
+    # Xbox requires platform-level mutex (not per-target) because xb*.exe commands
+    # operate on the "current" target set via xbconnect, which is global to the system.
+    # Multiple processes with different target mutexes would still conflict.
+    $mutexTarget = if ($Platform -eq 'Xbox') { $null } else { $Target }
+    $resourceName = New-DeviceResourceName -Platform $Platform -Target $mutexTarget
     Write-Debug "Device resource name: $resourceName"
 
     # Acquire exclusive access to the device resource
-    # Default 30-minute timeout with progress messages every minute
-    $semaphore = $null
+    # Default 60-minute timeout with progress messages every minute
+    $mutex = $null
     try {
-        $semaphore = Request-DeviceAccess -ResourceName $resourceName -TimeoutSeconds $TimeoutSeconds -ProgressIntervalSeconds 60
+        $mutex = Request-DeviceAccess -ResourceName $resourceName -TimeoutSeconds $TimeoutSeconds -ProgressIntervalSeconds 60
         Write-Output "Acquired exclusive access to device: $resourceName"
 
         # Create provider for the specified platform
@@ -77,20 +81,20 @@ function Connect-Device {
         # Connect using the provider
         $sessionInfo = $provider.Connect($Target)
 
-        # Store the provider instance and semaphore with the session
+        # Store the provider instance and mutex with the session
         $script:CurrentSession = $sessionInfo
         $script:CurrentSession.Provider = $provider
-        $script:CurrentSession.Semaphore = $semaphore
+        $script:CurrentSession.Mutex = $mutex
         $script:CurrentSession.ResourceName = $resourceName
 
         Write-Debug "Successfully connected to $Platform device (Device: $($script:CurrentSession.Identifier))"
 
         return $script:CurrentSession
     } catch {
-        # If connection failed after acquiring semaphore, release it
-        if ($semaphore) {
-            Write-Debug "Connection failed, releasing semaphore for resource: $resourceName"
-            Release-DeviceAccess -Semaphore $semaphore -ResourceName $resourceName
+        # If connection failed after acquiring mutex, release it
+        if ($mutex) {
+            Write-Debug "Connection failed, releasing mutex for resource: $resourceName"
+            Release-DeviceAccess -Mutex $mutex -ResourceName $resourceName
         }
         throw
     }
