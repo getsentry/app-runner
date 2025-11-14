@@ -65,6 +65,7 @@ class PlayStation5Provider : DeviceProvider {
                 Write-Debug "Executing command: $cmd"
                 return Invoke-Expression $cmd
             } -ArgumentList $builtCommand.Command
+            $builtCommand.HasProcessingCommand() | Should -Be $false
             $job | Wait-Job -Timeout 5 | Stop-Job
             # Note: the command is actually executed internally as another job, so we need to retrieve the output from the child job
             # Printing the following helps:
