@@ -60,10 +60,11 @@ class PlayStation5Provider : DeviceProvider {
         if ($LogType -eq 'System' -or $LogType -eq 'All') {
             # prospero-ctrl target console waits for ctrl+c to exit so we run it as a job and stop it after an arbitrary timeout
             Write-Debug 'Retrieving system logs'
+            $builtCommand = $this.BuildCommand('getlogs', @())
             $job = Start-Job { param($cmd)
                 Write-Debug "Executing command: $cmd"
                 return Invoke-Expression $cmd
-            } -ArgumentList $this.BuildCommand('getlogs', @())
+            } -ArgumentList $builtCommand.Command
             $job | Wait-Job -Timeout 5 | Stop-Job
             # Note: the command is actually executed internally as another job, so we need to retrieve the output from the child job
             # Printing the following helps:

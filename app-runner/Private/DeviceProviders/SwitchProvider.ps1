@@ -62,8 +62,8 @@ class SwitchProvider : DeviceProvider {
         $this.DetectAndSetDefaultTarget()
 
         # Note: Connect may hang so we run it in a background job and manually time out.
-        $connectCommand = $this.BuildCommand('connect', @())
-        $job = Start-Job { param($cmd) Invoke-Expression $cmd } -ArgumentList $connectCommand
+        $builtCommand = $this.BuildCommand('connect', @())
+        $job = Start-Job { param($cmd) Invoke-Expression $cmd } -ArgumentList $builtCommand.Command
 
         $nextTimeout = 20
         for ($i = 0; $i -le 3; $i++) {

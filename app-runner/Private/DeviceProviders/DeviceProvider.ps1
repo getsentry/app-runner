@@ -4,6 +4,33 @@
 
 <#
 .SYNOPSIS
+Encapsulates a built command with optional processing step.
+
+.DESCRIPTION
+Represents the result of building a platform command, consisting of the main
+command string and an optional processing command (scriptblock) to transform output.
+#>
+class BuiltCommand {
+    [string]$Command
+    [scriptblock]$ProcessingCommand
+
+    BuiltCommand([string]$command, [scriptblock]$processingCommand) {
+        $this.Command = $command
+        $this.ProcessingCommand = $processingCommand
+    }
+
+    [bool] IsNoOp() {
+        return [string]::IsNullOrEmpty($this.Command)
+    }
+
+    [bool] HasProcessingCommand() {
+        return $null -ne $this.ProcessingCommand
+    }
+}
+
+
+<#
+.SYNOPSIS
 Base device provider with shared implementation for all platforms.
 
 .DESCRIPTION
@@ -52,7 +79,7 @@ class DeviceProvider {
         return $toolPath
     }
 
-    [object] BuildCommand([string]$action, [object[]]$parameters) {
+    [BuiltCommand] BuildCommand([string]$action, [object[]]$parameters) {
         if (-not $this.Commands.ContainsKey($action)) {
             throw "Command '$action' not configured for platform '$($this.Platform)'"
         }
@@ -63,7 +90,7 @@ class DeviceProvider {
             if ($action -ne 'disconnect') {
                 Write-Warning "Command '$action' is not available for platform '$($this.Platform)'"
             }
-            return $null
+            return [BuiltCommand]::new($null, $null)
         }
 
         # Format executable path if it contains format strings (e.g., {0})
@@ -88,13 +115,9 @@ class DeviceProvider {
         }
 
         $command = "& '$executablePath' $arguments 2>&1"
-        if ($commandObj.Count -gt 2) {
-            # Additional processing command specified
-            $processingCommand = $commandObj[2]
-            return @($command, $processingCommand)
-        } else {
-            return $command
-        }
+        $processingCommand = if ($commandObj.Count -gt 2) { $commandObj[2] } else { $null }
+
+        return [BuiltCommand]::new($command, $processingCommand)
     }
 
 
@@ -198,9 +221,9 @@ class DeviceProvider {
     }
 
     [object] InvokeCommand([string]$action, [object[]]$parameters) {
-        # Build command once and check for null
-        $command = $this.BuildCommand($action, $parameters)
-        if ($null -eq $command) {
+        # Build command once and check if it's a no-op
+        $builtCommand = $this.BuildCommand($action, $parameters)
+        if ($builtCommand.IsNoOp()) {
             return $null
         }
 
@@ -229,9 +252,9 @@ class DeviceProvider {
             $effectiveTimeout = $this.Timeouts[$action]
         }
 
-        # Command can have two parts - the actual command and an optional processing command
-        $mainCommand = $command | Select-Object -First 1
-        $processingCommand = ($command | Select-Object -Skip 1)
+        # Extract command string and processing command from built command
+        $commandString = $builtCommand.Command
+        $processingCommand = $builtCommand.ProcessingCommand
 
         # If timeout is enabled and we're not in the middle of a reboot, use timeout handling
         if ($effectiveTimeout -gt 0 -and -not $this.IsRebooting) {
@@ -239,13 +262,13 @@ class DeviceProvider {
             $originalTimeout = $this.TimeoutSeconds
             $this.TimeoutSeconds = $effectiveTimeout
             try {
-                $output = $this.InvokeCommandWithTimeoutAndRetry($scriptBlock, $this.Platform, $action, $command)
+                $output = $this.InvokeCommandWithTimeoutAndRetry($scriptBlock, $this.Platform, $action, $commandString)
                 return $this.ProcessOutput($output, $processingCommand)
             } finally {
                 $this.TimeoutSeconds = $originalTimeout
             }
         } else {
-            $output = & $scriptBlock $this.Platform $action $command $this.DebugOutputForwarder
+            $output = & $scriptBlock $this.Platform $action $commandString $this.DebugOutputForwarder
             return $this.ProcessOutput($output, $processingCommand)
         }
     }
@@ -356,17 +379,17 @@ class DeviceProvider {
         return $this.InvokeApplicationCommand($command, $ExecutablePath, $Arguments)
     }
 
-    [hashtable] InvokeApplicationCommand([object]$command, [string]$ExecutablePath, [string]$Arguments) {
-        Write-Debug "$($this.Platform): Invoking $command"
+    [hashtable] InvokeApplicationCommand([BuiltCommand]$builtCommand, [string]$ExecutablePath, [string]$Arguments) {
+        Write-Debug "$($this.Platform): Invoking $($builtCommand.Command)"
 
         $result = $null
         $exitCode = $null
         $startDate = Get-Date
         try {
             $PSNativeCommandUseErrorActionPreference = $false
-            $mainCommand = $command | Select-Object -First 1
-            $processingCommand = ($command | Select-Object -Skip 1)
-            $output = Invoke-Expression "$mainCommand | $($this.DebugOutputForwarder)"
+            $commandString = $builtCommand.Command
+            $processingCommand = $builtCommand.ProcessingCommand
+            $output = Invoke-Expression "$commandString | $($this.DebugOutputForwarder)"
             $result = $this.ProcessOutput($output, $processingCommand)
             $exitCode = $LASTEXITCODE
         } finally {
