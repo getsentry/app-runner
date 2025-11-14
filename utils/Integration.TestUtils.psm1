@@ -31,6 +31,25 @@ function Invoke-CMakeBuild {
 
 }
 
+$script:OutputDir = "output"
+
+function Set-OutputDir {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]
+        [string]$Path
+    )
+
+    # Validate that the path is a valid path name (doesn't have to exist)
+    try {
+        [System.IO.Path]::GetFullPath($Path) | Out-Null
+    } catch {
+        throw "Invalid path: $Path. $_"
+    }
+
+    $script:OutputDir = $Path
+}
+
 function Get-OutputFilePath {
     [CmdletBinding()]
     param(
@@ -39,7 +58,7 @@ function Get-OutputFilePath {
     )
 
     $timestamp = Get-Date -Format 'yyyyMMdd-HHmmss'
-    return "output/$timestamp-$Name"
+    return Join-Path $script:OutputDir "$timestamp-$Name"
 }
 
 function Get-EventIds {
@@ -222,4 +241,4 @@ function Get-PackageAumid {
 }
 
 # Export module functions
-Export-ModuleMember -Function Invoke-CMakeConfigure, Invoke-CMakeBuild, Get-OutputFilePath, Get-EventIds, Get-SentryTestEvent, Get-PackageAumid
+Export-ModuleMember -Function Invoke-CMakeConfigure, Invoke-CMakeBuild, Set-OutputDir, Get-OutputFilePath, Get-EventIds, Get-SentryTestEvent, Get-PackageAumid
