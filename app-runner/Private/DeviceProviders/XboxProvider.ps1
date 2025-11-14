@@ -52,7 +52,7 @@ class XboxProvider : DeviceProvider {
             'xbtlist'            = @('xbtlist.exe', '')
             'xbcopy'             = @('xbcopy.exe', '"{0}" "{1}" /mirror')
             'launch'             = @('xbrun.exe', '/O /D:"{0}" "{1}" {2}')
-            'get-installed-apps' = @($this.AppTool, 'list /JSON')
+            'get-installed-apps' = @($this.AppTool, 'list /JSON', 'ConvertFrom-Json')
             'install-app'        = @($this.AppTool, 'install {0}')
             'uninstall-app'      = @($this.AppTool, 'uninstall {0}')
             'stop-app'           = @($this.AppTool, 'terminate {0}')
@@ -181,8 +181,7 @@ class XboxProvider : DeviceProvider {
     # Helper method to find an installed package by base name
     # Returns the package object if found, null otherwise
     [object] GetInstalledPackage([string]$packageBaseName) {
-        $listOutput = $this.InvokeCommand('get-installed-apps', @())
-        $installedPackages = $listOutput | ConvertFrom-Json
+        $installedPackages = $this.InvokeCommand('get-installed-apps', @())
         return $installedPackages.Packages | Where-Object -Property FullName -Match $packageBaseName | Select-Object -First 1
     }
 
@@ -233,8 +232,7 @@ class XboxProvider : DeviceProvider {
 
         # Installation verification failed - gather diagnostics
         Write-Warning "The package doesn't appear to be installed after $timeout seconds. Installed packages:"
-        $listOutput = $this.InvokeCommand('get-installed-apps', @())
-        $installedPackages = $listOutput | ConvertFrom-Json
+        $installedPackages = $this.InvokeCommand('get-installed-apps', @())
         $installedPackages.Packages | ForEach-Object { Write-Warning " - $($_.FullName)" }
         throw "Failed to verify package installation: $packageBaseName"
     }
