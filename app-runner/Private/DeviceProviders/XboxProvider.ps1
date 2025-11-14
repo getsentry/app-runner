@@ -52,7 +52,7 @@ class XboxProvider : DeviceProvider {
             'xbtlist'            = @('xbtlist.exe', '')
             'xbcopy'             = @('xbcopy.exe', '"{0}" "{1}" /mirror')
             'launch'             = @('xbrun.exe', '/O /D:"{0}" "{1}" {2}')
-            'get-installed-apps' = @($this.AppTool, 'list /JSON', 'ConvertFrom-Json')
+            'get-installed-apps' = @($this.AppTool, 'list /JSON', { $Input | ConvertFrom-Json })
             'install-app'        = @($this.AppTool, 'install {0}')
             'uninstall-app'      = @($this.AppTool, 'uninstall {0}')
             'stop-app'           = @($this.AppTool, 'terminate {0}')
@@ -242,8 +242,8 @@ class XboxProvider : DeviceProvider {
         # Not giving the argument here stops any foreground app
         $this.InvokeCommand('stop-app', @(''))
 
-        $command = $this.BuildCommand('launch-app', @($PackageIdentity, $Arguments))
-        return $this.InvokeApplicationCommand($command, $PackageIdentity, $Arguments)
+        $builtCommand = $this.BuildCommand('launch-app', @($PackageIdentity, $Arguments))
+        return $this.InvokeApplicationCommand($builtCommand, $PackageIdentity, $Arguments)
     }
 
     # Application management
@@ -261,8 +261,8 @@ class XboxProvider : DeviceProvider {
             Write-Host "Mirroring directory $AppPath to Xbox devkit $xboxTempDir..."
             $this.InvokeCommand('xbcopy', @($AppPath, "x$xboxTempDir"))
 
-            $command = $this.BuildCommand('launch', @($xboxTempDir, "$xboxTempDir\$appExecutableName", $Arguments))
-            return $this.InvokeApplicationCommand($command, $appExecutableName, $Arguments)
+            $builtCommand = $this.BuildCommand('launch', @($xboxTempDir, "$xboxTempDir\$appExecutableName", $Arguments))
+            return $this.InvokeApplicationCommand($builtCommand, $appExecutableName, $Arguments)
         } elseif (Test-Path $AppPath -PathType Leaf) {
             # It's a file - check if it's a .xvc package
             if ($AppPath -like '*.xvc') {

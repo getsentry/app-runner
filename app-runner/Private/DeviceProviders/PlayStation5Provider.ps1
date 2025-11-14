@@ -44,12 +44,12 @@ class PlayStation5Provider : DeviceProvider {
             'ipconfig'           = @($this.TargetControlTool, 'network ip-config')
             'natinfo'            = @($this.TargetControlTool, 'network get-nat-traversal-info')
             'settingsexport'     = @($this.TargetControlTool, 'settings export "{0}"')
-            'processlist'        = @($this.TargetControlTool, 'process list', 'ConvertFrom-Yaml')
+            'processlist'        = @($this.TargetControlTool, 'process list', { $Input | ConvertFrom-Yaml })
             # Target management commands for DetectAndSetDefaultTarget()
             'get-default-target' = @($this.TargetControlTool, 'target get-default')
             'set-default-target' = @($this.TargetControlTool, 'target set-default "{0}"')
-            'list-target'        = @($this.TargetControlTool, 'target list', 'ConvertFrom-Yaml | Foreach-Object { $_ | Select-Object *, @{Name="IpAddress";Expression={$_.HostName}} }')
-            'detect-target'      = @($this.TargetControlTool, 'target find', 'ConvertFrom-Yaml | Foreach-Object { $_ | Select-Object *, @{Name="IpAddress";Expression={$_.Host}} }')
+            'list-target'        = @($this.TargetControlTool, 'target list', { $Input | ConvertFrom-Yaml | ForEach-Object { $_ | Select-Object *, @{Name = 'IpAddress'; Expression = { $_.HostName } } } })
+            'detect-target'      = @($this.TargetControlTool, 'target find', { $Input | ConvertFrom-Yaml | ForEach-Object { $_ | Select-Object *, @{Name = 'IpAddress'; Expression = { $_.Host } } } })
             'register-target'    = @($this.TargetControlTool, 'target add "{0}"')
         }
     }
@@ -60,10 +60,12 @@ class PlayStation5Provider : DeviceProvider {
         if ($LogType -eq 'System' -or $LogType -eq 'All') {
             # prospero-ctrl target console waits for ctrl+c to exit so we run it as a job and stop it after an arbitrary timeout
             Write-Debug 'Retrieving system logs'
+            $builtCommand = $this.BuildCommand('getlogs', @())
             $job = Start-Job { param($cmd)
                 Write-Debug "Executing command: $cmd"
                 return Invoke-Expression $cmd
-            } -ArgumentList $this.BuildCommand('getlogs', @())
+            } -ArgumentList $builtCommand.Command
+            $builtCommand.HasProcessingCommand() | Should -Be $false
             $job | Wait-Job -Timeout 5 | Stop-Job
             # Note: the command is actually executed internally as another job, so we need to retrieve the output from the child job
             # Printing the following helps:
