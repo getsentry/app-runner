@@ -209,16 +209,12 @@ class DeviceProvider {
             param($platform, $act, $cmd, $debugForwarder)
             try {
                 $PSNativeCommandUseErrorActionPreference = $false
-                if ($cmd -is [string]) {
-                    Write-Debug "${platform}: Invoking ($act) command $cmd"
-                    $result = Invoke-Expression "$cmd | $debugForwarder"
-                } else {
-                    Write-Debug "${platform}: Invoking ($act) command $($cmd[0]) | $($cmd[1])"
-                    $result = Invoke-Expression "$($cmd[0]) | $debugForwarder | $($cmd[1])"
-                }
+                Write-Debug "${platform}: Invoking ($act) command $cmd"
+                $result = Invoke-Expression "$cmd | $debugForwarder"
                 if ($LASTEXITCODE -ne 0) {
                     Write-Warning "Command ($act`: $cmd) failed with exit code $($LASTEXITCODE) $($result.Length -gt 0 ? 'and output:' : '')"
-                    $result | ForEach-Object { Write-Warning $_ }
+                    $result | Out-Host
+                    Write-Warning '=== End of original output. ==='
                     throw "Command ($act) failed with exit code $($LASTEXITCODE)"
                 }
                 return $result
@@ -233,20 +229,43 @@ class DeviceProvider {
             $effectiveTimeout = $this.Timeouts[$action]
         }
 
+        # Command can have two parts - the actual command and an optional processing command
+        $mainCommand = $command | Select-Object -First 1
+        $processingCommand = ($command | Select-Object -Skip 1)
+
         # If timeout is enabled and we're not in the middle of a reboot, use timeout handling
         if ($effectiveTimeout -gt 0 -and -not $this.IsRebooting) {
             # Temporarily override TimeoutSeconds for this specific action
             $originalTimeout = $this.TimeoutSeconds
             $this.TimeoutSeconds = $effectiveTimeout
             try {
-                return $this.InvokeCommandWithTimeoutAndRetry($scriptBlock, $this.Platform, $action, $command)
+                $output = $this.InvokeCommandWithTimeoutAndRetry($scriptBlock, $this.Platform, $action, $command)
+                return $this.ProcessOutput($output, $processingCommand)
             } finally {
                 $this.TimeoutSeconds = $originalTimeout
             }
+        } else {
+            $output = & $scriptBlock $this.Platform $action $command $this.DebugOutputForwarder
+            return $this.ProcessOutput($output, $processingCommand)
+        }
+    }
+
+    [object] ProcessOutput([object]$output, [scriptblock]$processingCommand) {
+        if ($null -eq $processingCommand) {
+            return $output
         }
 
-        # Otherwise, execute directly without timeout
-        return & $scriptBlock $this.Platform $action $command $this.DebugOutputForwarder
+        Write-Debug "$($this.Platform): Processing output with: $processingCommand"
+        try {
+            return $output | & $processingCommand
+        } catch {
+            Write-Warning "$($this.Platform): Failed to process command output: $_"
+            Write-Warning "Processing command: $processingCommand"
+            Write-Warning 'Original output:'
+            $output | Out-Host
+            Write-Warning '=== End of original output. ==='
+            throw "Failed to process command output: $_"
+        }
     }
 
     [hashtable] CreateSessionInfo() {
@@ -345,23 +364,13 @@ class DeviceProvider {
         $startDate = Get-Date
         try {
             $PSNativeCommandUseErrorActionPreference = $false
-            if ($command -is [string]) {
-                $result = Invoke-Expression "$command | $($this.DebugOutputForwarder)"
-            } else {
-                $result = Invoke-Expression "$($command[0]) | $($this.DebugOutputForwarder) | $($command[1])"
-            }
+            $mainCommand = $command | Select-Object -First 1
+            $processingCommand = ($command | Select-Object -Skip 1)
+            $output = Invoke-Expression "$mainCommand | $($this.DebugOutputForwarder)"
+            $result = $this.ProcessOutput($output, $processingCommand)
             $exitCode = $LASTEXITCODE
         } finally {
             $PSNativeCommandUseErrorActionPreference = $true
-        }
-
-        # Convert output to string (it's actually a list of ErrorRecord in case the command writes to stdout).
-        if ($result) {
-            $result = $result | ForEach-Object {
-                ($_ | Out-String).Trim()
-            } | Where-Object {
-                $_.Length -gt 0
-            }
         }
 
         return @{

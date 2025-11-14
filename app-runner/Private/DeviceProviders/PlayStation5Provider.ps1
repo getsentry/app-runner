@@ -44,12 +44,12 @@ class PlayStation5Provider : DeviceProvider {
             'ipconfig'           = @($this.TargetControlTool, 'network ip-config')
             'natinfo'            = @($this.TargetControlTool, 'network get-nat-traversal-info')
             'settingsexport'     = @($this.TargetControlTool, 'settings export "{0}"')
-            'processlist'        = @($this.TargetControlTool, 'process list', 'ConvertFrom-Yaml')
+            'processlist'        = @($this.TargetControlTool, 'process list', { $Input | ConvertFrom-Yaml })
             # Target management commands for DetectAndSetDefaultTarget()
             'get-default-target' = @($this.TargetControlTool, 'target get-default')
             'set-default-target' = @($this.TargetControlTool, 'target set-default "{0}"')
-            'list-target'        = @($this.TargetControlTool, 'target list', 'ConvertFrom-Yaml | Foreach-Object { $_ | Select-Object *, @{Name="IpAddress";Expression={$_.HostName}} }')
-            'detect-target'      = @($this.TargetControlTool, 'target find', 'ConvertFrom-Yaml | Foreach-Object { $_ | Select-Object *, @{Name="IpAddress";Expression={$_.Host}} }')
+            'list-target'        = @($this.TargetControlTool, 'target list', { $Input | ConvertFrom-Yaml | ForEach-Object { $_ | Select-Object *, @{Name = 'IpAddress'; Expression = { $_.HostName } } } })
+            'detect-target'      = @($this.TargetControlTool, 'target find', { $Input | ConvertFrom-Yaml | ForEach-Object { $_ | Select-Object *, @{Name = 'IpAddress'; Expression = { $_.Host } } } })
             'register-target'    = @($this.TargetControlTool, 'target add "{0}"')
         }
     }

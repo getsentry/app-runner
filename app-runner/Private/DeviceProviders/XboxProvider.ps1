@@ -52,7 +52,7 @@ class XboxProvider : DeviceProvider {
             'xbtlist'            = @('xbtlist.exe', '')
             'xbcopy'             = @('xbcopy.exe', '"{0}" "{1}" /mirror')
             'launch'             = @('xbrun.exe', '/O /D:"{0}" "{1}" {2}')
-            'get-installed-apps' = @($this.AppTool, 'list /JSON', 'ConvertFrom-Json')
+            'get-installed-apps' = @($this.AppTool, 'list /JSON', { $Input | ConvertFrom-Json })
             'install-app'        = @($this.AppTool, 'install {0}')
             'uninstall-app'      = @($this.AppTool, 'uninstall {0}')
             'stop-app'           = @($this.AppTool, 'terminate {0}')
