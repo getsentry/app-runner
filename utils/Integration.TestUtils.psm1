@@ -109,7 +109,7 @@ function Get-EventIds {
     [array]$eventIds = @()
     foreach ($eventLine in $eventCapturedLines) {
         $eventId = ($eventLine -split 'EVENT_CAPTURED: ')[1].Trim()
-        $eventId | Should -Match '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
+        $eventId | Should -Match '^[0-9a-f]{8}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{12}$'
         $eventIds += $eventId
     }
 
