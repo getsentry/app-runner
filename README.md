@@ -26,6 +26,44 @@ Future support planned:
 
 - Mobile platforms (iOS, Android)
 
+## Telemetry
+
+This toolkit supports optional operational telemetry using [Sentry](https://sentry.io) to improve reliability and diagnose issues. When enabled, telemetry helps identify test infrastructure failures, device connection problems, and automation bottlenecks.
+
+### What's Collected
+
+Examples of the types of telemetry data collected:
+
+- Module errors and exceptions with context (platform, session ID, error category)
+- Device connection failures and lock acquisition issues
+- Test infrastructure problems (missing event captures, polling timeouts)
+- Diagnostic operation breadcrumbs showing the sequence of operations leading to failures
+- Performance metrics for critical operations (device connections, app deployments)
+
+### Privacy & Control
+
+**Telemetry is opt-in and requires explicit configuration:**
+
+Telemetry is disabled by default. To enable it, set one of the following environment variables with your Sentry DSN:
+
+**To enable telemetry for app-runner:**
+```powershell
+$env:SENTRY_APP_RUNNER_DSN = 'https://your-key@o123.ingest.sentry.io/your-project'
+```
+
+**To enable telemetry for sentry-api-client:**
+```powershell
+$env:SENTRY_API_CLIENT_DSN = 'https://your-key@o123.ingest.sentry.io/your-project'
+```
+
+**Note:** You can use the same DSN for both.
+
+### Dependencies
+
+The `Sentry` PowerShell module (v0.4.0) is bundled in the `vendor/Sentry` directory, so no installation is required. Telemetry will work automatically when a DSN is configured via environment variable.
+
+**Learn more:** [sentry-powershell on GitHub](https://github.com/getsentry/sentry-powershell)
+
 ## Requirements
 
 ### Platform-Specific Prerequisites
