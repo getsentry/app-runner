@@ -30,6 +30,9 @@ Requirements:
   - SAUCE_REGION - SauceLabs region (e.g., us-west-1, eu-central-1)
 
 Note: Device name must match a device available in the specified region.
+
+Example usage:
+  Connect-Device -Platform AndroidSauceLabs -Target "Samsung_Galaxy_S23_15_real_sjc1"
 #>
 class AndroidSauceLabsProvider : DeviceProvider {
     [string]$SessionId = $null
@@ -126,13 +129,17 @@ class AndroidSauceLabsProvider : DeviceProvider {
     }
 
     [hashtable] Connect() {
-        throw "$($this.Platform) requires a device name. Use Connect([string]`$deviceName) with a SauceLabs device name."
+        throw "$($this.Platform) requires a SauceLabs device name. Use Connect-Device -Platform AndroidSauceLabs -Target 'DeviceName'"
     }
 
     [hashtable] Connect([string]$target) {
+        if (-not $target) {
+            throw "$($this.Platform) requires a SauceLabs device name. Use Connect-Device -Platform AndroidSauceLabs -Target 'DeviceName'"
+        }
+
         Write-Debug "$($this.Platform): Connecting with device name: $target"
 
-        # $target is the device name (e.g., "Samsung_Galaxy_S23_15_real_sjc1")
+        # Store the device name for session creation
         $this.DeviceName = $target
 
         # Note: APK upload and session creation happen in InstallApp
