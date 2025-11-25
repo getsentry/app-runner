@@ -1,6 +1,9 @@
 $ErrorActionPreference = 'Stop'
 $PSNativeCommandUseErrorActionPreference = $true
 
+# Import Android helpers first (used by Android providers)
+. "$PSScriptRoot\Private\AndroidHelpers.ps1"
+
 # Import device providers in the correct order (base provider first, then implementations, then factory)
 $ProviderFiles = @(
     "$PSScriptRoot\Private\DeviceProviders\DeviceProvider.ps1",
@@ -11,6 +14,8 @@ $ProviderFiles = @(
     "$PSScriptRoot\Private\DeviceProviders\WindowsProvider.ps1",
     "$PSScriptRoot\Private\DeviceProviders\MacOSProvider.ps1",
     "$PSScriptRoot\Private\DeviceProviders\LinuxProvider.ps1",
+    "$PSScriptRoot\Private\DeviceProviders\AndroidAdbProvider.ps1",
+    "$PSScriptRoot\Private\DeviceProviders\AndroidSauceLabsProvider.ps1",
     "$PSScriptRoot\Private\DeviceProviders\MockDeviceProvider.ps1",
     "$PSScriptRoot\Private\DeviceProviders\DeviceProviderFactory.ps1"
 )
