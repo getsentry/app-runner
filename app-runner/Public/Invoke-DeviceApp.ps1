@@ -31,9 +31,13 @@ function Invoke-DeviceApp {
     Write-Debug "Running application: $ExecutablePath with arguments: $Arguments"
     Write-Debug "Target platform: $($script:CurrentSession.Platform)"
 
+    Write-GitHub "::group::Run log"
+
     # Use the provider to run the application
     $provider = $script:CurrentSession.Provider
     $result = $provider.RunApplication($ExecutablePath, $Arguments)
+
+    Write-GitHub "::endgroup::"
 
     return $result
 }
