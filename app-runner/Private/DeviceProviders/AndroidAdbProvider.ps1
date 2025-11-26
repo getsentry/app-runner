@@ -180,7 +180,8 @@ class AndroidAdbProvider : DeviceProvider {
         $installOutput = $this.InvokeCommand('install', @($this.DeviceSerial, $PackagePath))
 
         # Verify installation
-        if ($installOutput -notmatch 'Success') {
+        # Join output to string first since -match on arrays returns matching elements, not boolean
+        if (($installOutput -join "`n") -notmatch 'Success') {
             throw "Failed to install APK. Output: $($installOutput -join "`n")"
         }
 
@@ -226,7 +227,8 @@ class AndroidAdbProvider : DeviceProvider {
 
         $launchOutput = $this.InvokeCommand('launch', @($this.DeviceSerial, $ExecutablePath, $Arguments))
 
-        if ($launchOutput -match 'Error') {
+        # Join output to string first since -match on arrays returns matching elements, not boolean
+        if (($launchOutput -join "`n") -match 'Error') {
             throw "Failed to start activity: $($launchOutput -join "`n")"
         }
 
@@ -455,7 +457,8 @@ class AndroidAdbProvider : DeviceProvider {
         try {
             # Ping a reliable server (Google DNS)
             $output = & adb -s $this.DeviceSerial shell ping -c 1 8.8.8.8 2>&1
-            return $output -match '1 packets transmitted, 1 received'
+            # Join output to string first since -match on arrays returns matching elements, not boolean
+            return ($output -join "`n") -match '1 packets transmitted, 1 received'
         }
         catch {
             return $false
