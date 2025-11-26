@@ -80,17 +80,18 @@ class AndroidAdbProvider : DeviceProvider {
 
         # Parse 'adb devices' output
         # Format: "device_serial\tdevice" (skip header line)
-        $devices = $output | Where-Object {
+        # Wrap in @() to ensure array type even with single device
+        $devices = @($output | Where-Object {
             $_ -match '\tdevice$'
         } | ForEach-Object {
             ($_ -split '\t')[0]
-        }
+        })
 
-        if ($null -eq $devices -or @($devices).Count -eq 0) {
+        if ($null -eq $devices -or $devices.Count -eq 0) {
             throw "No Android devices found. Ensure a device or emulator is connected and visible via 'adb devices'"
         }
 
-        if (@($devices).Count -gt 1) {
+        if ($devices.Count -gt 1) {
             Write-Warning "$($this.Platform): Multiple devices found, using first one: $($devices[0])"
         }
 
