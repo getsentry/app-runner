@@ -29,6 +29,7 @@ Requirements:
   - SAUCE_ACCESS_KEY - SauceLabs access key
   - SAUCE_REGION - SauceLabs region (e.g., us-west-1, eu-central-1)
   - SAUCE_DEVICE_NAME - Device name (optional if using -Target parameter)
+  - SAUCE_SESSION_NAME - Session name for SauceLabs dashboard (optional, defaults to "App Runner Android Test")
 
 Note: Device name must match a device available in the specified region.
 
@@ -46,6 +47,7 @@ class AndroidSauceLabsProvider : DeviceProvider {
     [string]$DeviceName = $null
     [string]$Username = $null
     [string]$AccessKey = $null
+    [string]$SessionName = $null
     [string]$CurrentPackageName = $null
 
     AndroidSauceLabsProvider() {
@@ -56,6 +58,13 @@ class AndroidSauceLabsProvider : DeviceProvider {
         $this.AccessKey = $env:SAUCE_ACCESS_KEY
         $this.Region = $env:SAUCE_REGION
         $this.DeviceName = $env:SAUCE_DEVICE_NAME  # Optional: can be overridden via -Target
+
+        # Read optional session name (with default)
+        $this.SessionName = if ($env:SAUCE_SESSION_NAME) {
+            $env:SAUCE_SESSION_NAME
+        } else {
+            "App Runner Android Test"
+        }
 
         # Validate required credentials
         if (-not $this.Username -or -not $this.AccessKey) {
@@ -270,7 +279,7 @@ class AndroidSauceLabsProvider : DeviceProvider {
                     'appium:noReset'        = $true
                     'appium:autoLaunch'     = $false
                     'sauce:options'         = @{
-                        name          = "App Runner Android Test"
+                        name          = $this.SessionName
                         appiumVersion = 'latest'
                     }
                 }
