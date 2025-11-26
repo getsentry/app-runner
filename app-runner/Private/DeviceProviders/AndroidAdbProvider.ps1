@@ -101,6 +101,12 @@ class AndroidAdbProvider : DeviceProvider {
     }
 
     [hashtable] Connect([string]$target) {
+        # If no target specified, fall back to auto-discovery
+        if ([string]::IsNullOrEmpty($target)) {
+            Write-Debug "$($this.Platform): No target specified, falling back to auto-discovery"
+            return $this.Connect()
+        }
+
         Write-Debug "$($this.Platform): Connecting to specific device: $target"
 
         # Validate that the specified device exists

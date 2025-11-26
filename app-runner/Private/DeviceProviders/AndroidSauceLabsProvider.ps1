@@ -164,9 +164,10 @@ class AndroidSauceLabsProvider : DeviceProvider {
     }
 
     [hashtable] Connect([string]$target) {
-        # Explicit target provided - use it directly (no fallback)
-        if (-not $target) {
-            throw "$($this.Platform): Connect() called with empty target parameter"
+        # If no target specified, fall back to SAUCE_DEVICE_NAME env var
+        if ([string]::IsNullOrEmpty($target)) {
+            Write-Debug "$($this.Platform): No target specified, falling back to SAUCE_DEVICE_NAME env var"
+            return $this.Connect()
         }
 
         Write-Debug "$($this.Platform): Connecting with explicit device name: $target"
