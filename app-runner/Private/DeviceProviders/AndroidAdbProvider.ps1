@@ -47,7 +47,7 @@ class AndroidAdbProvider : DeviceProvider {
 
             # Package management
             'list-packages' = @('adb', '-s {0} shell pm list packages')
-            'install'       = @('adb', '-s {0} install -r {1}')
+            'install'       = @('adb', '-s {0} install {1}')
             'uninstall'     = @('adb', '-s {0} uninstall {1}')
 
             # App execution
