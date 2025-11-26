@@ -3,24 +3,24 @@
 
 <#
 .SYNOPSIS
-Parses an Android activity path into package name and activity name components.
+Converts an Android activity path into package name and activity name components.
 
 .DESCRIPTION
-Parses the ExecutablePath format used by Android apps: "package.name/activity.name"
+Converts the ExecutablePath format used by Android apps: "package.name/activity.name"
 Returns a hashtable with PackageName and ActivityName properties.
 
 .PARAMETER ExecutablePath
 The full activity path in format "package.name/activity.name"
 
 .EXAMPLE
-Parse-AndroidActivity "io.sentry.unreal.sample/com.epicgames.unreal.GameActivity"
+ConvertFrom-AndroidActivityPath "io.sentry.unreal.sample/com.epicgames.unreal.GameActivity"
 Returns: @{ PackageName = "io.sentry.unreal.sample"; ActivityName = "com.epicgames.unreal.GameActivity" }
 
 .EXAMPLE
-Parse-AndroidActivity "com.example.app/.MainActivity"
+ConvertFrom-AndroidActivityPath "com.example.app/.MainActivity"
 Returns: @{ PackageName = "com.example.app"; ActivityName = ".MainActivity" }
 #>
-function Parse-AndroidActivity {
+function ConvertFrom-AndroidActivityPath {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $true)]
@@ -195,7 +195,7 @@ function Format-LogcatOutput {
 
 # Export functions
 Export-ModuleMember -Function @(
-    'Parse-AndroidActivity',
+    'ConvertFrom-AndroidActivityPath',
     'Test-IntentExtrasFormat',
     'Get-ApkPackageName',
     'Format-LogcatOutput'

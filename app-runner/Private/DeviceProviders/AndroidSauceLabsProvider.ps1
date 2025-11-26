@@ -316,7 +316,7 @@ class AndroidSauceLabsProvider : DeviceProvider {
         }
 
         # Parse ExecutablePath: "package.name/activity.name"
-        $parsed = Parse-AndroidActivity -ExecutablePath $ExecutablePath
+        $parsed = ConvertFrom-AndroidActivityPath -ExecutablePath $ExecutablePath
         $packageName = $parsed.PackageName
         $activityName = $parsed.ActivityName
         $this.CurrentPackageName = $packageName
