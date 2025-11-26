@@ -153,22 +153,19 @@ class AndroidAdbProvider : DeviceProvider {
             throw "Package must be an .apk file. Got: $PackagePath"
         }
 
-        # Get package name hint from filename
-        # Note: Full package name extraction would require aapt/aapt2
-        $packageHint = Get-ApkPackageHint -ApkPath $PackagePath
+        # Extract actual package name from APK (uses aapt if available, falls back to filename)
+        $packageName = Get-ApkPackageName -ApkPath $PackagePath
 
         # Check for existing installation
-        Write-Debug "$($this.Platform): Checking for existing package matching: $packageHint"
+        Write-Debug "$($this.Platform): Checking for existing package: $packageName"
         $listOutput = $this.InvokeCommand('list-packages', @($this.DeviceSerial))
-        $existingPackage = $listOutput | Where-Object { $_ -match "package:.*$packageHint" } | Select-Object -First 1
+        $existingPackage = $listOutput | Where-Object { $_ -eq "package:$packageName" } | Select-Object -First 1
 
         if ($existingPackage) {
-            # Extract full package name from output (format: "package:com.example.app")
-            $fullPackageName = $existingPackage -replace '^package:', ''
-            Write-Host "Uninstalling previous version: $fullPackageName" -ForegroundColor Yellow
+            Write-Host "Uninstalling previous version: $packageName" -ForegroundColor Yellow
 
             try {
-                $this.InvokeCommand('uninstall', @($this.DeviceSerial, $fullPackageName))
+                $this.InvokeCommand('uninstall', @($this.DeviceSerial, $packageName))
             }
             catch {
                 Write-Warning "Failed to uninstall previous version: $_"

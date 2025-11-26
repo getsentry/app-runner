@@ -85,21 +85,28 @@ function Test-IntentExtrasFormat {
 
 <#
 .SYNOPSIS
-Extracts the package name from an APK file using basic validation.
+Extracts the package name from an APK file using aapt.
 
 .DESCRIPTION
-Validates that a file is an APK and returns the filename without extension
-as a basic package name guess. For full package name extraction, aapt/aapt2
-would be required.
+Attempts to extract the real package name from an APK file using aapt (Android Asset Packaging Tool).
+If aapt is not available, falls back to using the APK filename without extension as a hint.
 
 .PARAMETER ApkPath
 Path to the APK file
 
 .EXAMPLE
-Get-ApkPackageHint "SentryPlayground.apk"
-Returns: "SentryPlayground"
+Get-ApkPackageName "MyApp.apk"
+Returns: "com.example.myapp" (actual package name from AndroidManifest.xml)
+
+.EXAMPLE
+Get-ApkPackageName "SentryPlayground.apk"
+Returns: "io.sentry.sample" (if aapt available) or "SentryPlayground" (filename fallback)
+
+.NOTES
+Requires aapt or aapt2 to be in PATH or Android SDK to be installed for accurate extraction.
+Falls back to filename-based hint if aapt is unavailable.
 #>
-function Get-ApkPackageHint {
+function Get-ApkPackageName {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $true)]
@@ -114,9 +121,42 @@ function Get-ApkPackageHint {
         throw "File must be an .apk file. Got: $ApkPath"
     }
 
-    # Return filename without extension as a hint
-    # Full package name would require aapt parsing
-    return [System.IO.Path]::GetFileNameWithoutExtension($ApkPath)
+    # Try to use aapt to extract real package name
+    $aaptCmd = Get-Command aapt -ErrorAction SilentlyContinue
+    if (-not $aaptCmd) {
+        $aaptCmd = Get-Command aapt2 -ErrorAction SilentlyContinue
+    }
+
+    if ($aaptCmd) {
+        try {
+            Write-Debug "Using $($aaptCmd.Name) to extract package name from APK"
+            $PSNativeCommandUseErrorActionPreference = $false
+            $output = & $aaptCmd.Name dump badging $ApkPath 2>&1
+            $PSNativeCommandUseErrorActionPreference = $true
+
+            # Parse output for package name: package: name='com.example.app'
+            foreach ($line in $output) {
+                if ($line -match "package:\s+name='([^']+)'") {
+                    $packageName = $matches[1]
+                    Write-Debug "Extracted package name: $packageName"
+                    return $packageName
+                }
+            }
+
+            Write-Warning "Failed to parse package name from aapt output, falling back to filename hint"
+        }
+        catch {
+            Write-Warning "Failed to execute aapt: $_. Falling back to filename hint"
+        }
+    }
+    else {
+        Write-Debug "aapt/aapt2 not found in PATH, falling back to filename hint"
+    }
+
+    # Fallback: Use APK filename without extension as package name hint
+    $hint = [System.IO.Path]::GetFileNameWithoutExtension($ApkPath)
+    Write-Warning "Using APK filename as package name hint: $hint (aapt not available for accurate extraction)"
+    return $hint
 }
 
 <#
@@ -157,6 +197,6 @@ function Format-LogcatOutput {
 Export-ModuleMember -Function @(
     'Parse-AndroidActivity',
     'Test-IntentExtrasFormat',
-    'Get-ApkPackageHint',
+    'Get-ApkPackageName',
     'Format-LogcatOutput'
 )
