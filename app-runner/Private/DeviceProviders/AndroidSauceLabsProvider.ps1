@@ -24,14 +24,19 @@ Key features:
 
 Requirements:
 - SauceLabs account with Real Device Cloud access
-- Environment variables (all required):
+- Environment variables:
   - SAUCE_USERNAME - SauceLabs username
   - SAUCE_ACCESS_KEY - SauceLabs access key
   - SAUCE_REGION - SauceLabs region (e.g., us-west-1, eu-central-1)
+  - SAUCE_DEVICE_NAME - Device name (optional if using -Target parameter)
 
 Note: Device name must match a device available in the specified region.
 
 Example usage:
+  # Option 1: Use SAUCE_DEVICE_NAME environment variable
+  Connect-Device -Platform AndroidSauceLabs
+
+  # Option 2: Explicitly specify device name
   Connect-Device -Platform AndroidSauceLabs -Target "Samsung_Galaxy_S23_15_real_sjc1"
 #>
 class AndroidSauceLabsProvider : DeviceProvider {
@@ -46,11 +51,13 @@ class AndroidSauceLabsProvider : DeviceProvider {
     AndroidSauceLabsProvider() {
         $this.Platform = 'AndroidSauceLabs'
 
-        # Read credentials from environment (all required)
+        # Read credentials and configuration from environment
         $this.Username = $env:SAUCE_USERNAME
         $this.AccessKey = $env:SAUCE_ACCESS_KEY
         $this.Region = $env:SAUCE_REGION
+        $this.DeviceName = $env:SAUCE_DEVICE_NAME  # Optional: can be overridden via -Target
 
+        # Validate required credentials
         if (-not $this.Username -or -not $this.AccessKey) {
             throw "SAUCE_USERNAME and SAUCE_ACCESS_KEY environment variables must be set"
         }
@@ -58,6 +65,9 @@ class AndroidSauceLabsProvider : DeviceProvider {
         if (-not $this.Region) {
             throw "SAUCE_REGION environment variable must be set"
         }
+
+        # DeviceName is optional here - will be validated in Connect()
+        # Can come from either SAUCE_DEVICE_NAME env var or -Target parameter
 
         # No SDK path needed - uses HTTP API
         $this.SdkPath = $null
@@ -129,15 +139,37 @@ class AndroidSauceLabsProvider : DeviceProvider {
     }
 
     [hashtable] Connect() {
-        throw "$($this.Platform) requires a SauceLabs device name. Use Connect-Device -Platform AndroidSauceLabs -Target 'DeviceName'"
+        # Use device name from SAUCE_DEVICE_NAME environment variable
+        if (-not $this.DeviceName) {
+            throw "$($this.Platform) requires a device name. Set SAUCE_DEVICE_NAME environment variable or use Connect-Device -Platform AndroidSauceLabs -Target 'DeviceName'"
+        }
+
+        Write-Debug "$($this.Platform): Connecting with device name from env: $($this.DeviceName)"
+
+        # Note: APK upload and session creation happen in InstallApp
+        # because we need the APK path before creating an Appium session
+
+        return @{
+            Provider    = $this
+            Platform    = $this.Platform
+            ConnectedAt = Get-Date
+            Identifier  = $this.DeviceName
+            IsConnected = $true
+            StatusData  = @{
+                DeviceName = $this.DeviceName
+                Region     = $this.Region
+                Username   = $this.Username
+            }
+        }
     }
 
     [hashtable] Connect([string]$target) {
+        # Explicit target provided - use it directly (no fallback)
         if (-not $target) {
-            throw "$($this.Platform) requires a SauceLabs device name. Use Connect-Device -Platform AndroidSauceLabs -Target 'DeviceName'"
+            throw "$($this.Platform): Connect() called with empty target parameter"
         }
 
-        Write-Debug "$($this.Platform): Connecting with device name: $target"
+        Write-Debug "$($this.Platform): Connecting with explicit device name: $target"
 
         # Store the device name for session creation
         $this.DeviceName = $target
