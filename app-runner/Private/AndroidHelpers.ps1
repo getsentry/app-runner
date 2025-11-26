@@ -74,14 +74,13 @@ function Test-IntentExtrasFormat {
         return $true
     }
 
-    # Basic validation: Intent extras should start with flags like -e, -es, -ez, etc.
-    # This is a simple check - adb/Appium will validate more thoroughly
-    if ($Arguments -match '^-[a-z]') {
-        return $true
+    # Intent extras must start with flags: -e, -es, -ez, -ei, -el, -ef, -eu, etc.
+    # Followed by at least one whitespace and additional content
+    if ($Arguments -notmatch '^-[a-z]{1,2}\s+') {
+        throw "Invalid Intent extras format: '$Arguments'. Must start with flags like -e, -es, -ez, -ei, -el, etc. followed by key-value pairs."
     }
 
-    Write-Warning "Arguments may not be in correct Intent extras format. Expected flags like -e, -es, -ez, etc."
-    return $true  # Allow it anyway, let adb/Appium handle the error
+    return $true
 }
 
 <#
