@@ -96,7 +96,7 @@ Describe '<Platform>' -Tag 'RequiresDevice', 'Android' -ForEach $TestTargets {
             Connect-Device -Platform $Platform -Target $Target
 
             # Path to test APK
-            $apkPath = Join-Path $PSScriptRoot 'Fixtures' 'SentryTestApp.apk'
+            $apkPath = Join-Path $PSScriptRoot 'Fixtures' 'Android' 'TestApp.apk'
             if (-not (Test-Path $apkPath)) {
                 Set-ItResult -Skipped -Because "Test APK not found at $apkPath"
             }
