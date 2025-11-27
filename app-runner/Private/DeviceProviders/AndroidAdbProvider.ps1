@@ -316,7 +316,7 @@ class AndroidAdbProvider : DeviceProvider {
                 $PSNativeCommandUseErrorActionPreference = $true
 
                 if ($pidOutput) {
-                    $pid = $pidOutput[0].ToString().Trim()
+                    $pid = $pidOutput.ToString().Trim()
                     if ($pid -match '^\d+$') {
                         return $pid
                     }
