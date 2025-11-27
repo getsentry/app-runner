@@ -363,14 +363,28 @@ class AndroidAdbProvider : DeviceProvider {
             New-Item -Path $directory -ItemType Directory -Force | Out-Null
         }
 
-        # Capture screenshot directly to file (using exec-out for binary data)
-        $screenshotData = $this.InvokeCommand('screenshot', @($this.DeviceSerial))
-
-        # Write binary data to file
-        [System.IO.File]::WriteAllBytes($OutputPath, $screenshotData)
-
-        $size = (Get-Item $OutputPath).Length
-        Write-Debug "$($this.Platform): Screenshot saved ($size bytes)"
+        # Use intermediate file on device to avoid binary data corruption in stdout capture
+        $tempDevicePath = "/sdcard/temp_screenshot_$([Guid]::NewGuid()).png"
+        
+        try {
+            # Capture to temp file on device
+            $this.InvokeCommand('screenshot-file', @($this.DeviceSerial, $tempDevicePath))
+            
+            # Pull file from device
+            $this.InvokeCommand('pull', @($this.DeviceSerial, $tempDevicePath, $OutputPath))
+            
+            $size = (Get-Item $OutputPath).Length
+            Write-Debug "$($this.Platform): Screenshot saved ($size bytes)"
+        }
+        finally {
+            # Clean up temp file on device
+            try {
+                $this.InvokeCommand('rm', @($this.DeviceSerial, $tempDevicePath))
+            }
+            catch {
+                Write-Warning "Failed to cleanup temp screenshot file: $_"
+            }
+        }
     }
 
     [void] CopyDeviceItem([string]$DevicePath, [string]$Destination) {
