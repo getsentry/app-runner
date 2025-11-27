@@ -316,9 +316,11 @@ class AndroidAdbProvider : DeviceProvider {
                 $PSNativeCommandUseErrorActionPreference = $true
 
                 if ($pidOutput) {
-                    $pid = $pidOutput.ToString().Trim()
-                    if ($pid -match '^\d+$') {
-                        return $pid
+                    $processId = $pidOutput.ToString().Trim()
+                    if ($processId -match '^\d+$') {
+                        return $processId
+                    } else {
+                        Write-Warning "Unexpected pidof output: $processId"
                     }
                 }
             }
