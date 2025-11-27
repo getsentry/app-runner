@@ -192,11 +192,3 @@ function Format-LogcatOutput {
         }
     } | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
 }
-
-# Export functions
-Export-ModuleMember -Function @(
-    'ConvertFrom-AndroidActivityPath',
-    'Test-IntentExtrasFormat',
-    'Get-ApkPackageName',
-    'Format-LogcatOutput'
-)
