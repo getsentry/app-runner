@@ -1,0 +1,151 @@
+$ErrorActionPreference = 'Stop'
+
+BeforeDiscovery {
+    # Define test targets
+    function Get-TestTarget {
+        param(
+            [string]$Platform,
+            [string]$Target
+        )
+
+        $TargetName = if ($Target) {
+            "$Platform-$Target"
+        }
+        else {
+            $Platform
+        }
+
+        return @{
+            Platform   = $Platform
+            Target     = $Target
+            TargetName = $TargetName
+        }
+    }
+
+    $TestTargets = @()
+
+    # Check for ADB availability for AndroidAdbProvider
+    if (Get-Command 'adb' -ErrorAction SilentlyContinue) {
+        # Check if any devices are connected
+        $adbDevices = adb devices
+        if ($adbDevices -match '\tdevice$') {
+            $TestTargets += Get-TestTarget -Platform 'AndroidAdb'
+        }
+        else {
+            Write-Warning "No Android devices connected via ADB. AndroidAdbProvider tests will be skipped."
+        }
+    }
+    else {
+        Write-Warning "ADB not found in PATH. AndroidAdbProvider tests will be skipped."
+    }
+
+    # Check for SauceLabs credentials for AndroidSauceLabsProvider
+    if ($env:SAUCE_USERNAME -and $env:SAUCE_ACCESS_KEY -and $env:SAUCE_REGION -and $env:SAUCE_DEVICE_NAME) {
+        $TestTargets += Get-TestTarget -Platform 'AndroidSauceLabs' -Target $env:SAUCE_DEVICE_NAME
+    }
+    else {
+        Write-Warning "SauceLabs credentials not set. AndroidSauceLabsProvider tests will be skipped."
+    }
+}
+
+BeforeAll {
+    # Import the module
+    Import-Module "$PSScriptRoot\..\SentryAppRunner.psm1" -Force
+
+    # Helper function for cleanup
+    function Invoke-TestCleanup {
+        try {
+            if (Get-DeviceSession) {
+                Disconnect-Device
+            }
+        }
+        catch {
+            # Ignore cleanup errors
+            Write-Debug "Cleanup failed: $_"
+        }
+    }
+}
+
+Describe '<Platform>' -Tag 'RequiresDevice', 'Android' -ForEach $TestTargets {
+    Context 'Connection and Status' -Tag $TargetName {
+        AfterEach {
+            Invoke-TestCleanup
+        }
+
+        It 'Connect-Device establishes valid session' {
+            { Connect-Device -Platform $Platform -Target $Target } | Should -Not -Throw
+
+            $session = Get-DeviceSession
+            $session | Should -Not -BeNullOrEmpty
+            $session.Platform | Should -Be $Platform
+            $session.IsConnected | Should -BeTrue
+        }
+
+        It 'Get-DeviceStatus returns status information' -Skip:($Platform -eq 'AndroidSauceLabs') {
+            Connect-Device -Platform $Platform -Target $Target
+
+            $status = Get-DeviceStatus
+            $status | Should -Not -BeNullOrEmpty
+
+            $status.Status | Should -Be 'Online'
+        }
+    }
+
+    Context 'Application Management' -Tag $TargetName {
+        BeforeAll {
+            Connect-Device -Platform $Platform -Target $Target
+
+            # Path to test APK
+            $apkPath = Join-Path $PSScriptRoot 'Fixtures' 'SentryTestApp.apk'
+            if (-not (Test-Path $apkPath)) {
+                Set-ItResult -Skipped -Because "Test APK not found at $apkPath"
+            }
+            $script:apkPath = $apkPath
+        }
+
+        AfterAll {
+            Invoke-TestCleanup
+        }
+
+        It 'Install-DeviceApp installs APK' {
+            if (-not (Test-Path $script:apkPath)) {
+                Set-ItResult -Skipped -Because "Test APK not found"
+                return
+            }
+
+            { Install-DeviceApp -Path $script:apkPath } | Should -Not -Throw
+        }
+
+        It 'Invoke-DeviceApp executes application' {
+            if (-not (Test-Path $script:apkPath)) {
+                Set-ItResult -Skipped -Because "Test APK not found"
+                return
+            }
+
+            # Package name is known for SentryTestApp
+            $package = 'com.sentry.test.minimal'
+            $activity = '.MainActivity'
+            $executable = "$package/$activity"
+
+            $result = Invoke-DeviceApp -ExecutablePath $executable
+            $result | Should -Not -BeNullOrEmpty
+            $result.Output | Should -Not -BeNullOrEmpty
+        }
+    }
+
+    Context 'Diagnostics' -Tag $TargetName -Skip:($Platform -eq 'AndroidSauceLabs') {
+        BeforeAll {
+            Connect-Device -Platform $Platform -Target $Target
+        }
+
+        AfterAll {
+            Invoke-TestCleanup
+        }
+
+        It 'Get-DeviceLogs retrieves logs' {
+            $logs = Get-DeviceLogs -MaxEntries 10
+            $logs | Should -Not -BeNullOrEmpty
+            $logs.Logs | Should -Not -BeNullOrEmpty
+        }
+    }
+}
