@@ -67,7 +67,7 @@ BeforeAll {
 }
 
 Describe '<Platform>' -Tag 'RequiresDevice', 'Android' -ForEach $TestTargets {
-    Context 'Connection and Status' -Tag $TargetName {
+    Context 'Device Connection Management' -Tag $TargetName {
         AfterEach {
             Invoke-TestCleanup
         }
