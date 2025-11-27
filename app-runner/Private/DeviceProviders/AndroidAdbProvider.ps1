@@ -211,7 +211,6 @@ class AndroidAdbProvider : DeviceProvider {
 
         # Configuration
         $timeoutSeconds = 300
-        $initialWaitSeconds = 3
         $pidRetrySeconds = 30
         $processCheckIntervalSeconds = 2
 
@@ -236,7 +235,6 @@ class AndroidAdbProvider : DeviceProvider {
 
         # Wait for process to appear
         Write-Debug "$($this.Platform): Waiting for app process..."
-        Start-Sleep -Seconds $initialWaitSeconds
 
         $appPID = $this.WaitForProcess($packageName, $pidRetrySeconds)
 
