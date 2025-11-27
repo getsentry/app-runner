@@ -76,7 +76,7 @@ function Test-IntentExtrasFormat {
 
     # Intent extras must start with flags: -e, -es, -ez, -ei, -el, -ef, -eu, etc.
     # Followed by at least one whitespace and additional content
-    if ($Arguments -notmatch '^-[a-z]{1,2}\s+') {
+    if ($Arguments -notmatch '^--?[a-z]{1,2}\s+') {
         throw "Invalid Intent extras format: '$Arguments'. Must start with flags like -e, -es, -ez, -ei, -el, etc. followed by key-value pairs."
     }
 
