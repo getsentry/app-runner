@@ -148,4 +148,33 @@ Describe '<Platform>' -Tag 'RequiresDevice', 'Android' -ForEach $TestTargets {
             $logs.Logs | Should -Not -BeNullOrEmpty
         }
     }
+
+    Context 'Screenshot Capture' -Tag $TargetName -Skip:($Platform -eq 'AndroidSauceLabs') {
+        BeforeAll {
+            Connect-Device -Platform $Platform -Target $Target
+        }
+
+        AfterAll {
+            Invoke-TestCleanup
+        }
+
+        It 'Get-DeviceScreenshot captures screenshot' {
+            $outputPath = Join-Path $TestDrive "test_screenshot_$Platform.png"
+
+            try {
+                { Get-DeviceScreenshot -OutputPath $outputPath } | Should -Not -Throw
+
+                Test-Path $outputPath | Should -Be $true
+                $fileInfo = Get-Item $outputPath
+                $fileInfo.Length | Should -BeGreaterThan 0
+
+                # Verify PNG magic bytes
+                Get-Content $outputPath -AsByteStream -TotalCount 8 | Should -Be @(0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A)
+            } finally {
+                if (Test-Path $outputPath) {
+                    Remove-Item $outputPath -Force
+                }
+            }
+        }
+    }
 }
