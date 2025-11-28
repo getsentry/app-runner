@@ -59,11 +59,11 @@ Connect-Device -Platform "Adb" -Target "emulator-5554"
 # Or use SauceLabs Real Device Cloud
 Connect-Device -Platform "AndroidSauceLabs"
 
-# Install and run Android app (format: "package.name/activity.name")
-Invoke-DeviceApp -ExecutablePath "com.example.app/.MainActivity" -Arguments "-e test_mode true"
+# Install APK
+Install-DeviceApp -Path "MyApp.apk"
 
-# Or install APK first, then run
-Invoke-DeviceApp -ExecutablePath "MyApp.apk" -Arguments "-e debug true"
+# Run Android app using package/activity format
+Invoke-DeviceApp -ExecutablePath "com.example.app/.MainActivity" -Arguments "-e test_mode true"
 
 # Collect diagnostics
 Get-DeviceScreenshot -OutputPath "screenshot.png"
@@ -95,9 +95,9 @@ Disconnect-Device
 
 **Notes:**
 - Desktop platforms execute applications locally on the same machine running the module. Device lifecycle operations (power on/off, reboot) are not supported for desktop platforms.
-- Mobile platforms support app installation and execution. For Android, ExecutablePath can be either:
-  - APK file path for installation (e.g., "MyApp.apk")
-  - Package/Activity format for launching installed apps (e.g., "com.example.app/.MainActivity")
+- Mobile platforms require separate installation and execution steps:
+  - Use `Install-DeviceApp -Path "MyApp.apk"` to install APK files
+  - Use `Invoke-DeviceApp -ExecutablePath "package.name/.ActivityName"` to run installed apps
   - Android Intent extras should be passed as Arguments in the format: `-e key value` or `-ez key true/false`
 
 ## Functions
