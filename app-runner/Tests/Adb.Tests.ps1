@@ -161,7 +161,8 @@ Describe '<Platform>' -Tag 'RequiresDevice', 'Android' -ForEach $TestTargets {
 
                 # Verify PNG magic bytes
                 Get-Content $outputPath -AsByteStream -TotalCount 8 | Should -Be @(0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A)
-            } finally {
+            }
+            finally {
                 if (Test-Path $outputPath) {
                     Remove-Item $outputPath -Force
                 }

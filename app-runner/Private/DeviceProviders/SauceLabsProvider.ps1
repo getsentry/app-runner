@@ -261,7 +261,7 @@ class SauceLabsProvider : DeviceProvider {
         if ($this.MobilePlatform -eq 'iOS' -and $extension -ne '.ipa') {
             throw "Package must be an .ipa file for iOS. Got: $PackagePath"
         }
-        
+
         Write-Debug "Inferred platform: $($this.MobilePlatform)"
 
         # Upload App to SauceLabs Storage
@@ -326,7 +326,7 @@ class SauceLabsProvider : DeviceProvider {
         if (-not $this.SessionId) {
             throw "No active SauceLabs session. Call InstallApp first to create a session."
         }
-        
+
         # Configuration
         $timeoutSeconds = 300
         $pollIntervalSeconds = 2
@@ -385,7 +385,7 @@ class SauceLabsProvider : DeviceProvider {
             $launchBody = @{
                 bundleId = $bundleId
             }
-            
+
             if ($Arguments) {
                 # Appium 'mobile: launchApp' supports arguments? 
                 # Or use 'appium:processArguments' capability during session creation?
@@ -500,7 +500,7 @@ class SauceLabsProvider : DeviceProvider {
         }
 
         $baseUri = "https://ondemand.$($this.Region).saucelabs.com/wd/hub/session/$($this.SessionId)"
-        
+
         # Default log type based on platform if not specified
         if ([string]::IsNullOrEmpty($LogType)) {
             $LogType = if ($this.MobilePlatform -eq 'iOS') { 'syslog' } else { 'logcat' }

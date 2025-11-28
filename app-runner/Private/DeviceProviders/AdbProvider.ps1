@@ -83,11 +83,7 @@ class AdbProvider : DeviceProvider {
         # Parse 'adb devices' output
         # Format: "device_serial\tdevice" (skip header line)
         # Wrap in @() to ensure array type even with single device
-        $devices = @($output | Where-Object {
-            $_ -match '\tdevice$'
-        } | ForEach-Object {
-            ($_ -split '\t')[0]
-        })
+        $devices = @($output | Where-Object { $_ -match '\tdevice$' } | ForEach-Object { ($_ -split '\t')[0] })
 
         if ($null -eq $devices -or $devices.Count -eq 0) {
             throw "No Android devices found. Ensure a device or emulator is connected and visible via 'adb devices'"
@@ -319,7 +315,8 @@ class AdbProvider : DeviceProvider {
                     $processId = $pidOutput.ToString().Trim()
                     if ($processId -match '^\d+$') {
                         return $processId
-                    } else {
+                    }
+                    else {
                         Write-Warning "Unexpected pidof output: $processId"
                     }
                 }
@@ -365,14 +362,14 @@ class AdbProvider : DeviceProvider {
 
         # Use intermediate file on device to avoid binary data corruption in stdout capture
         $tempDevicePath = "/sdcard/temp_screenshot_$([Guid]::NewGuid()).png"
-        
+
         try {
             # Capture to temp file on device
             $this.InvokeCommand('screenshot-file', @($this.DeviceSerial, $tempDevicePath))
-            
+
             # Pull file from device
             $this.InvokeCommand('pull', @($this.DeviceSerial, $tempDevicePath, $OutputPath))
-            
+
             $size = (Get-Item $OutputPath).Length
             Write-Debug "$($this.Platform): Screenshot saved ($size bytes)"
         }

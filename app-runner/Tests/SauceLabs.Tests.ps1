@@ -7,7 +7,6 @@ BeforeDiscovery {
 
     # Check for SauceLabs credentials
     if ($env:SAUCE_USERNAME -and $env:SAUCE_ACCESS_KEY -and $env:SAUCE_REGION) {
-        
         # Check Android Fixture
         $androidFixture = Join-Path $PSScriptRoot 'Fixtures' 'Android' 'TestApp.apk'
         if (Test-Path $androidFixture) {
@@ -49,7 +48,7 @@ BeforeAll {
 }
 
 Describe "SauceLabsProvider Integration Tests" -ForEach $TestTargets {
-    
+
     Context "Provider Contract Tests for <Platform>" {
         It "Should pass contract tests" {
             # 1. Connect
