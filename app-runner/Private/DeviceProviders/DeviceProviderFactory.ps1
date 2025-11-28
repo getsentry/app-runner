@@ -21,11 +21,14 @@ class DeviceProviderFactory {
         # Use PowerShell automatic variables to detect OS
         if ($global:IsWindows) {
             return 'Windows'
-        } elseif ($global:IsMacOS) {
+        }
+        elseif ($global:IsMacOS) {
             return 'MacOS'
-        } elseif ($global:IsLinux) {
+        }
+        elseif ($global:IsLinux) {
             return 'Linux'
-        } else {
+        }
+        else {
             throw "Unable to detect local platform. Platform is not Windows, MacOS, or Linux."
         }
     }
@@ -79,8 +82,12 @@ class DeviceProviderFactory {
                 return [AndroidAdbProvider]::new()
             }
             "AndroidSauceLabs" {
-                Write-Debug "DeviceProviderFactory: Creating AndroidSauceLabsProvider"
-                return [AndroidSauceLabsProvider]::new()
+                Write-Debug "DeviceProviderFactory: Creating SauceLabsProvider (Android)"
+                return [SauceLabsProvider]::new('Android')
+            }
+            "iOSSauceLabs" {
+                Write-Debug "DeviceProviderFactory: Creating SauceLabsProvider (iOS)"
+                return [SauceLabsProvider]::new('iOS')
             }
             "Mock" {
                 Write-Debug "DeviceProviderFactory: Creating MockDeviceProvider"
@@ -105,7 +112,7 @@ class DeviceProviderFactory {
     An array of supported platform names.
     #>
     static [string[]] GetSupportedPlatforms() {
-        return @("Xbox", "PlayStation5", "Switch", "Windows", "MacOS", "Linux", "AndroidAdb", "AndroidSauceLabs", "Local", "Mock")
+        return @("Xbox", "PlayStation5", "Switch", "Windows", "MacOS", "Linux", "AndroidAdb", "AndroidSauceLabs", "iOSSauceLabs", "Local", "Mock")
     }
 
     <#

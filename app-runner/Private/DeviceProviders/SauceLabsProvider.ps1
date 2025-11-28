@@ -1,25 +1,25 @@
-# Android SauceLabs Provider Implementation
-# Provides device management for Android devices on SauceLabs Real Device Cloud
+# SauceLabs Provider Implementation
+# Provides device management for devices on SauceLabs Real Device Cloud (Android/iOS)
 
 # Load the base provider
 . "$PSScriptRoot\DeviceProvider.ps1"
 
-# Load Android helpers
+# Load Android helpers (conditionally needed, but safe to load)
 . "$PSScriptRoot\..\AndroidHelpers.ps1"
 
 <#
 .SYNOPSIS
-Device provider for Android devices on SauceLabs Real Device Cloud.
+Device provider for mobile devices on SauceLabs Real Device Cloud.
 
 .DESCRIPTION
-This provider implements Android-specific device operations using SauceLabs Appium API.
-It supports testing on real Android devices in the SauceLabs cloud infrastructure.
+This provider implements device operations using SauceLabs Appium API.
+It supports testing on real Android and iOS devices in the SauceLabs cloud infrastructure.
 
 Key features:
-- APK upload to SauceLabs storage
+- App upload to SauceLabs storage
 - Appium session management (create, reuse, delete)
 - App execution with state monitoring
-- Logcat retrieval via Appium
+- Logcat/Syslog retrieval via Appium
 - Screenshot capture
 
 Requirements:
@@ -29,7 +29,7 @@ Requirements:
   - SAUCE_ACCESS_KEY - SauceLabs access key
   - SAUCE_REGION - SauceLabs region (e.g., us-west-1, eu-central-1)
   - SAUCE_DEVICE_NAME - Device name (optional if using -Target parameter)
-  - SAUCE_SESSION_NAME - Session name for SauceLabs dashboard (optional, defaults to "App Runner Android Test")
+  - SAUCE_SESSION_NAME - Session name for SauceLabs dashboard (optional, defaults to "App Runner Test")
 
 Note: Device name must match a device available in the specified region.
 
@@ -40,7 +40,7 @@ Example usage:
   # Option 2: Explicitly specify device name
   Connect-Device -Platform AndroidSauceLabs -Target "Samsung_Galaxy_S23_15_real_sjc1"
 #>
-class AndroidSauceLabsProvider : DeviceProvider {
+class SauceLabsProvider : DeviceProvider {
     [string]$SessionId = $null
     [string]$StorageId = $null
     [string]$Region = $null
@@ -49,9 +49,14 @@ class AndroidSauceLabsProvider : DeviceProvider {
     [string]$AccessKey = $null
     [string]$SessionName = $null
     [string]$CurrentPackageName = $null
+    [string]$MobilePlatform = $null # 'Android' or 'iOS'
 
-    AndroidSauceLabsProvider() {
-        $this.Platform = 'AndroidSauceLabs'
+    SauceLabsProvider([string]$MobilePlatform) {
+        if ($MobilePlatform -notin @('Android', 'iOS')) {
+            throw "SauceLabsProvider: Unsupported mobile platform '$MobilePlatform'. Must be 'Android' or 'iOS'."
+        }
+        $this.MobilePlatform = $MobilePlatform
+        $this.Platform = "${MobilePlatform}SauceLabs"
 
         # Read credentials and configuration from environment
         $this.Username = $env:SAUCE_USERNAME
@@ -62,8 +67,9 @@ class AndroidSauceLabsProvider : DeviceProvider {
         # Read optional session name (with default)
         $this.SessionName = if ($env:SAUCE_SESSION_NAME) {
             $env:SAUCE_SESSION_NAME
-        } else {
-            "App Runner Android Test"
+        }
+        else {
+            "App Runner $MobilePlatform Test"
         }
 
         # Validate required credentials
@@ -83,7 +89,7 @@ class AndroidSauceLabsProvider : DeviceProvider {
 
         # Configure timeouts for cloud operations
         $this.Timeouts = @{
-            'upload'  = 600  # APK upload can take time
+            'upload'  = 600  # App upload can take time
             'session' = 300  # Session creation
             'launch'  = 300  # App launch on cloud device
         }
@@ -150,13 +156,13 @@ class AndroidSauceLabsProvider : DeviceProvider {
     [hashtable] Connect() {
         # Use device name from SAUCE_DEVICE_NAME environment variable
         if (-not $this.DeviceName) {
-            throw "$($this.Platform) requires a device name. Set SAUCE_DEVICE_NAME environment variable or use Connect-Device -Platform AndroidSauceLabs -Target 'DeviceName'"
+            throw "$($this.Platform) requires a device name. Set SAUCE_DEVICE_NAME environment variable or use Connect-Device -Platform $($this.Platform) -Target 'DeviceName'"
         }
 
         Write-Debug "$($this.Platform): Connecting with device name from env: $($this.DeviceName)"
 
-        # Note: APK upload and session creation happen in InstallApp
-        # because we need the APK path before creating an Appium session
+        # Note: App upload and session creation happen in InstallApp
+        # because we need the App path before creating an Appium session
 
         return @{
             Provider    = $this
@@ -184,8 +190,8 @@ class AndroidSauceLabsProvider : DeviceProvider {
         # Store the device name for session creation
         $this.DeviceName = $target
 
-        # Note: APK upload and session creation happen in InstallApp
-        # because we need the APK path before creating an Appium session
+        # Note: App upload and session creation happen in InstallApp
+        # because we need the App path before creating an Appium session
 
         return @{
             Provider    = $this
@@ -241,41 +247,47 @@ class AndroidSauceLabsProvider : DeviceProvider {
     }
 
     [hashtable] InstallApp([string]$PackagePath) {
-        Write-Debug "$($this.Platform): Installing APK: $PackagePath"
+        Write-Debug "$($this.Platform): Installing App: $PackagePath"
 
-        # Validate APK file
+        # Validate App file
         if (-not (Test-Path $PackagePath)) {
-            throw "APK file not found: $PackagePath"
+            throw "App file not found: $PackagePath"
         }
 
-        if ($PackagePath -notlike '*.apk') {
-            throw "Package must be an .apk file. Got: $PackagePath"
+        $extension = [System.IO.Path]::GetExtension($PackagePath).ToLower()
+        if ($this.MobilePlatform -eq 'Android' -and $extension -ne '.apk') {
+            throw "Package must be an .apk file for Android. Got: $PackagePath"
         }
+        if ($this.MobilePlatform -eq 'iOS' -and $extension -ne '.ipa') {
+            throw "Package must be an .ipa file for iOS. Got: $PackagePath"
+        }
+        
+        Write-Debug "Inferred platform: $($this.MobilePlatform)"
 
-        # Upload APK to SauceLabs Storage
-        Write-Host "Uploading APK to SauceLabs Storage..." -ForegroundColor Yellow
+        # Upload App to SauceLabs Storage
+        Write-Host "Uploading App to SauceLabs Storage..." -ForegroundColor Yellow
         $uploadUri = "https://api.$($this.Region).saucelabs.com/v1/storage/upload"
 
         $uploadResponse = $this.InvokeSauceLabsApi('POST', $uploadUri, $null, $true, $PackagePath)
 
         if (-not $uploadResponse.item.id) {
-            throw "Failed to upload APK: No storage ID in response"
+            throw "Failed to upload App: No storage ID in response"
         }
 
         $this.StorageId = $uploadResponse.item.id
-        Write-Host "APK uploaded successfully. Storage ID: $($this.StorageId)" -ForegroundColor Green
+        Write-Host "App uploaded successfully. Storage ID: $($this.StorageId)" -ForegroundColor Green
 
-        # Create Appium session with uploaded APK
+        # Create Appium session with uploaded App
         Write-Host "Creating SauceLabs Appium session..." -ForegroundColor Yellow
         $sessionUri = "https://ondemand.$($this.Region).saucelabs.com/wd/hub/session"
 
         $capabilities = @{
             capabilities = @{
                 alwaysMatch = @{
-                    platformName            = 'Android'
+                    platformName            = $this.MobilePlatform
                     'appium:app'            = "storage:$($this.StorageId)"
                     'appium:deviceName'     = $this.DeviceName
-                    'appium:automationName' = 'UiAutomator2'
+                    'appium:automationName' = if ($this.MobilePlatform -eq 'Android') { 'UiAutomator2' } else { 'XCUITest' }
                     'appium:noReset'        = $true
                     'appium:autoLaunch'     = $false
                     'sauce:options'         = @{
@@ -314,49 +326,85 @@ class AndroidSauceLabsProvider : DeviceProvider {
         if (-not $this.SessionId) {
             throw "No active SauceLabs session. Call InstallApp first to create a session."
         }
-
-        # Parse ExecutablePath: "package.name/activity.name"
-        $parsed = ConvertFrom-AndroidActivityPath -ExecutablePath $ExecutablePath
-        $packageName = $parsed.PackageName
-        $activityName = $parsed.ActivityName
-        $this.CurrentPackageName = $packageName
-
-        # Validate Intent extras format
-        if ($Arguments) {
-            Test-IntentExtrasFormat -Arguments $Arguments | Out-Null
-        }
-
+        
         # Configuration
         $timeoutSeconds = 300
         $pollIntervalSeconds = 2
-
         $startTime = Get-Date
         $baseUri = "https://ondemand.$($this.Region).saucelabs.com/wd/hub/session/$($this.SessionId)"
 
-        # Launch activity with Intent extras
-        Write-Host "Launching: $packageName/$activityName" -ForegroundColor Cyan
-        if ($Arguments) {
-            Write-Host "  Arguments: $Arguments" -ForegroundColor Cyan
-        }
+        if ($this.MobilePlatform -eq 'Android') {
+            # Parse ExecutablePath: "package.name/activity.name"
+            $parsed = ConvertFrom-AndroidActivityPath -ExecutablePath $ExecutablePath
+            $packageName = $parsed.PackageName
+            $activityName = $parsed.ActivityName
+            $this.CurrentPackageName = $packageName
 
-        $launchBody = @{
-            appPackage      = $packageName
-            appActivity     = $activityName
-            appWaitActivity = '*'
-            intentAction    = 'android.intent.action.MAIN'
-            intentCategory  = 'android.intent.category.LAUNCHER'
-        }
+            # Validate Intent extras format
+            if ($Arguments) {
+                Test-IntentExtrasFormat -Arguments $Arguments | Out-Null
+            }
 
-        if ($Arguments) {
-            $launchBody['optionalIntentArguments'] = $Arguments
-        }
+            # Launch activity with Intent extras
+            Write-Host "Launching: $packageName/$activityName" -ForegroundColor Cyan
+            if ($Arguments) {
+                Write-Host "  Arguments: $Arguments" -ForegroundColor Cyan
+            }
 
-        try {
-            $launchResponse = $this.InvokeSauceLabsApi('POST', "$baseUri/appium/device/start_activity", $launchBody, $false, $null)
-            Write-Debug "Launch response: $($launchResponse | ConvertTo-Json)"
+            $launchBody = @{
+                appPackage      = $packageName
+                appActivity     = $activityName
+                appWaitActivity = '*'
+                intentAction    = 'android.intent.action.MAIN'
+                intentCategory  = 'android.intent.category.LAUNCHER'
+            }
+
+            if ($Arguments) {
+                $launchBody['optionalIntentArguments'] = $Arguments
+            }
+
+            try {
+                $launchResponse = $this.InvokeSauceLabsApi('POST', "$baseUri/appium/device/start_activity", $launchBody, $false, $null)
+                Write-Debug "Launch response: $($launchResponse | ConvertTo-Json)"
+            }
+            catch {
+                throw "Failed to launch activity: $_"
+            }
         }
-        catch {
-            throw "Failed to launch activity: $_"
+        elseif ($this.MobilePlatform -eq 'iOS') {
+            # For iOS, ExecutablePath is typically the Bundle ID
+            $bundleId = $ExecutablePath
+            $this.CurrentPackageName = $bundleId
+
+            Write-Host "Launching: $bundleId" -ForegroundColor Cyan
+            if ($Arguments) {
+                Write-Host "  Arguments: $Arguments" -ForegroundColor Cyan
+                Write-Warning "Passing arguments to iOS apps via SauceLabs/Appium might require specific app capability configuration."
+            }
+
+            $launchBody = @{
+                bundleId = $bundleId
+            }
+            
+            if ($Arguments) {
+                # Appium 'mobile: launchApp' supports arguments? 
+                # Or use 'appium:processArguments' capability during session creation?
+                # For now, we'll try to pass them if supported by the endpoint or warn.
+                $launchBody['arguments'] = $Arguments -split ' ' # Simple split, might need better parsing
+            }
+
+            try {
+                # Use mobile: launchApp for iOS
+                $scriptBody = @{
+                    script = "mobile: launchApp"
+                    args   = $launchBody
+                }
+                $launchResponse = $this.InvokeSauceLabsApi('POST', "$baseUri/execute/sync", $scriptBody, $false, $null)
+                Write-Debug "Launch response: $($launchResponse | ConvertTo-Json)"
+            }
+            catch {
+                throw "Failed to launch app: $_"
+            }
         }
 
         # Wait a moment for app to start
@@ -371,7 +419,7 @@ class AndroidSauceLabsProvider : DeviceProvider {
             $stateBody = @{
                 script = 'mobile: queryAppState'
                 args   = @(
-                    @{ appId = $packageName }
+                    @{ appId = $this.CurrentPackageName } # Use stored package/bundle ID
                 )
             }
 
@@ -381,7 +429,9 @@ class AndroidSauceLabsProvider : DeviceProvider {
 
                 Write-Debug "App state: $appState (elapsed: $([int]((Get-Date) - $startTime).TotalSeconds)s)"
 
-                # State 1 = not running, 0 = not installed
+                # State 1 = not running, 0 = not installed (Android)
+                # iOS: 1 = not running, 0 = unknown/not installed?
+                # Appium docs: 0 is not installed. 1 is not running. 2 is running in background or suspended. 3 is running in background. 4 is running in foreground.
                 if ($appState -eq 1 -or $appState -eq 0) {
                     Write-Host "App finished/crashed (state: $appState)" -ForegroundColor Green
                     $completed = $true
@@ -399,9 +449,10 @@ class AndroidSauceLabsProvider : DeviceProvider {
             Write-Host "Warning: App did not exit within timeout" -ForegroundColor Yellow
         }
 
-        # Retrieve logs after app completion
+        # Retrieving logs after app completion
         Write-Host "Retrieving logs..." -ForegroundColor Yellow
-        $logBody = @{ type = 'logcat' }
+        $logType = if ($this.MobilePlatform -eq 'iOS') { 'syslog' } else { 'logcat' }
+        $logBody = @{ type = $logType }
         $logResponse = $this.InvokeSauceLabsApi('POST', "$baseUri/log", $logBody, $false, $null)
 
         [array]$allLogs = @()
@@ -423,8 +474,11 @@ class AndroidSauceLabsProvider : DeviceProvider {
             } | Where-Object { $_ }  # Filter out any nulls
         }
 
-        # Format logs consistently
-        $formattedLogs = Format-LogcatOutput -LogcatOutput $logCache
+        # Format logs consistently (Android only for now)
+        $formattedLogs = $logCache
+        if ($this.MobilePlatform -eq 'Android') {
+            $formattedLogs = Format-LogcatOutput -LogcatOutput $logCache
+        }
 
         # Return result matching app-runner pattern
         return @{
@@ -434,7 +488,7 @@ class AndroidSauceLabsProvider : DeviceProvider {
             StartedAt      = $startTime
             FinishedAt     = Get-Date
             Output         = $formattedLogs
-            ExitCode       = 0  # Android doesn't report exit codes
+            ExitCode       = 0  # Mobile platforms don't reliably report exit codes here
         }
     }
 
@@ -446,7 +500,13 @@ class AndroidSauceLabsProvider : DeviceProvider {
         }
 
         $baseUri = "https://ondemand.$($this.Region).saucelabs.com/wd/hub/session/$($this.SessionId)"
-        $logBody = @{ type = 'logcat' }
+        
+        # Default log type based on platform if not specified
+        if ([string]::IsNullOrEmpty($LogType)) {
+            $LogType = if ($this.MobilePlatform -eq 'iOS') { 'syslog' } else { 'logcat' }
+        }
+
+        $logBody = @{ type = $LogType }
         $response = $this.InvokeSauceLabsApi('POST', "$baseUri/log", $logBody, $false, $null)
 
         [array]$logs = @()

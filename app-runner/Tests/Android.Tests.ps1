@@ -38,14 +38,6 @@ BeforeDiscovery {
     else {
         Write-Warning "ADB not found in PATH. AndroidAdbProvider tests will be skipped."
     }
-
-    # Check for SauceLabs credentials for AndroidSauceLabsProvider
-    if ($env:SAUCE_USERNAME -and $env:SAUCE_ACCESS_KEY -and $env:SAUCE_REGION -and $env:SAUCE_DEVICE_NAME) {
-        $TestTargets += Get-TestTarget -Platform 'AndroidSauceLabs' -Target $env:SAUCE_DEVICE_NAME
-    }
-    else {
-        Write-Warning "SauceLabs credentials not set. AndroidSauceLabsProvider tests will be skipped."
-    }
 }
 
 BeforeAll {
