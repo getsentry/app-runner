@@ -74,6 +74,10 @@ jobs:
       run:
         working-directory: ${{ inputs.module-path }}
         shell: pwsh
+    env:
+      SAUCE_USERNAME: ${{ secrets.SAUCE_USERNAME }}
+      SAUCE_ACCESS_KEY: ${{ secrets.SAUCE_ACCESS_KEY }}
+      SAUCE_REGION: us-west-1
 
     steps:
       - name: Checkout repository
