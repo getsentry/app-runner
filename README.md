@@ -22,9 +22,11 @@ Currently supported:
   - macOS
   - Linux
 
-Future support planned:
+Experimental support:
 
-- Mobile platforms (iOS, Android)
+- **Mobile Platforms:**
+  - Android (via ADB or SauceLabs Real Device Cloud)
+  - iOS (via SauceLabs - coming soon)
 
 ## Requirements
 
