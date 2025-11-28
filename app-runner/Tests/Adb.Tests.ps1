@@ -73,7 +73,7 @@ Describe '<Platform>' -Tag 'RequiresDevice', 'Android' -ForEach $TestTargets {
             $session.IsConnected | Should -BeTrue
         }
 
-        It 'Get-DeviceStatus returns status information' -Skip:($Platform -eq 'AndroidSauceLabs') {
+        It 'Get-DeviceStatus returns status information' {
             Connect-Device -Platform $Platform -Target $Target
 
             $status = Get-DeviceStatus
@@ -114,7 +114,6 @@ Describe '<Platform>' -Tag 'RequiresDevice', 'Android' -ForEach $TestTargets {
                 return
             }
 
-            # Package name is known for SentryTestApp
             $package = 'com.sentry.test.minimal'
             $activity = '.MainActivity'
             $executable = "$package/$activity"
@@ -125,7 +124,7 @@ Describe '<Platform>' -Tag 'RequiresDevice', 'Android' -ForEach $TestTargets {
         }
     }
 
-    Context 'Diagnostics' -Tag $TargetName -Skip:($Platform -eq 'AndroidSauceLabs') {
+    Context 'Diagnostics' -Tag $TargetName {
         BeforeAll {
             Connect-Device -Platform $Platform -Target $Target
         }
@@ -141,7 +140,7 @@ Describe '<Platform>' -Tag 'RequiresDevice', 'Android' -ForEach $TestTargets {
         }
     }
 
-    Context 'Screenshot Capture' -Tag $TargetName -Skip:($Platform -eq 'AndroidSauceLabs') {
+    Context 'Screenshot Capture' -Tag $TargetName {
         BeforeAll {
             Connect-Device -Platform $Platform -Target $Target
         }
