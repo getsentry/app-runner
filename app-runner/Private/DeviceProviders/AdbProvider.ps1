@@ -27,12 +27,12 @@ Requirements:
 - Android device or emulator connected and visible via 'adb devices'
 - USB debugging enabled on physical devices
 #>
-class AndroidAdbProvider : DeviceProvider {
+class AdbProvider : DeviceProvider {
     [string]$DeviceSerial = $null
     [string]$CurrentPackageName = $null  # Track current app package for monitoring
 
-    AndroidAdbProvider() {
-        $this.Platform = 'AndroidAdb'
+    AdbProvider() {
+        $this.Platform = 'Adb'
 
         # ADB should be in PATH - no SDK path needed
         $this.SdkPath = $null

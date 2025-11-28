@@ -24,19 +24,19 @@ BeforeDiscovery {
 
     $TestTargets = @()
 
-    # Check for ADB availability for AndroidAdbProvider
+    # Check for ADB availability for AdbProvider
     if (Get-Command 'adb' -ErrorAction SilentlyContinue) {
         # Check if any devices are connected
         $adbDevices = adb devices
         if ($adbDevices -match '\tdevice$') {
-            $TestTargets += Get-TestTarget -Platform 'AndroidAdb'
+            $TestTargets += Get-TestTarget -Platform 'Adb'
         }
         else {
-            Write-Warning "No Android devices connected via ADB. AndroidAdbProvider tests will be skipped."
+            Write-Warning "No Android devices connected via ADB. AdbProvider tests will be skipped."
         }
     }
     else {
-        Write-Warning "ADB not found in PATH. AndroidAdbProvider tests will be skipped."
+        Write-Warning "ADB not found in PATH. AdbProvider tests will be skipped."
     }
 }
 

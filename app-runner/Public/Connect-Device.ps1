@@ -41,7 +41,7 @@ function Connect-Device {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $true)]
-        [ValidateSet('Xbox', 'PlayStation5', 'Switch', 'Windows', 'MacOS', 'Linux', 'AndroidAdb', 'AndroidSauceLabs', 'iOSSauceLabs', 'Local', 'Mock')]
+        [ValidateSet('Xbox', 'PlayStation5', 'Switch', 'Windows', 'MacOS', 'Linux', 'Adb', 'AndroidSauceLabs', 'iOSSauceLabs', 'Local', 'Mock')]
         [string]$Platform,
 
         [Parameter(Mandatory = $false)]
@@ -66,7 +66,7 @@ function Connect-Device {
 
     # Determine if mutex should be used for this platform
     # Android platforms don't need mutex (ADB can manage multiple connections, SauceLabs sessions are isolated)
-    $useMutex = $Platform -notin @('AndroidAdb', 'AndroidSauceLabs')
+    $useMutex = $Platform -notin @('Adb', 'AndroidSauceLabs')
 
     # Build resource name for mutex coordination (if needed)
     # Xbox requires platform-level mutex (not per-target) because xb*.exe commands
