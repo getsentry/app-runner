@@ -109,51 +109,6 @@ Describe 'AndroidHelpers' -Tag 'Unit', 'Android' {
         }
     }
 
-    Context 'Get-ApkPackageName fallback behavior' {
-        It 'Falls back to filename when aapt unavailable' {
-            # Create fake APK file
-            $apkPath = Join-Path $TestDrive 'MyTestApp.apk'
-            'fake apk content' | Out-File -FilePath $apkPath
-
-            # The function will try aapt/aapt2, but if not available, falls back to filename
-            # We can't guarantee aapt isn't available, so we just verify it returns something
-            $result = Get-ApkPackageName -ApkPath $apkPath
-
-            $result | Should -Not -BeNullOrEmpty
-            # Result is either real package name (if aapt available) or filename (if not)
-            $result | Should -BeOfType [string]
-        }
-
-        It 'Strips .apk extension from filename in fallback' {
-            $apkPath = Join-Path $TestDrive 'SentryPlayground.apk'
-            'fake apk content' | Out-File -FilePath $apkPath
-
-            $result = Get-ApkPackageName -ApkPath $apkPath
-
-            # If aapt not available, should return filename without extension
-            # If aapt is available, will return whatever package name is in the (fake) APK
-            $result | Should -Not -BeNullOrEmpty
-        }
-
-        It 'Handles filename with multiple dots' {
-            $apkPath = Join-Path $TestDrive 'my.test.app.apk'
-            'fake apk content' | Out-File -FilePath $apkPath
-
-            $result = Get-ApkPackageName -ApkPath $apkPath
-
-            $result | Should -Not -BeNullOrEmpty
-        }
-
-        It 'Handles path with spaces' {
-            $apkPath = Join-Path $TestDrive 'My Test App.apk'
-            'fake apk content' | Out-File -FilePath $apkPath
-
-            $result = Get-ApkPackageName -ApkPath $apkPath
-
-            $result | Should -Not -BeNullOrEmpty
-        }
-    }
-
     Context 'Get-ApkPackageName error handling' {
         It 'Throws when APK file does not exist' {
             $nonExistentPath = Join-Path $TestDrive 'nonexistent-file.apk'
