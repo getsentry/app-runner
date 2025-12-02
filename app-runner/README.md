@@ -96,8 +96,8 @@ Disconnect-Device
 **Notes:**
 - Desktop platforms execute applications locally on the same machine running the module. Device lifecycle operations (power on/off, reboot) are not supported for desktop platforms.
 - Mobile platforms require separate installation and execution steps:
-  - Use `Install-DeviceApp -Path "MyApp.apk"` to install APK files
-  - Use `Invoke-DeviceApp -ExecutablePath "package.name/.ActivityName"` to run installed apps
+  - Use `Install-DeviceApp "MyApp.apk"` to install APK files
+  - Use `Invoke-DeviceApp "package.name/.ActivityName"` to run installed apps
   - Android Intent extras should be passed as Arguments in the format: `-e key value` or `-ez key true/false`
 
 ## Functions
