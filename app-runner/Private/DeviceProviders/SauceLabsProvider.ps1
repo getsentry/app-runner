@@ -525,6 +525,15 @@ class SauceLabsProvider : DeviceProvider {
         $baseUri = "https://ondemand.$($this.Region).saucelabs.com/wd/hub/session/$($this.SessionId)"
         $response = $this.InvokeSauceLabsApi('GET', "$baseUri/screenshot", $null, $false, $null)
 
+        # Validate response before decoding
+        if (-not $response) {
+            throw "$($this.Platform): Screenshot API returned no response"
+        }
+
+        if (-not $response.value) {
+            throw "$($this.Platform): Screenshot API response missing 'value' field"
+        }
+
         # Response contains base64 encoded PNG
         [System.IO.File]::WriteAllBytes($OutputPath, [Convert]::FromBase64String($response.value))
 
