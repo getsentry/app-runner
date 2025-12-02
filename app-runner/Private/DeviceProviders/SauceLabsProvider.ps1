@@ -89,9 +89,11 @@ class SauceLabsProvider : DeviceProvider {
 
         # Configure timeouts for cloud operations
         $this.Timeouts = @{
-            'upload'  = 600  # App upload can take time
-            'session' = 300  # Session creation
-            'launch'  = 300  # App launch on cloud device
+            'upload'        = 600  # App upload can take time
+            'session'       = 300  # Session creation
+            'launch'        = 300  # App launch on cloud device
+            'run-timeout'   = 300  # Maximum time to wait for app execution
+            'poll-interval' = 2    # Interval between app state checks
         }
     }
 
@@ -327,9 +329,8 @@ class SauceLabsProvider : DeviceProvider {
             throw "No active SauceLabs session. Call InstallApp first to create a session."
         }
 
-        # Configuration
-        $timeoutSeconds = 300
-        $pollIntervalSeconds = 2
+        $timeoutSeconds = $this.Timeouts['run-timeout']
+        $pollIntervalSeconds = $this.Timeouts['poll-interval']
         $startTime = Get-Date
         $baseUri = "https://ondemand.$($this.Region).saucelabs.com/wd/hub/session/$($this.SessionId)"
 

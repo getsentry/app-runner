@@ -68,8 +68,11 @@ class AdbProvider : DeviceProvider {
 
         # Configure timeouts for slow operations
         $this.Timeouts = @{
-            'launch'  = 180  # App launch can take time on slower devices
-            'install' = 300  # APK installation can be slow for large apps
+            'launch'                 = 180  # App launch can take time on slower devices
+            'install'                = 300  # APK installation can be slow for large apps
+            'run-timeout'            = 300  # Maximum time to wait for app execution
+            'pid-retry'              = 30   # Time to wait for process ID to appear
+            'process-check-interval' = 2    # Interval between process status checks
         }
     }
 
@@ -204,10 +207,10 @@ class AdbProvider : DeviceProvider {
             Test-IntentExtrasFormat -Arguments $Arguments | Out-Null
         }
 
-        # Configuration
-        $timeoutSeconds = 300
-        $pidRetrySeconds = 30
-        $processCheckIntervalSeconds = 2
+        # Configuration from Timeouts
+        $timeoutSeconds = $this.Timeouts['run-timeout']
+        $pidRetrySeconds = $this.Timeouts['pid-retry']
+        $processCheckIntervalSeconds = $this.Timeouts['process-check-interval']
 
         $startTime = Get-Date
 
