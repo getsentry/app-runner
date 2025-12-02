@@ -64,9 +64,13 @@ function Connect-Device {
         Disconnect-Device
     }
 
-    # Determine if mutex should be used for this platform
-    # Android platforms don't need mutex (ADB can manage multiple connections, SauceLabs sessions are isolated)
-    $useMutex = $Platform -notin @('Adb', 'AndroidSauceLabs')
+    # Providers with session-based isolation don't need mutex; providers with shared physical/logical devices do.
+    # The rule of a thumb is: if you can run the same test in parallel multiple times on the same machine
+    # and same target device and they don't interfere with each other then it's ok to disable mutex. 
+    # Example: installing the same app name to ADB (same device) would uninstall the previous app with the same name - we must use mutex.
+    # SauceLabs acquire a lock on the server-side (for selected device) so we don't need to handle it here.
+    # Also note: these mutexes are very fast so err on the side of caution.
+    $useMutex = $Platform -notmatch 'SauceLabs'
 
     # Build resource name for mutex coordination (if needed)
     # Xbox requires platform-level mutex (not per-target) because xb*.exe commands
