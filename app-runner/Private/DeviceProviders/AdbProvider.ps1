@@ -241,7 +241,7 @@ class AdbProvider : DeviceProvider {
 
         if (-not $appPID) {
             # App might have already exited (fast execution) - capture logs anyway
-            Write-Host "Warning: Could not find process ID (app may have exited quickly)" -ForegroundColor Yellow
+            Write-Warning "Could not find process ID (app may have exited quickly)" -ForegroundColor Yellow
             $logCache = @($this.InvokeCommand('logcat', @($this.DeviceSerial)))
             $exitCode = 0
         }
