@@ -64,6 +64,8 @@ class AdbProvider : DeviceProvider {
             'screenshot-file' = @('adb', '-s {0} shell screencap -p {1}')
             'pull'            = @('adb', '-s {0} pull {1} {2}')
             'rm'              = @('adb', '-s {0} shell rm {1}')
+            'ping'            = @('adb', '-s {0} shell ping -c 1 {1}')
+            'ps'              = @('adb', '-s {0} shell ps')
         }
 
         # Configure timeouts for slow operations
@@ -207,7 +209,6 @@ class AdbProvider : DeviceProvider {
             Test-IntentExtrasFormat -Arguments $Arguments | Out-Null
         }
 
-        # Configuration from Timeouts
         $timeoutSeconds = $this.Timeouts['run-timeout']
         $pidRetrySeconds = $this.Timeouts['pid-retry']
         $processCheckIntervalSeconds = $this.Timeouts['process-check-interval']
@@ -255,9 +256,7 @@ class AdbProvider : DeviceProvider {
             while ((Get-Date) - $startTime -lt [TimeSpan]::FromSeconds($timeoutSeconds)) {
                 # Check if process still exists
                 try {
-                    $PSNativeCommandUseErrorActionPreference = $false
                     $pidCheck = $this.InvokeCommand('pidof', @($this.DeviceSerial, $packageName))
-                    $PSNativeCommandUseErrorActionPreference = $true
 
                     if (-not $pidCheck) {
                         # Process exited
@@ -309,9 +308,7 @@ class AdbProvider : DeviceProvider {
 
         for ($i = 0; $i -lt $timeoutSeconds; $i++) {
             try {
-                $PSNativeCommandUseErrorActionPreference = $false
                 $pidOutput = $this.InvokeCommand('pidof', @($this.DeviceSerial, $packageName))
-                $PSNativeCommandUseErrorActionPreference = $true
 
                 if ($pidOutput) {
                     $processId = $pidOutput.ToString().Trim()
@@ -471,7 +468,7 @@ class AdbProvider : DeviceProvider {
 
         try {
             # Ping a reliable server (Google DNS)
-            $output = & adb -s $this.DeviceSerial shell ping -c 1 8.8.8.8 2>&1
+            $output = $this.InvokeCommand('ping', @($this.DeviceSerial, '8.8.8.8'))
             # Join output to string first since -match on arrays returns matching elements, not boolean
             return ($output -join "`n") -match '1 packets transmitted, 1 received'
         }
@@ -485,9 +482,7 @@ class AdbProvider : DeviceProvider {
         Write-Debug "$($this.Platform): Getting running processes"
 
         try {
-            $PSNativeCommandUseErrorActionPreference = $false
-            $output = & adb -s $this.DeviceSerial shell ps 2>&1
-            $PSNativeCommandUseErrorActionPreference = $true
+            $output = $this.InvokeCommand('ps', @($this.DeviceSerial))
 
             # Parse ps output
             # Format varies by Android version but typically: USER PID PPID ... NAME
