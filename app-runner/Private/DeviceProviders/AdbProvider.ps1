@@ -52,7 +52,6 @@ class AdbProvider : DeviceProvider {
 
             # App execution
             'launch'          = @('adb', '-s {0} shell am start -n {1} {2} -W')
-            'force-stop'      = @('adb', '-s {0} shell am force-stop {1}')
             'pidof'           = @('adb', '-s {0} shell pidof {1}')
 
             # Logging
