@@ -113,7 +113,8 @@ class AdbProvider : DeviceProvider {
 
         # Validate that the specified device exists
         $output = $this.InvokeCommand('list-devices', @())
-        $devices = $output | Where-Object { $_ -match '\tdevice$' } | ForEach-Object { ($_ -split '\t')[0] }
+        # Wrap in @() to ensure array type even with single device
+        $devices = @($output | Where-Object { $_ -match '\tdevice$' } | ForEach-Object { ($_ -split '\t')[0] })
 
         if ($devices -notcontains $target) {
             throw "Device '$target' not found. Available devices: $($devices -join ', ')"
