@@ -283,7 +283,8 @@ class AdbProvider : DeviceProvider {
             $logCache = @($this.InvokeCommand('logcat-pid', @($this.DeviceSerial, $appPID)))
             Write-Host "Retrieved $($logCache.Count) log lines" -ForegroundColor Cyan
 
-            $exitCode = 0  # Android doesn't report exit codes via adb
+            Write-Host "Android doesn't report exit codes via adb so exit code is always NULL"
+            $exitCode = $null
         }
 
         # Format logs consistently
