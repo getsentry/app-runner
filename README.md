@@ -21,9 +21,6 @@ Currently supported:
   - Windows
   - macOS
   - Linux
-
-Experimental support:
-
 - **Mobile Platforms:**
   - Android (via ADB or SauceLabs Real Device Cloud)
   - iOS (via SauceLabs - coming soon)
