@@ -264,7 +264,6 @@ class SauceLabsProvider : DeviceProvider {
             throw "Package must be an .ipa file for iOS. Got: $PackagePath"
         }
 
-        Write-Debug "Inferred platform: $($this.MobilePlatform)"
 
         # Upload App to SauceLabs Storage
         Write-Host "Uploading App to SauceLabs Storage..." -ForegroundColor Yellow
