@@ -312,7 +312,7 @@ class AdbProvider : DeviceProvider {
                 $pidOutput = $this.InvokeCommand('pidof', @($this.DeviceSerial, $packageName))
 
                 if ($pidOutput) {
-                    $processId = (@($pidOutput)[0]).ToString().Trim()
+                    $processId = "$pidOutput".ToString().Trim()
                     if ($processId -match '^\d+$') {
                         return $processId
                     }
