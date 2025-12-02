@@ -353,12 +353,6 @@ class AdbProvider : DeviceProvider {
     [void] TakeScreenshot([string]$OutputPath) {
         Write-Debug "$($this.Platform): Taking screenshot to: $OutputPath"
 
-        # Ensure output directory exists
-        $directory = Split-Path $OutputPath -Parent
-        if ($directory -and -not (Test-Path $directory)) {
-            New-Item -Path $directory -ItemType Directory -Force | Out-Null
-        }
-
         # Use intermediate file on device to avoid binary data corruption in stdout capture
         $tempDevicePath = "/sdcard/temp_screenshot_$([Guid]::NewGuid()).png"
 
@@ -366,8 +360,8 @@ class AdbProvider : DeviceProvider {
             # Capture to temp file on device
             $this.InvokeCommand('screenshot-file', @($this.DeviceSerial, $tempDevicePath))
 
-            # Pull file from device
-            $this.InvokeCommand('pull', @($this.DeviceSerial, $tempDevicePath, $OutputPath))
+            # Copy file from device (handles directory creation)
+            $this.CopyDeviceItem($tempDevicePath, $OutputPath)
 
             $size = (Get-Item $OutputPath).Length
             Write-Debug "$($this.Platform): Screenshot saved ($size bytes)"
