@@ -88,8 +88,8 @@ function Test-IntentExtrasFormat {
 Extracts the package name from an APK file using aapt.
 
 .DESCRIPTION
-Attempts to extract the real package name from an APK file using aapt (Android Asset Packaging Tool).
-If aapt is not available, falls back to using the APK filename without extension as a hint.
+Extracts the real package name from an APK file using aapt (Android Asset Packaging Tool).
+Requires aapt or aapt2 to be available in PATH.
 
 .PARAMETER ApkPath
 Path to the APK file
@@ -100,11 +100,11 @@ Returns: "com.example.myapp" (actual package name from AndroidManifest.xml)
 
 .EXAMPLE
 Get-ApkPackageName "SentryPlayground.apk"
-Returns: "io.sentry.sample" (if aapt available) or "SentryPlayground" (filename fallback)
+Returns: "io.sentry.sample"
 
 .NOTES
-Requires aapt or aapt2 to be in PATH or Android SDK to be installed for accurate extraction.
-Falls back to filename-based hint if aapt is unavailable.
+Requires aapt or aapt2 to be in PATH or Android SDK to be installed.
+Throws an error if aapt is not available or if the package name cannot be extracted.
 #>
 function Get-ApkPackageName {
     [CmdletBinding()]
@@ -121,42 +121,36 @@ function Get-ApkPackageName {
         throw "File must be an .apk file. Got: $ApkPath"
     }
 
-    # Try to use aapt to extract real package name
+    # Find aapt or aapt2
     $aaptCmd = Get-Command aapt -ErrorAction SilentlyContinue
     if (-not $aaptCmd) {
         $aaptCmd = Get-Command aapt2 -ErrorAction SilentlyContinue
     }
 
-    if ($aaptCmd) {
-        try {
-            Write-Debug "Using $($aaptCmd.Name) to extract package name from APK"
-            $PSNativeCommandUseErrorActionPreference = $false
-            $output = & $aaptCmd.Name dump badging $ApkPath 2>&1
-            $PSNativeCommandUseErrorActionPreference = $true
+    if (-not $aaptCmd) {
+        throw "aapt or aapt2 not found in PATH. Please install Android SDK Build Tools and ensure aapt is available in PATH."
+    }
 
-            # Parse output for package name: package: name='com.example.app'
-            foreach ($line in $output) {
-                if ($line -match "package:\s+name='([^']+)'") {
-                    $packageName = $matches[1]
-                    Write-Debug "Extracted package name: $packageName"
-                    return $packageName
-                }
+    Write-Debug "Using $($aaptCmd.Name) to extract package name from APK"
+    
+    try {
+        $PSNativeCommandUseErrorActionPreference = $false
+        $output = & $aaptCmd.Name dump badging $ApkPath 2>&1
+
+        # Parse output for package name: package: name='com.example.app'
+        foreach ($line in $output) {
+            if ($line -match "package:\s+name='([^']+)'") {
+                $packageName = $matches[1]
+                Write-Debug "Extracted package name: $packageName"
+                return $packageName
             }
-
-            Write-Warning "Failed to parse package name from aapt output, falling back to filename hint"
         }
-        catch {
-            Write-Warning "Failed to execute aapt: $_. Falling back to filename hint"
-        }
-    }
-    else {
-        Write-Debug "aapt/aapt2 not found in PATH, falling back to filename hint"
-    }
 
-    # Fallback: Use APK filename without extension as package name hint
-    $hint = [System.IO.Path]::GetFileNameWithoutExtension($ApkPath)
-    Write-Warning "Using APK filename as package name hint: $hint (aapt not available for accurate extraction)"
-    return $hint
+        throw "Failed to extract package name from APK using aapt. APK may be corrupted or invalid."
+    }
+    finally {
+        $PSNativeCommandUseErrorActionPreference = $true
+    }
 }
 
 <#
