@@ -94,7 +94,7 @@ BeforeAll {
     }
 }
 
-Describe '<Platform>' -Tag 'RequiresDevice', 'SauceLabs' -ForEach $TestTargets {
+Describe '<Platform>' -Tag 'SauceLabs' -ForEach $TestTargets {
     Context 'Device Connection Management' -Tag $TargetName {
         AfterEach {
             Invoke-TestCleanup

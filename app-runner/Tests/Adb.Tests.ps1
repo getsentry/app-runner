@@ -24,6 +24,9 @@ BeforeDiscovery {
 
     $TestTargets = @()
 
+    # Detect if running in CI environment
+    $isCI = $env:CI -eq 'true'
+
     # Check for ADB availability for AdbProvider
     if (Get-Command 'adb' -ErrorAction SilentlyContinue) {
         # Check if any devices are connected
@@ -32,11 +35,23 @@ BeforeDiscovery {
             $TestTargets += Get-TestTarget -Platform 'Adb'
         }
         else {
-            Write-Warning "No Android devices connected via ADB. AdbProvider tests will be skipped."
+            $message = "No Android devices connected via ADB"
+            if ($isCI) {
+                throw "$message. This is required in CI."
+            }
+            else {
+                Write-Warning "$message. AdbProvider tests will be skipped."
+            }
         }
     }
     else {
-        Write-Warning "ADB not found in PATH. AdbProvider tests will be skipped."
+        $message = "ADB not found in PATH"
+        if ($isCI) {
+            throw "$message. This is required in CI."
+        }
+        else {
+            Write-Warning "$message. AdbProvider tests will be skipped."
+        }
     }
 }
 
@@ -58,7 +73,7 @@ BeforeAll {
     }
 }
 
-Describe '<Platform>' -Tag 'RequiresDevice', 'Android' -ForEach $TestTargets {
+Describe '<Platform>' -Tag 'Adb' -ForEach $TestTargets {
     Context 'Device Connection Management' -Tag $TargetName {
         AfterEach {
             Invoke-TestCleanup

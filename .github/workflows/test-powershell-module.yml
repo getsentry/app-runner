@@ -23,6 +23,11 @@ on:
         required: false
         type: string
         default: ''
+      exclude-path:
+        description: 'Comma-separated list of test file paths to exclude (relative to test-path)'
+        required: false
+        type: string
+        default: ''
       settings-path:
         description: 'Path to PSScriptAnalyzer settings file (relative to repo root)'
         required: false
@@ -96,6 +101,16 @@ jobs:
           $excludeTags = "${{ inputs.exclude-tags }}"
           if ($excludeTags) {
             $config.Filter.ExcludeTag = $excludeTags.Split(',').Trim()
+          }
+
+          $excludePath = "${{ inputs.exclude-path }}"
+          if ($excludePath) {
+            $testPath = "${{ inputs.test-path }}"
+            $config.Run.ExcludePath = $excludePath.Split(',').Trim() | ForEach-Object {
+                $relativePath = Join-Path $testPath $_
+                # ExcludePath requires absolute paths
+                Join-Path (Get-Location) $relativePath
+            }
           }
 
           $testResults = Invoke-Pester -Configuration $config
