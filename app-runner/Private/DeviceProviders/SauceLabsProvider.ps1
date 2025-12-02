@@ -156,38 +156,20 @@ class SauceLabsProvider : DeviceProvider {
     }
 
     [hashtable] Connect() {
-        # Use device name from SAUCE_DEVICE_NAME environment variable
-        if (-not $this.DeviceName) {
-            throw "$($this.Platform) requires a device name. Set SAUCE_DEVICE_NAME environment variable or use Connect-Device -Platform $($this.Platform) -Target 'DeviceName'"
-        }
-
-        Write-Debug "$($this.Platform): Connecting with device name from env: $($this.DeviceName)"
-
-        # Note: App upload and session creation happen in InstallApp
-        # because we need the App path before creating an Appium session
-
-        return @{
-            Provider    = $this
-            Platform    = $this.Platform
-            ConnectedAt = Get-Date
-            Identifier  = $this.DeviceName
-            IsConnected = $true
-            StatusData  = @{
-                DeviceName = $this.DeviceName
-                Region     = $this.Region
-                Username   = $this.Username
-            }
-        }
+        throw 'Connect() requires a target device name for SauceLabsProvider. Use Connect($target) instead.'
     }
 
     [hashtable] Connect([string]$target) {
         # If no target specified, fall back to SAUCE_DEVICE_NAME env var
         if ([string]::IsNullOrEmpty($target)) {
-            Write-Debug "$($this.Platform): No target specified, falling back to SAUCE_DEVICE_NAME env var"
-            return $this.Connect()
+            $target = $env:SAUCE_DEVICE_NAME
+            if ([string]::IsNullOrEmpty($target)) {
+                throw "$($this.Platform) requires a device name. Set SAUCE_DEVICE_NAME environment variable or use Connect-Device -Platform $($this.Platform) -Target 'DeviceName'"
+            }
+            Write-Debug "$($this.Platform): Connecting with device name from env: $($this.DeviceName)"
+        } else {
+            Write-Debug "$($this.Platform): Connecting with explicit device name: $target"
         }
-
-        Write-Debug "$($this.Platform): Connecting with explicit device name: $target"
 
         # Store the device name for session creation
         $this.DeviceName = $target
