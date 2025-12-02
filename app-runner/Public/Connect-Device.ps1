@@ -41,7 +41,7 @@ function Connect-Device {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $true)]
-        [ValidateSet('Xbox', 'PlayStation5', 'Switch', 'Windows', 'MacOS', 'Linux', 'Local', 'Mock')]
+        [ValidateSet('Xbox', 'PlayStation5', 'Switch', 'Windows', 'MacOS', 'Linux', 'Adb', 'AndroidSauceLabs', 'iOSSauceLabs', 'Local', 'Mock')]
         [string]$Platform,
 
         [Parameter(Mandatory = $false)]
@@ -64,20 +64,35 @@ function Connect-Device {
         Disconnect-Device
     }
 
-    # Build resource name for mutex coordination
+    # Providers with session-based isolation don't need mutex; providers with shared physical/logical devices do.
+    # The rule of a thumb is: if you can run the same test in parallel multiple times on the same machine
+    # and same target device and they don't interfere with each other then it's ok to disable mutex. 
+    # Example: installing the same app name to ADB (same device) would uninstall the previous app with the same name - we must use mutex.
+    # SauceLabs acquire a lock on the server-side (for selected device) so we don't need to handle it here.
+    # Also note: these mutexes are very fast so err on the side of caution.
+    $useMutex = $Platform -notmatch 'SauceLabs'
+
+    # Build resource name for mutex coordination (if needed)
     # Xbox requires platform-level mutex (not per-target) because xb*.exe commands
     # operate on the "current" target set via xbconnect, which is global to the system.
     # Multiple processes with different target mutexes would still conflict.
-    $mutexTarget = if ($Platform -eq 'Xbox') { $null } else { $Target }
-    $resourceName = New-DeviceResourceName -Platform $Platform -Target $mutexTarget
-    Write-Debug "Device resource name: $resourceName"
-
-    # Acquire exclusive access to the device resource
-    # Default 60-minute timeout with progress messages every minute
     $mutex = $null
+    $resourceName = $null
+
+    if ($useMutex) {
+        $mutexTarget = if ($Platform -eq 'Xbox') { $null } else { $Target }
+        $resourceName = New-DeviceResourceName -Platform $Platform -Target $mutexTarget
+        Write-Debug "Device resource name: $resourceName"
+    } else {
+        Write-Debug "Skipping mutex for platform: $Platform"
+    }
+
     try {
-        $mutex = Request-DeviceAccess -ResourceName $resourceName -TimeoutSeconds $TimeoutSeconds -ProgressIntervalSeconds 60
-        Write-Output "Acquired exclusive access to device: $resourceName"
+        # Acquire exclusive access to the device resource (if needed)
+        if ($useMutex) {
+            $mutex = Request-DeviceAccess -ResourceName $resourceName -TimeoutSeconds $TimeoutSeconds -ProgressIntervalSeconds 60
+            Write-Output "Acquired exclusive access to device: $resourceName"
+        }
 
         # Create provider for the specified platform
         $provider = [DeviceProviderFactory]::CreateProvider($Platform)

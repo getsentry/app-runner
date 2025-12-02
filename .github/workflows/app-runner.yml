@@ -1,4 +1,5 @@
 name: AppRunner
+permissions: read-all
 
 on:
   push:
@@ -13,8 +14,15 @@ on:
 jobs:
   test:
     uses: ./.github/workflows/test-powershell-module.yml
+    secrets: inherit
     with:
       module-name: SentryAppRunner
       module-path: app-runner
       test-path: Tests
+      exclude-path: Adb.Tests.ps1
       settings-path: PSScriptAnalyzerSettings.psd1
+
+  test-adb:
+    uses: ./.github/workflows/test-adb-provider.yml
+    with:
+      module-path: app-runner

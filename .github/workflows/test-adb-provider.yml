@@ -1,0 +1,64 @@
+name: Test ADB Provider
+permissions:
+  contents: read
+
+on:
+  workflow_call:
+    inputs:
+      module-path:
+        description: 'Path to the module directory'
+        required: true
+        type: string
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ${{ inputs.module-path }}
+        shell: pwsh
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Enable KVM group permissions
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Setup Android directories
+        run: |
+          mkdir -p $HOME/.android/avd
+          touch $HOME/.android/repositories.cfg
+
+      - name: Install Android SDK Build Tools
+        shell: bash
+        run: |
+          ${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager --install "build-tools;35.0.0"
+          echo "${ANDROID_HOME}/build-tools/35.0.0" >> $GITHUB_PATH
+
+      - name: Run ADB Provider Integration Tests
+        uses: reactivecircus/android-emulator-runner@d94c3fbe4fe6a29e4a5ba47c12fb47677c73656b
+        timeout-minutes: 45
+        with:
+          api-level: 35
+          target: 'google_apis'
+          arch: x86_64
+          force-avd-creation: true
+          disable-animations: true
+          disable-spellchecker: true
+          emulator-options: >
+            -no-window
+            -no-snapshot-save
+            -gpu swiftshader_indirect
+            -noaudio
+            -no-boot-anim
+            -camera-back none
+            -camera-front none
+          script: |
+            adb wait-for-device
+            echo "Android emulator is ready"
+            adb devices
+            cd ${{ inputs.module-path }} && pwsh -Command "Invoke-Pester Tests/Adb.Tests.ps1 -CI"

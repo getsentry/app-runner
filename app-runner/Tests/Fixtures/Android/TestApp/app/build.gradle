@@ -1,0 +1,57 @@
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace 'com.sentry.test.minimal'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId "com.sentry.test.minimal"
+        minSdk 21
+        targetSdk 34
+        versionCode 1
+        versionName "1.0"
+    }
+
+    buildTypes {
+        debug {
+            debuggable true
+            minifyEnabled false
+        }
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+}
+
+repositories {
+    google()
+    mavenCentral()
+}
+
+dependencies {
+    implementation 'androidx.appcompat:appcompat:1.6.1'
+}
+
+// Copy the debug APK to the Fixtures/Android directory after build
+afterEvaluate {
+    tasks.named('assembleDebug') {
+        doLast {
+            def apkFile = layout.buildDirectory.file('outputs/apk/debug/app-debug.apk').get().asFile
+            def destFile = new File(projectDir.parentFile.parentFile, 'TestApp.apk')
+            if (apkFile.exists()) {
+                destFile.bytes = apkFile.bytes
+                println "✓ Copied APK to: ${destFile.absolutePath}"
+            } else {
+                println "⚠ APK not found at: ${apkFile.absolutePath}"
+            }
+        }
+    }
+}
