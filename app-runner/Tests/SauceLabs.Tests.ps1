@@ -25,6 +25,9 @@ BeforeDiscovery {
 
     $TestTargets = @()
 
+    # Detect if running in CI environment
+    $isCI = $env:CI -eq 'true'
+
     # Check for SauceLabs credentials
     if ($env:SAUCE_USERNAME -and $env:SAUCE_ACCESS_KEY -and $env:SAUCE_REGION) {
         # Check Android Fixture
@@ -36,27 +39,40 @@ BeforeDiscovery {
                 -FixturePath $androidFixture `
                 -ExePath 'com.sentry.test.minimal/.MainActivity' `
                 -Arguments '-e sentry test'
-        }
-        else {
-            Write-Warning "Android fixture not found at $androidFixture. AndroidSauceLabs tests will be skipped."
+        } else {
+            $message = "Android fixture not found at $androidFixture"
+            if ($isCI) {
+                throw "$message. This is required in CI."
+            } else {
+                Write-Warning "$message. AndroidSauceLabs tests will be skipped."
+            }
         }
 
-        # Check iOS Fixture
-        $iosFixture = Join-Path $PSScriptRoot 'Fixtures' 'iOS' 'TestApp.ipa'
-        if (Test-Path $iosFixture) {
-            $TestTargets += Get-TestTarget `
-                -Platform 'iOSSauceLabs' `
-                -Target 'iPhone 13 Pro' `
-                -FixturePath $iosFixture `
-                -ExePath 'com.saucelabs.mydemoapp.ios' `
-                -Arguments '--test-arg value'
-        }
-        else {
-            Write-Warning "iOS fixture not found at $iosFixture. iOSSauceLabs tests will be skipped."
-        }
+        # Check iOS Fixture (not supported yet)
+        # $iosFixture = Join-Path $PSScriptRoot 'Fixtures' 'iOS' 'TestApp.ipa'
+        # if (Test-Path $iosFixture) {
+        #     $TestTargets += Get-TestTarget `
+        #         -Platform 'iOSSauceLabs' `
+        #         -Target 'iPhone 13 Pro' `
+        #         -FixturePath $iosFixture `
+        #         -ExePath 'com.saucelabs.mydemoapp.ios' `
+        #         -Arguments '--test-arg value'
+        # } else {
+        #     $message = "iOS fixture not found at $iosFixture"
+        #     if ($isCI) {
+        #         throw "$message. This is required in CI."
+        #     } else {
+        #         Write-Warning "$message. iOSSauceLabs tests will be skipped."
+        #     }
+        # }
     }
     else {
-        Write-Warning "SauceLabs credentials not found. SauceLabs tests will be skipped."
+        $message = "SauceLabs credentials not found. Required environment variables: SAUCE_USERNAME, SAUCE_ACCESS_KEY, SAUCE_REGION"
+        if ($isCI) {
+            throw "$message. These are required in CI."
+        } else {
+            Write-Warning "$message. SauceLabs tests will be skipped."
+        }
     }
 }
 
