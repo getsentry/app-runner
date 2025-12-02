@@ -41,31 +41,30 @@ class AdbProvider : DeviceProvider {
         # Format: 'action' = @('tool', 'arguments', optional-processing-scriptblock)
         $this.Commands = @{
             # Device management
-            'list-devices'    = @('adb', 'devices')
-            'getstatus'       = @('adb', '-s {0} shell getprop')
-            'reboot'          = @('adb', '-s {0} reboot')
+            'list-devices'  = @('adb', 'devices')
+            'getstatus'     = @('adb', '-s {0} shell getprop')
+            'reboot'        = @('adb', '-s {0} reboot')
 
             # Package management
-            'list-packages'   = @('adb', '-s {0} shell pm list packages')
-            'install'         = @('adb', '-s {0} install {1}')
-            'uninstall'       = @('adb', '-s {0} uninstall {1}')
+            'list-packages' = @('adb', '-s {0} shell pm list packages')
+            'install'       = @('adb', '-s {0} install {1}')
+            'uninstall'     = @('adb', '-s {0} uninstall {1}')
 
             # App execution
-            'launch'          = @('adb', '-s {0} shell am start -n {1} {2} -W')
-            'pidof'           = @('adb', '-s {0} shell pidof {1}')
+            'launch'        = @('adb', '-s {0} shell am start -n {1} {2} -W')
+            'pidof'         = @('adb', '-s {0} shell pidof {1}')
 
             # Logging
-            'logcat'          = @('adb', '-s {0} logcat -d')
-            'logcat-pid'      = @('adb', '-s {0} logcat -d --pid={1}')
-            'logcat-clear'    = @('adb', '-s {0} logcat -c')
+            'logcat'        = @('adb', '-s {0} logcat -d')
+            'logcat-pid'    = @('adb', '-s {0} logcat -d --pid={1}')
+            'logcat-clear'  = @('adb', '-s {0} logcat -c')
 
             # Diagnostics
-            'screenshot'      = @('adb', '-s {0} exec-out screencap -p')
-            'screenshot-file' = @('adb', '-s {0} shell screencap -p {1}')
-            'pull'            = @('adb', '-s {0} pull {1} {2}')
-            'rm'              = @('adb', '-s {0} shell rm {1}')
-            'ping'            = @('adb', '-s {0} shell ping -c 1 {1}')
-            'ps'              = @('adb', '-s {0} shell ps')
+            'screenshot'    = @('adb', '-s {0} shell screencap -p {1}')
+            'pull'          = @('adb', '-s {0} pull {1} {2}')
+            'rm'            = @('adb', '-s {0} shell rm {1}')
+            'ping'          = @('adb', '-s {0} shell ping -c 1 {1}')
+            'ps'            = @('adb', '-s {0} shell ps')
         }
 
         # Configure timeouts for slow operations
@@ -358,7 +357,7 @@ class AdbProvider : DeviceProvider {
 
         try {
             # Capture to temp file on device
-            $this.InvokeCommand('screenshot-file', @($this.DeviceSerial, $tempDevicePath))
+            $this.InvokeCommand('screenshot', @($this.DeviceSerial, $tempDevicePath))
 
             # Copy file from device (handles directory creation)
             $this.CopyDeviceItem($tempDevicePath, $OutputPath)
