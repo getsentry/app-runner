@@ -155,7 +155,7 @@ class AdbProvider : DeviceProvider {
             throw "Package must be an .apk file. Got: $PackagePath"
         }
 
-        # Extract actual package name from APK (uses aapt if available, falls back to filename)
+        # Extract actual package name from APK
         $packageName = Get-ApkPackageName -ApkPath $PackagePath
 
         # Check for existing installation
