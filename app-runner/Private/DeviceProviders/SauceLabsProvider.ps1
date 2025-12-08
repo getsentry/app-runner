@@ -405,10 +405,12 @@ class SauceLabsProvider : DeviceProvider {
 
         while ((Get-Date) - $startTime -lt [TimeSpan]::FromSeconds($timeoutSeconds)) {
             # Query app state using Appium's mobile: queryAppState
+            # Use correct parameter name based on platform: appId for Android, bundleId for iOS
+            $appParameter = if ($this.MobilePlatform -eq 'Android') { 'appId' } else { 'bundleId' }
             $stateBody = @{
                 script = 'mobile: queryAppState'
                 args   = @(
-                    @{ appId = $this.CurrentPackageName } # Use stored package/bundle ID
+                    @{ $appParameter = $this.CurrentPackageName } # Use stored package/bundle ID
                 )
             }
 
