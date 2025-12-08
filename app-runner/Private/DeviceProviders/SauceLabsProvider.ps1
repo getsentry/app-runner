@@ -369,10 +369,17 @@ class SauceLabsProvider : DeviceProvider {
             }
 
             if ($Arguments) {
-                # Appium 'mobile: launchApp' supports arguments? 
-                # Or use 'appium:processArguments' capability during session creation?
-                # For now, we'll try to pass them if supported by the endpoint or warn.
-                $launchBody['arguments'] = $Arguments -split ' ' # Simple split, might need better parsing
+                # Parse arguments string into array, handling quoted strings and standalone "--" separator
+                $argumentsArray = @()
+
+                # Split the arguments string by spaces, but handle quoted strings (both single and double quotes)
+                $argTokens = [regex]::Matches($Arguments, '(\"[^\"]*\"|''[^'']*''|\S+)') | ForEach-Object { $_.Value.Trim('"', "'") }
+
+                foreach ($token in $argTokens) {
+                    $argumentsArray += $token
+                }
+
+                $launchBody['arguments'] = $argumentsArray
             }
 
             try {
