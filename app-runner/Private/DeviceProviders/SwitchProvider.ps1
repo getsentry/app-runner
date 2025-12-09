@@ -43,7 +43,7 @@ class SwitchProvider : DeviceProvider {
             'list-target'        = @($this.TargetControlTool, 'list-target --json', { $input | ConvertFrom-Json })
             'detect-target'      = @($this.TargetControlTool, 'detect-target --json', { $input | ConvertFrom-Json })
             'register-target'    = @($this.TargetControlTool, 'register --target "{0}"')
-            'launch'             = @($this.ApplicationRunnerTool, '"{0}" {1}')
+            'launch'             = @($this.ApplicationRunnerTool, '"{0}" -- {1}')
             'screenshot'         = @($this.TargetControlTool, 'take-screenshot --directory "{0}" --file-name "{1}"')
             'test-internet'      = @($this.TargetControlTool, 'devmenu -- network confirm-internet-connection')
         }
