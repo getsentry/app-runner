@@ -596,8 +596,152 @@ class SauceLabsProvider : DeviceProvider {
         return @()
     }
 
+    <#
+    .SYNOPSIS
+    Checks if the current app supports file sharing capability on iOS devices.
+
+    .DESCRIPTION
+    Uses Appium's mobile: listApps command to retrieve app information and check
+    if UIFileSharingEnabled is set for the current app bundle.
+
+    .OUTPUTS
+    Hashtable with app capability information including Found, FileSharingEnabled, and AllApps.
+    #>
+    [hashtable] CheckAppFileSharingCapability() {
+        if (-not $this.SessionId) {
+            throw "No active SauceLabs session. Call InstallApp first to create a session."
+        }
+
+        try {
+            $baseUri = "https://ondemand.$($this.Region).saucelabs.com/wd/hub/session/$($this.SessionId)"
+            $scriptBody = @{ script = 'mobile: listApps'; args = @() }
+
+            $response = $this.InvokeSauceLabsApi('POST', "$baseUri/execute/sync", $scriptBody, $false, $null)
+
+            if ($response -and $response.value) {
+                $apps = $response.value
+                $bundleIds = $apps.Keys | Where-Object { $_ }
+
+                if ($apps.ContainsKey($this.CurrentPackageName)) {
+                    $targetApp = $apps[$this.CurrentPackageName]
+                    return @{
+                        Found = $true
+                        BundleId = $this.CurrentPackageName
+                        FileSharingEnabled = [bool]$targetApp.UIFileSharingEnabled
+                        Name = $targetApp.CFBundleDisplayName -or $targetApp.CFBundleName -or "Unknown"
+                        AllApps = $bundleIds
+                    }
+                }
+
+                return @{
+                    Found = $false
+                    BundleId = $this.CurrentPackageName
+                    FileSharingEnabled = $false
+                    AllApps = $bundleIds
+                }
+            }
+
+            return @{ Found = $false; BundleId = $this.CurrentPackageName; FileSharingEnabled = $false; AllApps = @() }
+        }
+        catch {
+            return @{ Found = $false; BundleId = $this.CurrentPackageName; FileSharingEnabled = $false; AllApps = @(); Error = $_.Exception.Message }
+        }
+    }
+
+    <#
+    .SYNOPSIS
+    Copies a file from the SauceLabs device to the local machine.
+
+    .DESCRIPTION
+    Retrieves files from iOS/Android devices via Appium's pull_file API.
+    
+    .PARAMETER DevicePath
+    Path to the file on the device. For iOS, must use bundle format: @bundle.id:documents/file.txt
+
+    .PARAMETER Destination
+    Local destination path where the file should be saved.
+
+    .NOTES
+    iOS Requirements:
+    - App must have UIFileSharingEnabled=true in info.plist
+    - Files must be in the app's Documents directory
+    #>
     [void] CopyDeviceItem([string]$DevicePath, [string]$Destination) {
-        Write-Warning "$($this.Platform): CopyDeviceItem is not supported for SauceLabs cloud devices"
+        if (-not $this.SessionId) {
+            throw "No active SauceLabs session. Call InstallApp first to create a session."
+        }
+
+        try {
+            # Pull file from device via Appium API
+            $baseUri = "https://ondemand.$($this.Region).saucelabs.com/wd/hub/session/$($this.SessionId)"
+            $response = $this.InvokeSauceLabsApi('POST', "$baseUri/appium/device/pull_file", @{ path = $DevicePath }, $false, $null)
+
+            if (-not $response -or -not $response.value) {
+                throw "No file content returned from device"
+            }
+
+            # Prepare destination path
+            if (-not [System.IO.Path]::IsPathRooted($Destination)) {
+                $Destination = Join-Path (Get-Location) $Destination
+            }
+
+            $destinationDir = Split-Path $Destination -Parent
+            if ($destinationDir -and -not (Test-Path $destinationDir)) {
+                New-Item -Path $destinationDir -ItemType Directory -Force | Out-Null
+            }
+
+            if (Test-Path $Destination) {
+                Remove-Item $Destination -Force -ErrorAction SilentlyContinue
+            }
+
+            # Decode and save file
+            $fileBytes = [System.Convert]::FromBase64String($response.value)
+            [System.IO.File]::WriteAllBytes($Destination, $fileBytes)
+
+            Write-Host "Successfully copied file from device: $DevicePath -> $Destination" -ForegroundColor Green
+        }
+        catch {
+            $this.HandleCopyDeviceItemError($_, $DevicePath)
+        }
+    }
+
+    <#
+    .SYNOPSIS
+    Handles errors from CopyDeviceItem with helpful diagnostic information.
+    #>
+    [void] HandleCopyDeviceItemError([System.Management.Automation.ErrorRecord]$Error, [string]$DevicePath) {
+        $errorMsg = "Failed to copy file from device: $DevicePath. Error: $($Error.Exception.Message)"
+
+        # Add iOS-specific troubleshooting for server errors
+        if ($this.MobilePlatform -eq 'iOS' -and $Error.Exception.Message -match "500|Internal Server Error") {
+            $errorMsg += "`n`nTroubleshooting iOS file access:"
+            $errorMsg += "`n- App Bundle ID: '$($this.CurrentPackageName)'"
+            $errorMsg += "`n- Requested path: '$DevicePath'"
+
+            try {
+                $appInfo = $this.CheckAppFileSharingCapability()
+                if ($appInfo.AllApps -and $appInfo.AllApps.Count -gt 0) {
+                    $errorMsg += "`n- Available apps: $($appInfo.AllApps -join ', ')"
+                    if ($appInfo.Found -and -not $appInfo.FileSharingEnabled) {
+                        $errorMsg += "`n- App found but UIFileSharingEnabled=false"
+                    }
+                }
+            } catch {
+                $errorMsg += "`n- Could not check app capabilities: $($_.Exception.Message)"
+            }
+
+            $errorMsg += "`n`nCommon causes:"
+            $errorMsg += "`n1. App missing UIFileSharingEnabled=true in info.plist"
+            $errorMsg += "`n2. File doesn't exist on device"
+            $errorMsg += "`n3. Incorrect path format - must use @bundle.id:documents/relative_path"
+            
+            if ($this.CurrentPackageName) {
+                $errorMsg += "`n`nRequired format: @$($this.CurrentPackageName):documents/relative_path"
+            }
+        }
+
+        Write-Error $errorMsg
+        throw
     }
 
     # Override DetectAndSetDefaultTarget - not needed for SauceLabs
