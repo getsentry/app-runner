@@ -181,7 +181,7 @@ class MockDeviceProvider : DeviceProvider {
         }
     }
 
-    [hashtable] RunApplication([string]$ExecutablePath, [string]$Arguments) {
+    [hashtable] RunApplication([string]$ExecutablePath, [string]$Arguments, [string]$LogFilePath = $null) {
         Write-Debug "Mock: Running application $ExecutablePath with args: $Arguments"
 
         $this.MockConfig.AppRunning = $true
