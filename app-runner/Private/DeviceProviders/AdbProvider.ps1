@@ -196,6 +196,11 @@ class AdbProvider : DeviceProvider {
     }
 
     [hashtable] RunApplication([string]$ExecutablePath, [string]$Arguments) {
+        return $this.RunApplication($ExecutablePath, $Arguments, $null)
+    }
+
+    [hashtable] RunApplication([string]$ExecutablePath, [string]$Arguments, [string]$LogFilePath) {
+        # NOTE: LogFilePath parameter ignored in this implementation.
         Write-Debug "$($this.Platform): Running application: $ExecutablePath"
 
         # Parse ExecutablePath: "package.name/activity.name"
@@ -220,19 +225,15 @@ class AdbProvider : DeviceProvider {
         $this.InvokeCommand('logcat-clear', @($this.DeviceSerial))
 
         # Launch activity
-        Write-Host "Launching: $ExecutablePath" -ForegroundColor Cyan
+        Write-Host "Launching: $packageName/$activityName" -ForegroundColor Cyan
         if ($Arguments) {
             Write-Host "  Arguments: $Arguments" -ForegroundColor Cyan
         }
+        $this.InvokeCommand('launch', @($this.DeviceSerial, $packageName, $activityName, $Arguments))
 
-        $launchOutput = $this.InvokeCommand('launch', @($this.DeviceSerial, $ExecutablePath, $Arguments))
+        # Wait before searching for process (app needs time to start)
+        Start-Sleep -Seconds 2
 
-        # Join output to string first since -match on arrays returns matching elements, not boolean
-        if (($launchOutput -join "`n") -match 'Error') {
-            throw "Failed to start activity: $($launchOutput -join "`n")"
-        }
-
-        # Wait for process to appear
         Write-Debug "$($this.Platform): Waiting for app process..."
 
         $appPID = $this.WaitForProcess($packageName, $pidRetrySeconds)
@@ -247,35 +248,23 @@ class AdbProvider : DeviceProvider {
             $exitCode = 0
         }
         else {
-            Write-Host "App PID: $appPID" -ForegroundColor Green
+            Write-Host "Found process PID: $appPID" -ForegroundColor Green
 
-            # Monitor process until it exits (generic approach - no app-specific log checking)
-            Write-Host "Monitoring app execution..." -ForegroundColor Yellow
-            $processExited = $false
+            # Keep monitoring the process until it exits or timeout
+            Write-Host "Monitoring process until app exits..." -ForegroundColor Yellow
 
             while ((Get-Date) - $startTime -lt [TimeSpan]::FromSeconds($timeoutSeconds)) {
-                # Check if process still exists
-                try {
-                    $pidCheck = $this.InvokeCommand('pidof', @($this.DeviceSerial, $packageName))
-
-                    if (-not $pidCheck) {
-                        # Process exited
-                        Write-Host "App process exited" -ForegroundColor Green
-                        $processExited = $true
-                        break
-                    }
-                }
-                catch {
-                    # Process not found - assume exited
-                    Write-Host "App process exited" -ForegroundColor Green
-                    $processExited = $true
+                $isRunning = $this.IsProcessRunning($appPID)
+                if (-not $isRunning) {
+                    Write-Host "Process $appPID has exited" -ForegroundColor Green
                     break
                 }
-
                 Start-Sleep -Seconds $processCheckIntervalSeconds
             }
 
-            if (-not $processExited) {
+            # Check once more after the loop to see if the process really exited
+            $isRunning = $this.IsProcessRunning($appPID)
+            if ($isRunning) {
                 Write-Host "Warning: Process did not exit within timeout" -ForegroundColor Yellow
             }
 

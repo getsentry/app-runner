@@ -19,7 +19,7 @@ Key features:
 - App upload to SauceLabs storage
 - Appium session management (create, reuse, delete)
 - App execution with state monitoring
-- Logcat/Syslog retrieval via Appium
+- On-device log file retrieval (optional override with fallback to Logcat/Syslog)
 - Screenshot capture
 
 Requirements:
@@ -304,6 +304,10 @@ class SauceLabsProvider : DeviceProvider {
     }
 
     [hashtable] RunApplication([string]$ExecutablePath, [string]$Arguments) {
+        return $this.RunApplication($ExecutablePath, $Arguments, $null)
+    }
+
+    [hashtable] RunApplication([string]$ExecutablePath, [string]$Arguments, [string]$LogFilePath) {
         Write-Debug "$($this.Platform): Running application: $ExecutablePath"
 
         if (-not $this.SessionId) {
@@ -440,38 +444,54 @@ class SauceLabsProvider : DeviceProvider {
             Write-Host "Warning: App did not exit within timeout" -ForegroundColor Yellow
         }
 
-        # Retrieving logs after app completion
+        # Retrieve logs - try log file first if provided, otherwise use system logs
         Write-Host "Retrieving logs..." -ForegroundColor Yellow
-        $logType = if ($this.MobilePlatform -eq 'iOS') { 'syslog' } else { 'logcat' }
-        $logBody = @{ type = $logType }
-        $logResponse = $this.InvokeSauceLabsApi('POST', "$baseUri/log", $logBody, $false, $null)
-
-        [array]$allLogs = @()
-        if ($logResponse.value -and $logResponse.value.Count -gt 0) {
-            $allLogs = @($logResponse.value)
-            Write-Host "Retrieved $($allLogs.Count) log lines" -ForegroundColor Cyan
-        }
-
-        # Convert SauceLabs log format to text (matching ADB output format)
-        $logCache = @()
-        if ($allLogs -and $allLogs.Count -gt 0) {
-            $logCache = $allLogs | ForEach-Object {
-                if ($_) {
-                    $timestamp = if ($_.timestamp) { $_.timestamp } else { '' }
-                    $level = if ($_.level) { $_.level } else { '' }
-                    $message = if ($_.message) { $_.message } else { '' }
-                    "$timestamp $level $message"
+        
+        $formattedLogs = @()
+        
+        # Try log file if path provided
+        if (-not [string]::IsNullOrWhiteSpace($LogFilePath)) {
+            try {
+                Write-Host "Attempting to retrieve log file: $LogFilePath" -ForegroundColor Cyan
+                $tempLogFile = [System.IO.Path]::GetTempFileName()
+                
+                try {
+                    $this.CopyDeviceItem($LogFilePath, $tempLogFile)
+                    $logFileContent = Get-Content -Path $tempLogFile -Raw
+                    
+                    if ($logFileContent) {
+                        $formattedLogs = $logFileContent -split "`n" | Where-Object { $_.Trim() -ne "" }
+                        Write-Host "Retrieved log file with $($formattedLogs.Count) lines" -ForegroundColor Green
+                    }
+                } finally {
+                    Remove-Item $tempLogFile -Force -ErrorAction SilentlyContinue
                 }
-            } | Where-Object { $_ }  # Filter out any nulls
+            }
+            catch {
+                Write-Warning "Failed to retrieve log file: $($_.Exception.Message)"
+                Write-Host "Falling back to system logs..." -ForegroundColor Yellow
+            }
+        }
+        
+        # Fallback to system logs if log file not retrieved
+        if (-not $formattedLogs) {
+            $logType = if ($this.MobilePlatform -eq 'iOS') { 'syslog' } else { 'logcat' }
+            $logResponse = $this.InvokeSauceLabsApi('POST', "$baseUri/log", @{ type = $logType }, $false, $null)
+
+            if ($logResponse.value) {
+                Write-Host "Retrieved $($logResponse.value.Count) system log lines" -ForegroundColor Cyan
+                $logCache = $logResponse.value | ForEach-Object {
+                    "$($_.timestamp) $($_.level) $($_.message)"
+                } | Where-Object { $_ }
+
+                $formattedLogs = if ($this.MobilePlatform -eq 'Android') { 
+                    Format-LogcatOutput -LogcatOutput $logCache 
+                } else { 
+                    $logCache 
+                }
+            }
         }
 
-        # Format logs consistently (Android only for now)
-        $formattedLogs = $logCache
-        if ($this.MobilePlatform -eq 'Android') {
-            $formattedLogs = Format-LogcatOutput -LogcatOutput $logCache
-        }
-
-        # Return result matching app-runner pattern
         return @{
             Platform       = $this.Platform
             ExecutablePath = $ExecutablePath
@@ -479,7 +499,7 @@ class SauceLabsProvider : DeviceProvider {
             StartedAt      = $startTime
             FinishedAt     = Get-Date
             Output         = $formattedLogs
-            ExitCode       = 0  # Mobile platforms don't reliably report exit codes here
+            ExitCode       = 0
         }
     }
 
