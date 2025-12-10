@@ -654,9 +654,11 @@ class SauceLabsProvider : DeviceProvider {
 
     .DESCRIPTION
     Retrieves files from iOS/Android devices via Appium's pull_file API.
-    
+
     .PARAMETER DevicePath
-    Path to the file on the device. For iOS, must use bundle format: @bundle.id:documents/file.txt
+    Path to the file on the device:
+    - iOS: Bundle format @bundle.id:documents/file.log
+    - Android: Absolute path /data/data/package.name/files/logs/file.log (requires debuggable=true)
 
     .PARAMETER Destination
     Local destination path where the file should be saved.
@@ -665,6 +667,10 @@ class SauceLabsProvider : DeviceProvider {
     iOS Requirements:
     - App must have UIFileSharingEnabled=true in info.plist
     - Files must be in the app's Documents directory
+
+    Android Requirements:
+    - Internal storage paths are only accessible for debuggable apps
+    - App must be built with android:debuggable="true" in AndroidManifest.xml
     #>
     [void] CopyDeviceItem([string]$DevicePath, [string]$Destination) {
         if (-not $this.SessionId) {
@@ -712,31 +718,49 @@ class SauceLabsProvider : DeviceProvider {
     [void] HandleCopyDeviceItemError([System.Management.Automation.ErrorRecord]$Error, [string]$DevicePath) {
         $errorMsg = "Failed to copy file from device: $DevicePath. Error: $($Error.Exception.Message)"
 
-        # Add iOS-specific troubleshooting for server errors
-        if ($this.MobilePlatform -eq 'iOS' -and $Error.Exception.Message -match "500|Internal Server Error") {
-            $errorMsg += "`n`nTroubleshooting iOS file access:"
-            $errorMsg += "`n- App Bundle ID: '$($this.CurrentPackageName)'"
+        # Add platform-specific troubleshooting for server errors
+        if ($Error.Exception.Message -match "500|Internal Server Error") {
+            $errorMsg += "`n`nTroubleshooting $($this.MobilePlatform) file access:"
+            $errorMsg += "`n- App Package/Bundle ID: '$($this.CurrentPackageName)'"
             $errorMsg += "`n- Requested path: '$DevicePath'"
 
-            try {
-                $appInfo = $this.CheckAppFileSharingCapability()
-                if ($appInfo.AllApps -and $appInfo.AllApps.Count -gt 0) {
-                    $errorMsg += "`n- Available apps: $($appInfo.AllApps -join ', ')"
-                    if ($appInfo.Found -and -not $appInfo.FileSharingEnabled) {
-                        $errorMsg += "`n- App found but UIFileSharingEnabled=false"
+            if ($this.MobilePlatform -eq 'iOS') {
+                try {
+                    $appInfo = $this.CheckAppFileSharingCapability()
+                    if ($appInfo.AllApps -and $appInfo.AllApps.Count -gt 0) {
+                        $errorMsg += "`n- Available apps: $($appInfo.AllApps -join ', ')"
+                        if ($appInfo.Found -and -not $appInfo.FileSharingEnabled) {
+                            $errorMsg += "`n- App found but UIFileSharingEnabled=false"
+                        }
                     }
+                } catch {
+                    $errorMsg += "`n- Could not check app capabilities: $($_.Exception.Message)"
                 }
-            } catch {
-                $errorMsg += "`n- Could not check app capabilities: $($_.Exception.Message)"
-            }
 
-            $errorMsg += "`n`nCommon causes:"
-            $errorMsg += "`n1. App missing UIFileSharingEnabled=true in info.plist"
-            $errorMsg += "`n2. File doesn't exist on device"
-            $errorMsg += "`n3. Incorrect path format - must use @bundle.id:documents/relative_path"
-            
-            if ($this.CurrentPackageName) {
-                $errorMsg += "`n`nRequired format: @$($this.CurrentPackageName):documents/relative_path"
+                $errorMsg += "`n`nCommon iOS causes:"
+                $errorMsg += "`n1. App missing UIFileSharingEnabled=true in info.plist"
+                $errorMsg += "`n2. File doesn't exist on device"
+                $errorMsg += "`n3. Incorrect path format - must use @bundle.id:documents/relative_path"
+
+                if ($this.CurrentPackageName) {
+                    $errorMsg += "`n`nRequired iOS format: @$($this.CurrentPackageName):documents/relative_path"
+                }
+            }
+            elseif ($this.MobilePlatform -eq 'Android') {
+                $errorMsg += "`n`nMost likely cause: App not built with debuggable flag"
+                $errorMsg += "`n"
+                $errorMsg += "`nFor Android internal storage access (/data/data/...), the app MUST be built with:"
+                $errorMsg += "`n  android:debuggable='true' in AndroidManifest.xml"
+                $errorMsg += "`n"
+                $errorMsg += "`nOther possible causes:"
+                $errorMsg += "`n2. File doesn't exist on device (less likely)"
+                $errorMsg += "`n3. Incorrect path format or permissions"
+
+                if ($this.CurrentPackageName) {
+                    $errorMsg += "`n`nWorking path formats:"
+                    $errorMsg += "`n- Internal storage: /data/data/$($this.CurrentPackageName)/files/app.log (needs debuggable=true)"
+                    $errorMsg += "`n- App-relative: @$($this.CurrentPackageName)/files/app.log (needs debuggable=true)"
+                }
             }
         }
 
