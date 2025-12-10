@@ -19,6 +19,7 @@ Key features:
 - App upload to SauceLabs storage
 - Appium session management (create, reuse, delete)
 - App execution with state monitoring
+- Logcat/Syslog retrieval via Appium
 - On-device log file retrieval (optional override with fallback to Logcat/Syslog)
 - Screenshot capture
 
