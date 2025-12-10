@@ -446,19 +446,19 @@ class SauceLabsProvider : DeviceProvider {
 
         # Retrieve logs - try log file first if provided, otherwise use system logs
         Write-Host "Retrieving logs..." -ForegroundColor Yellow
-        
+
         $formattedLogs = @()
-        
+
         # Try log file if path provided
         if (-not [string]::IsNullOrWhiteSpace($LogFilePath)) {
             try {
                 Write-Host "Attempting to retrieve log file: $LogFilePath" -ForegroundColor Cyan
                 $tempLogFile = [System.IO.Path]::GetTempFileName()
-                
+
                 try {
                     $this.CopyDeviceItem($LogFilePath, $tempLogFile)
                     $logFileContent = Get-Content -Path $tempLogFile -Raw
-                    
+
                     if ($logFileContent) {
                         $formattedLogs = $logFileContent -split "`n" | Where-Object { $_.Trim() -ne "" }
                         Write-Host "Retrieved log file with $($formattedLogs.Count) lines" -ForegroundColor Green
@@ -472,7 +472,7 @@ class SauceLabsProvider : DeviceProvider {
                 Write-Host "Falling back to system logs..." -ForegroundColor Yellow
             }
         }
-        
+
         # Fallback to system logs if log file not retrieved
         if (-not $formattedLogs) {
             $logType = if ($this.MobilePlatform -eq 'iOS') { 'syslog' } else { 'logcat' }
@@ -484,10 +484,10 @@ class SauceLabsProvider : DeviceProvider {
                     "$($_.timestamp) $($_.level) $($_.message)"
                 } | Where-Object { $_ }
 
-                $formattedLogs = if ($this.MobilePlatform -eq 'Android') { 
-                    Format-LogcatOutput -LogcatOutput $logCache 
-                } else { 
-                    $logCache 
+                $formattedLogs = if ($this.MobilePlatform -eq 'Android') {
+                    Format-LogcatOutput -LogcatOutput $logCache
+                } else {
+                    $logCache
                 }
             }
         }
@@ -499,7 +499,7 @@ class SauceLabsProvider : DeviceProvider {
             StartedAt      = $startTime
             FinishedAt     = Get-Date
             Output         = $formattedLogs
-            ExitCode       = 0
+            ExitCode       = 0  # Mobile platforms don't reliably report exit codes here
         }
     }
 
