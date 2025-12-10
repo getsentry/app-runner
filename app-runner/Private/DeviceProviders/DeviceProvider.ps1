@@ -372,7 +372,7 @@ class DeviceProvider {
         return @{}
     }
 
-    [hashtable] RunApplication([string]$ExecutablePath, [string]$Arguments) {
+    [hashtable] RunApplication([string]$ExecutablePath, [string]$Arguments, [string]$LogFilePath = $null) {
         Write-Debug "$($this.Platform): Running application: $ExecutablePath with arguments: $Arguments"
 
         $command = $this.BuildCommand('launch', @($ExecutablePath, $Arguments))

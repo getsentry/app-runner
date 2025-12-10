@@ -304,11 +304,7 @@ class SauceLabsProvider : DeviceProvider {
         }
     }
 
-    [hashtable] RunApplication([string]$ExecutablePath, [string]$Arguments) {
-        return $this.RunApplication($ExecutablePath, $Arguments, $null)
-    }
-
-    [hashtable] RunApplication([string]$ExecutablePath, [string]$Arguments, [string]$LogFilePath) {
+    [hashtable] RunApplication([string]$ExecutablePath, [string]$Arguments, [string]$LogFilePath = $null) {
         Write-Debug "$($this.Platform): Running application: $ExecutablePath"
 
         if (-not $this.SessionId) {

@@ -195,12 +195,8 @@ class AdbProvider : DeviceProvider {
         }
     }
 
-    [hashtable] RunApplication([string]$ExecutablePath, [string]$Arguments) {
-        return $this.RunApplication($ExecutablePath, $Arguments, $null)
-    }
-
-    [hashtable] RunApplication([string]$ExecutablePath, [string]$Arguments, [string]$LogFilePath) {
-        # NOTE: LogFilePath parameter ignored in this implementation.
+    [hashtable] RunApplication([string]$ExecutablePath, [string]$Arguments, [string]$LogFilePath = $null) {
+        # LogFilePath parameter ignored in this implementation
         Write-Debug "$($this.Platform): Running application: $ExecutablePath"
 
         # Parse ExecutablePath: "package.name/activity.name"

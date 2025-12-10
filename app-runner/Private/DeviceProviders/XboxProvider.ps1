@@ -251,12 +251,8 @@ class XboxProvider : DeviceProvider {
     # - A directory containing loose .exe files (uses xbrun)
     # - A package identifier (AUMID string) for already-installed packages (uses xbapp launch)
     # - A .xvc file path (ERROR - user must use Install-DeviceApp first)
-    [hashtable] RunApplication([string]$AppPath, [string]$Arguments) {
-        return $this.RunApplication($AppPath, $Arguments, $null)
-    }
-
-    [hashtable] RunApplication([string]$AppPath, [string]$Arguments, [string]$LogFilePath) {
-    	# NOTE: LogFilePath parameter ignored in this implementation.
+    [hashtable] RunApplication([string]$AppPath, [string]$Arguments, [string]$LogFilePath = $null) {
+        # LogFilePath parameter ignored in this implementation
         if (Test-Path $AppPath -PathType Container) {
             # It's a directory - use loose executable flow (xbrun)
             $appExecutableName = Get-ChildItem -Path $AppPath -File -Filter '*.exe' | Select-Object -First 1 -ExpandProperty Name

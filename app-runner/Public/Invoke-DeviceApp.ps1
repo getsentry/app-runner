@@ -47,11 +47,7 @@ function Invoke-DeviceApp {
 
     # Use the provider to run the application
     $provider = $script:CurrentSession.Provider
-    if (-not [string]::IsNullOrWhiteSpace($LogFilePath)) {
-        $result = $provider.RunApplication($ExecutablePath, $Arguments, $LogFilePath)
-    } else {
-        $result = $provider.RunApplication($ExecutablePath, $Arguments)
-    }
+    $result = $provider.RunApplication($ExecutablePath, $Arguments, $LogFilePath)
 
     Write-GitHub "::endgroup::"
 
