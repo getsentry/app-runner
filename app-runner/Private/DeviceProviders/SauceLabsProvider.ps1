@@ -362,7 +362,6 @@ class SauceLabsProvider : DeviceProvider {
             Write-Host "Launching: $bundleId" -ForegroundColor Cyan
             if ($Arguments) {
                 Write-Host "  Arguments: $Arguments" -ForegroundColor Cyan
-                Write-Warning "Passing arguments to iOS apps via SauceLabs/Appium might require specific app capability configuration."
             }
 
             $launchBody = @{
