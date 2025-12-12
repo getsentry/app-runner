@@ -37,7 +37,9 @@ on:
 jobs:
   lint:
     runs-on: ubuntu-latest
-    if: false  # Flaky with: The term 'Get-Command' is not recognized as a name of a cmdlet,
+    permissions:
+      contents: read
+      security-events: write
     defaults:
       run:
         working-directory: ${{ inputs.module-path }}
@@ -47,28 +49,20 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - run: $PSVersionTable
+      - name: Run PSScriptAnalyzer
+        uses: microsoft/psscriptanalyzer-action@v1.1
+        with:
+          path: ${{ inputs.module-path }}
+          recurse: true
+          output: results.sarif
+          settings: ${{ inputs.settings-path }}
 
-      - name: Show PSScriptAnalyzer versions
-        run: |
-          Get-Module PSScriptAnalyzer | Format-Table -AutoSize
-          Get-Command Invoke-ScriptAnalyzer | Format-Table -AutoSize
-
-      - name: Run PowerShell Script Analyzer
-        run: |
-          Write-Host "Running PSScriptAnalyzer on ${{ inputs.module-name }} module..."
-          $settingsPath = Join-Path ".." "${{ inputs.settings-path }}"
-          $analysisResults = Invoke-ScriptAnalyzer -Path . -Recurse -ReportSummary -Settings $settingsPath
-          if ($analysisResults) {
-            Write-Host "PSScriptAnalyzer found issues:" -ForegroundColor Yellow
-            $analysisResults | Format-Table -AutoSize
-            if ($analysisResults | Where-Object { $_.Severity -eq 'Error' }) {
-              Write-Error "PSScriptAnalyzer found errors. Please fix them before merging."
-              exit 1
-            }
-          } else {
-            Write-Host "PSScriptAnalyzer passed with no issues" -ForegroundColor Green
-          }
+      - name: Upload SARIF results to GitHub Security
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: results.sarif
+          category: psscriptanalyzer
 
   unit-tests:
     runs-on: ${{ matrix.os }}
