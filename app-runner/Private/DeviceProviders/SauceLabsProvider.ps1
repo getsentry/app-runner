@@ -20,6 +20,7 @@ Key features:
 - Appium session management (create, reuse, delete)
 - App execution with state monitoring
 - Logcat/Syslog retrieval via Appium
+- On-device log file retrieval (optional override with fallback to Logcat/Syslog)
 - Screenshot capture
 
 Requirements:
@@ -303,7 +304,7 @@ class SauceLabsProvider : DeviceProvider {
         }
     }
 
-    [hashtable] RunApplication([string]$ExecutablePath, [string]$Arguments) {
+    [hashtable] RunApplication([string]$ExecutablePath, [string[]]$Arguments, [string]$LogFilePath = $null) {
         Write-Debug "$($this.Platform): Running application: $ExecutablePath"
 
         if (-not $this.SessionId) {
@@ -323,14 +324,16 @@ class SauceLabsProvider : DeviceProvider {
             $this.CurrentPackageName = $packageName
 
             # Validate Intent extras format
-            if ($Arguments) {
-                Test-IntentExtrasFormat -Arguments $Arguments | Out-Null
+            if ($Arguments -and $Arguments.Count -gt 0) {
+                Test-IntentExtrasArray -Arguments $Arguments | Out-Null
             }
 
             # Launch activity with Intent extras
             Write-Host "Launching: $packageName/$activityName" -ForegroundColor Cyan
-            if ($Arguments) {
-                Write-Host "  Arguments: $Arguments" -ForegroundColor Cyan
+
+            $argumentsString = $this.ConvertArgumentsToString($Arguments)
+            if ($argumentsString) {
+                Write-Host "  Arguments: $argumentsString" -ForegroundColor Cyan
             }
 
             $launchBody = @{
@@ -341,11 +344,12 @@ class SauceLabsProvider : DeviceProvider {
                 intentCategory  = 'android.intent.category.LAUNCHER'
             }
 
-            if ($Arguments) {
-                $launchBody['optionalIntentArguments'] = $Arguments
+            if ($argumentsString) {
+                $launchBody['optionalIntentArguments'] = $argumentsString
             }
 
             try {
+                Write-Debug "Launching activity with arguments: $argumentsString"
                 $launchResponse = $this.InvokeSauceLabsApi('POST', "$baseUri/appium/device/start_activity", $launchBody, $false, $null)
                 Write-Debug "Launch response: $($launchResponse | ConvertTo-Json)"
             }
@@ -361,7 +365,6 @@ class SauceLabsProvider : DeviceProvider {
             Write-Host "Launching: $bundleId" -ForegroundColor Cyan
             if ($Arguments) {
                 Write-Host "  Arguments: $Arguments" -ForegroundColor Cyan
-                Write-Warning "Passing arguments to iOS apps via SauceLabs/Appium might require specific app capability configuration."
             }
 
             $launchBody = @{
@@ -369,10 +372,17 @@ class SauceLabsProvider : DeviceProvider {
             }
 
             if ($Arguments) {
-                # Appium 'mobile: launchApp' supports arguments? 
-                # Or use 'appium:processArguments' capability during session creation?
-                # For now, we'll try to pass them if supported by the endpoint or warn.
-                $launchBody['arguments'] = $Arguments -split ' ' # Simple split, might need better parsing
+                # Parse arguments string into array, handling quoted strings and standalone "--" separator
+                $argumentsArray = @()
+
+                # Split the arguments string by spaces, but handle quoted strings (both single and double quotes)
+                $argTokens = [regex]::Matches($Arguments, '(\"[^\"]*\"|''[^'']*''|\S+)') | ForEach-Object { $_.Value.Trim('"', "'") }
+
+                foreach ($token in $argTokens) {
+                    $argumentsArray += $token
+                }
+
+                $launchBody['arguments'] = $argumentsArray
             }
 
             try {
@@ -398,10 +408,12 @@ class SauceLabsProvider : DeviceProvider {
 
         while ((Get-Date) - $startTime -lt [TimeSpan]::FromSeconds($timeoutSeconds)) {
             # Query app state using Appium's mobile: queryAppState
+            # Use correct parameter name based on platform: appId for Android, bundleId for iOS
+            $appParameter = if ($this.MobilePlatform -eq 'Android') { 'appId' } else { 'bundleId' }
             $stateBody = @{
                 script = 'mobile: queryAppState'
                 args   = @(
-                    @{ appId = $this.CurrentPackageName } # Use stored package/bundle ID
+                    @{ $appParameter = $this.CurrentPackageName } # Use stored package/bundle ID
                 )
             }
 
@@ -431,38 +443,54 @@ class SauceLabsProvider : DeviceProvider {
             Write-Host "Warning: App did not exit within timeout" -ForegroundColor Yellow
         }
 
-        # Retrieving logs after app completion
+        # Retrieve logs - try log file first if provided, otherwise use system logs
         Write-Host "Retrieving logs..." -ForegroundColor Yellow
-        $logType = if ($this.MobilePlatform -eq 'iOS') { 'syslog' } else { 'logcat' }
-        $logBody = @{ type = $logType }
-        $logResponse = $this.InvokeSauceLabsApi('POST', "$baseUri/log", $logBody, $false, $null)
 
-        [array]$allLogs = @()
-        if ($logResponse.value -and $logResponse.value.Count -gt 0) {
-            $allLogs = @($logResponse.value)
-            Write-Host "Retrieved $($allLogs.Count) log lines" -ForegroundColor Cyan
-        }
+        $formattedLogs = @()
 
-        # Convert SauceLabs log format to text (matching ADB output format)
-        $logCache = @()
-        if ($allLogs -and $allLogs.Count -gt 0) {
-            $logCache = $allLogs | ForEach-Object {
-                if ($_) {
-                    $timestamp = if ($_.timestamp) { $_.timestamp } else { '' }
-                    $level = if ($_.level) { $_.level } else { '' }
-                    $message = if ($_.message) { $_.message } else { '' }
-                    "$timestamp $level $message"
+        # Try log file if path provided
+        if (-not [string]::IsNullOrWhiteSpace($LogFilePath)) {
+            try {
+                Write-Host "Attempting to retrieve log file: $LogFilePath" -ForegroundColor Cyan
+                $tempLogFile = [System.IO.Path]::GetTempFileName()
+
+                try {
+                    $this.CopyDeviceItem($LogFilePath, $tempLogFile)
+                    $logFileContent = Get-Content -Path $tempLogFile -Raw
+
+                    if ($logFileContent) {
+                        $formattedLogs = $logFileContent -split "`n" | Where-Object { $_.Trim() -ne "" }
+                        Write-Host "Retrieved log file with $($formattedLogs.Count) lines" -ForegroundColor Green
+                    }
+                } finally {
+                    Remove-Item $tempLogFile -Force -ErrorAction SilentlyContinue
                 }
-            } | Where-Object { $_ }  # Filter out any nulls
+            }
+            catch {
+                Write-Warning "Failed to retrieve log file: $($_.Exception.Message)"
+                Write-Host "Falling back to system logs..." -ForegroundColor Yellow
+            }
         }
 
-        # Format logs consistently (Android only for now)
-        $formattedLogs = $logCache
-        if ($this.MobilePlatform -eq 'Android') {
-            $formattedLogs = Format-LogcatOutput -LogcatOutput $logCache
+        # Fallback to system logs if log file not retrieved
+        if (-not $formattedLogs) {
+            $logType = if ($this.MobilePlatform -eq 'iOS') { 'syslog' } else { 'logcat' }
+            $logResponse = $this.InvokeSauceLabsApi('POST', "$baseUri/log", @{ type = $logType }, $false, $null)
+
+            if ($logResponse.value) {
+                Write-Host "Retrieved $($logResponse.value.Count) system log lines" -ForegroundColor Cyan
+                $logCache = $logResponse.value | ForEach-Object {
+                    "$($_.timestamp) $($_.level) $($_.message)"
+                } | Where-Object { $_ }
+
+                $formattedLogs = if ($this.MobilePlatform -eq 'Android') {
+                    Format-LogcatOutput -LogcatOutput $logCache
+                } else {
+                    $logCache
+                }
+            }
         }
 
-        # Return result matching app-runner pattern
         return @{
             Platform       = $this.Platform
             ExecutablePath = $ExecutablePath
@@ -587,8 +615,176 @@ class SauceLabsProvider : DeviceProvider {
         return @()
     }
 
+    <#
+    .SYNOPSIS
+    Checks if the current app supports file sharing capability on iOS devices.
+
+    .DESCRIPTION
+    Uses Appium's mobile: listApps command to retrieve app information and check
+    if UIFileSharingEnabled is set for the current app bundle.
+
+    .OUTPUTS
+    Hashtable with app capability information including Found, FileSharingEnabled, and AllApps.
+    #>
+    [hashtable] CheckAppFileSharingCapability() {
+        if (-not $this.SessionId) {
+            throw "No active SauceLabs session. Call InstallApp first to create a session."
+        }
+
+        try {
+            $baseUri = "https://ondemand.$($this.Region).saucelabs.com/wd/hub/session/$($this.SessionId)"
+            $scriptBody = @{ script = 'mobile: listApps'; args = @() }
+
+            $response = $this.InvokeSauceLabsApi('POST', "$baseUri/execute/sync", $scriptBody, $false, $null)
+
+            if ($response -and $response.value) {
+                $apps = $response.value
+                $bundleIds = $apps.Keys | Where-Object { $_ }
+
+                if ($apps.ContainsKey($this.CurrentPackageName)) {
+                    $targetApp = $apps[$this.CurrentPackageName]
+                    return @{
+                        Found = $true
+                        BundleId = $this.CurrentPackageName
+                        FileSharingEnabled = [bool]$targetApp.UIFileSharingEnabled
+                        Name = $targetApp.CFBundleDisplayName -or $targetApp.CFBundleName -or "Unknown"
+                        AllApps = $bundleIds
+                    }
+                }
+
+                return @{
+                    Found = $false
+                    BundleId = $this.CurrentPackageName
+                    FileSharingEnabled = $false
+                    AllApps = $bundleIds
+                }
+            }
+
+            return @{ Found = $false; BundleId = $this.CurrentPackageName; FileSharingEnabled = $false; AllApps = @() }
+        }
+        catch {
+            return @{ Found = $false; BundleId = $this.CurrentPackageName; FileSharingEnabled = $false; AllApps = @(); Error = $_.Exception.Message }
+        }
+    }
+
+    <#
+    .SYNOPSIS
+    Copies a file from the SauceLabs device to the local machine.
+
+    .DESCRIPTION
+    Retrieves files from iOS/Android devices via Appium's pull_file API.
+
+    .PARAMETER DevicePath
+    Path to the file on the device:
+    - iOS: Bundle format @bundle.id:documents/file.log
+    - Android: Absolute path /data/data/package.name/files/logs/file.log (requires debuggable=true)
+
+    .PARAMETER Destination
+    Local destination path where the file should be saved.
+
+    .NOTES
+    iOS Requirements:
+    - App must have UIFileSharingEnabled=true in info.plist
+    - Files must be in the app's Documents directory
+
+    Android Requirements:
+    - Internal storage paths are only accessible for debuggable apps
+    - App must be built with android:debuggable="true" in AndroidManifest.xml
+    #>
     [void] CopyDeviceItem([string]$DevicePath, [string]$Destination) {
-        Write-Warning "$($this.Platform): CopyDeviceItem is not supported for SauceLabs cloud devices"
+        if (-not $this.SessionId) {
+            throw "No active SauceLabs session. Call InstallApp first to create a session."
+        }
+
+        try {
+            # Pull file from device via Appium API
+            $baseUri = "https://ondemand.$($this.Region).saucelabs.com/wd/hub/session/$($this.SessionId)"
+            $response = $this.InvokeSauceLabsApi('POST', "$baseUri/appium/device/pull_file", @{ path = $DevicePath }, $false, $null)
+
+            if (-not $response -or -not $response.value) {
+                throw "No file content returned from device"
+            }
+
+            # Prepare destination path
+            if (-not [System.IO.Path]::IsPathRooted($Destination)) {
+                $Destination = Join-Path (Get-Location) $Destination
+            }
+
+            $destinationDir = Split-Path $Destination -Parent
+            if ($destinationDir -and -not (Test-Path $destinationDir)) {
+                New-Item -Path $destinationDir -ItemType Directory -Force | Out-Null
+            }
+
+            if (Test-Path $Destination) {
+                Remove-Item $Destination -Force -ErrorAction SilentlyContinue
+            }
+
+            # Decode and save file
+            $fileBytes = [System.Convert]::FromBase64String($response.value)
+            [System.IO.File]::WriteAllBytes($Destination, $fileBytes)
+
+            Write-Host "Successfully copied file from device: $DevicePath -> $Destination" -ForegroundColor Green
+        }
+        catch {
+            $this.HandleCopyDeviceItemError($_, $DevicePath)
+        }
+    }
+
+    <#
+    .SYNOPSIS
+    Handles errors from CopyDeviceItem with helpful diagnostic information.
+    #>
+    [void] HandleCopyDeviceItemError([System.Management.Automation.ErrorRecord]$Error, [string]$DevicePath) {
+        $errorMsg = "Failed to copy file from device: $DevicePath. Error: $($Error.Exception.Message)"
+
+        # Add platform-specific troubleshooting for server errors
+        if ($Error.Exception.Message -match "500|Internal Server Error") {
+            $errorMsg += "`n`nTroubleshooting $($this.MobilePlatform) file access:"
+            $errorMsg += "`n- App Package/Bundle ID: '$($this.CurrentPackageName)'"
+            $errorMsg += "`n- Requested path: '$DevicePath'"
+
+            if ($this.MobilePlatform -eq 'iOS') {
+                try {
+                    $appInfo = $this.CheckAppFileSharingCapability()
+                    if ($appInfo.AllApps -and $appInfo.AllApps.Count -gt 0) {
+                        $errorMsg += "`n- Available apps: $($appInfo.AllApps -join ', ')"
+                        if ($appInfo.Found -and -not $appInfo.FileSharingEnabled) {
+                            $errorMsg += "`n- App found but UIFileSharingEnabled=false"
+                        }
+                    }
+                } catch {
+                    $errorMsg += "`n- Could not check app capabilities: $($_.Exception.Message)"
+                }
+
+                $errorMsg += "`n`nCommon iOS causes:"
+                $errorMsg += "`n1. App missing UIFileSharingEnabled=true in info.plist"
+                $errorMsg += "`n2. File doesn't exist on device"
+                $errorMsg += "`n3. Incorrect path format - must use @bundle.id:documents/relative_path"
+
+                if ($this.CurrentPackageName) {
+                    $errorMsg += "`n`nRequired iOS format: @$($this.CurrentPackageName):documents/relative_path"
+                }
+            }
+            elseif ($this.MobilePlatform -eq 'Android') {
+                $errorMsg += "`n`nMost likely cause: App not built with debuggable flag"
+                $errorMsg += "`n"
+                $errorMsg += "`nFor Android internal storage access (/data/data/...), the app MUST be built with:"
+                $errorMsg += "`n  android:debuggable='true' in AndroidManifest.xml"
+                $errorMsg += "`n"
+                $errorMsg += "`nOther possible causes:"
+                $errorMsg += "`n2. File doesn't exist on device (less likely)"
+                $errorMsg += "`n3. Incorrect path format or permissions"
+
+                if ($this.CurrentPackageName) {
+                    $errorMsg += "`n`nWorking path formats:"
+                    $errorMsg += "`n- Internal storage: /data/data/$($this.CurrentPackageName)/files/app.log (needs debuggable=true)"
+                    $errorMsg += "`n- App-relative: @$($this.CurrentPackageName)/files/app.log (needs debuggable=true)"
+                }
+            }
+        }
+
+        Write-Error $errorMsg
+        throw
     }
 
     # Override DetectAndSetDefaultTarget - not needed for SauceLabs

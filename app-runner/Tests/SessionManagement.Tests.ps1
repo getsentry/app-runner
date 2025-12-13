@@ -129,17 +129,17 @@ Context 'Invoke-DeviceApp' {
 
     It 'Should accept executable path and arguments' {
         Connect-Device -Platform 'Mock'
-        $result = Invoke-DeviceApp -ExecutablePath 'MyGame.exe' -Arguments '--debug'
+        $result = Invoke-DeviceApp -ExecutablePath 'MyGame.exe' -Arguments @('--debug')
         $result | Should -Not -Be $null
         $result.ExecutablePath | Should -Be 'MyGame.exe'
-        $result.Arguments | Should -Be '--debug'
+        $result.Arguments | Should -Be @('--debug')
         $result.Platform | Should -Be 'Mock'
     }
 
     It 'Should work with no arguments' {
         Connect-Device -Platform 'Mock'
         $result = Invoke-DeviceApp -ExecutablePath 'MyGame.exe'
-        $result.Arguments | Should -Be ''
+        $result.Arguments | Should -Be @()
     }
 }
 

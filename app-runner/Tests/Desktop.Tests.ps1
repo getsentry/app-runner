@@ -156,7 +156,7 @@ Describe '<TargetName>' -Tag 'Desktop', 'Integration' -ForEach $TestTargets {
         }
 
         It 'Invoke-DeviceApp executes pwsh successfully' {
-            $result = Invoke-DeviceApp -ExecutablePath 'pwsh' -Arguments '-Command "Write-Host ''test-output''"'
+            $result = Invoke-DeviceApp -ExecutablePath 'pwsh' -Arguments @('-Command', "Write-Host 'test-output'")
 
             $result | Should -Not -BeNullOrEmpty
             $result | Should -BeOfType [hashtable]
@@ -169,14 +169,14 @@ Describe '<TargetName>' -Tag 'Desktop', 'Integration' -ForEach $TestTargets {
         }
 
         It 'Invoke-DeviceApp captures non-zero exit codes' {
-            $result = Invoke-DeviceApp -ExecutablePath 'pwsh' -Arguments '-Command "exit 42"'
+            $result = Invoke-DeviceApp -ExecutablePath 'pwsh' -Arguments @('-Command', 'exit 42')
 
             $result | Should -Not -BeNullOrEmpty
             $result.ExitCode | Should -Be 42
         }
 
         It 'Invoke-DeviceApp captures multi-line output' {
-            $result = Invoke-DeviceApp -ExecutablePath 'pwsh' -Arguments '-Command "Write-Host ''line1''; Write-Host ''line2''; Write-Host ''line3''"'
+            $result = Invoke-DeviceApp -ExecutablePath 'pwsh' -Arguments @('-Command', "Write-Host 'line1'; Write-Host 'line2'; Write-Host 'line3'")
 
             $result.Output | Should -Contain 'line1'
             $result.Output | Should -Contain 'line2'
@@ -184,7 +184,7 @@ Describe '<TargetName>' -Tag 'Desktop', 'Integration' -ForEach $TestTargets {
         }
 
         It 'Invoke-DeviceApp includes timing information' {
-            $result = Invoke-DeviceApp -ExecutablePath 'pwsh' -Arguments '-Command "Start-Sleep -Milliseconds 100"'
+            $result = Invoke-DeviceApp -ExecutablePath 'pwsh' -Arguments @('-Command', 'Start-Sleep -Milliseconds 100')
 
             $result.Keys | Should -Contain 'StartedAt'
             $result.Keys | Should -Contain 'FinishedAt'
@@ -334,7 +334,7 @@ Describe '<TargetName>' -Tag 'Desktop', 'Integration' -ForEach $TestTargets {
             try { Disconnect-Device } catch { }
 
             { Get-DeviceStatus } | Should -Throw '*No active device session*'
-            { Invoke-DeviceApp -ExecutablePath 'pwsh' -Arguments '' } | Should -Throw '*No active device session*'
+            { Invoke-DeviceApp -ExecutablePath 'pwsh' -Arguments @() } | Should -Throw '*No active device session*'
         }
     }
 

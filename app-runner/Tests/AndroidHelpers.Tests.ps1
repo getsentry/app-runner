@@ -59,55 +59,7 @@ Describe 'AndroidHelpers' -Tag 'Unit', 'Android' {
         }
     }
 
-    Context 'Test-IntentExtrasFormat' {
-        It 'Accepts valid Intent extras with -e flag' {
-            { Test-IntentExtrasFormat -Arguments '-e key value' } | Should -Not -Throw
-        }
 
-        It 'Accepts valid Intent extras with -es flag' {
-            { Test-IntentExtrasFormat -Arguments '-es stringKey stringValue' } | Should -Not -Throw
-        }
-
-        It 'Accepts valid Intent extras with -ez flag' {
-            { Test-IntentExtrasFormat -Arguments '-ez boolKey true' } | Should -Not -Throw
-        }
-
-        It 'Accepts valid Intent extras with -ei flag' {
-            { Test-IntentExtrasFormat -Arguments '-ei intKey 42' } | Should -Not -Throw
-        }
-
-        It 'Accepts valid Intent extras with -el flag' {
-            { Test-IntentExtrasFormat -Arguments '-el longKey 1234567890' } | Should -Not -Throw
-        }
-
-        It 'Accepts multiple Intent extras' {
-            { Test-IntentExtrasFormat -Arguments '-e key1 value1 -ez key2 false -ei key3 100' } | Should -Not -Throw
-        }
-
-        It 'Accepts empty string' {
-            { Test-IntentExtrasFormat -Arguments '' } | Should -Not -Throw
-        }
-
-        It 'Accepts null' {
-            { Test-IntentExtrasFormat -Arguments $null } | Should -Not -Throw
-        }
-
-        It 'Accepts whitespace-only string' {
-            { Test-IntentExtrasFormat -Arguments '   ' } | Should -Not -Throw
-        }
-
-        It 'Throws on invalid format without flag' {
-            { Test-IntentExtrasFormat -Arguments 'key value' } | Should -Throw '*Invalid Intent extras format*'
-        }
-
-        It 'Throws on invalid format with wrong prefix' {
-            { Test-IntentExtrasFormat -Arguments '--key value' } | Should -Throw '*Invalid Intent extras format*'
-        }
-
-        It 'Throws on text without proper flag format' {
-            { Test-IntentExtrasFormat -Arguments 'some random text' } | Should -Throw '*Invalid Intent extras format*'
-        }
-    }
 
     Context 'Get-ApkPackageName error handling' {
         It 'Throws when APK file does not exist' {
@@ -219,3 +171,99 @@ Describe 'AndroidHelpers' -Tag 'Unit', 'Android' {
         }
     }
 }
+
+Context 'Test-IntentExtrasArray' {
+    It 'Accepts valid Intent extras array with -e flag' {
+        { Test-IntentExtrasArray -Arguments @('-e', 'key', 'value') } | Should -Not -Throw
+    }
+
+    It 'Accepts valid Intent extras array with -es flag' {
+        { Test-IntentExtrasArray -Arguments @('-es', 'stringKey', 'stringValue') } | Should -Not -Throw
+    }
+
+    It 'Accepts valid Intent extras array with --es flag' {
+        { Test-IntentExtrasArray -Arguments @('--es', 'stringKey', 'stringValue') } | Should -Not -Throw
+    }
+
+    It 'Accepts valid Intent extras array with -ez flag and true' {
+        { Test-IntentExtrasArray -Arguments @('-ez', 'boolKey', 'true') } | Should -Not -Throw
+    }
+
+    It 'Accepts valid Intent extras array with -ez flag and false' {
+        { Test-IntentExtrasArray -Arguments @('-ez', 'boolKey', 'false') } | Should -Not -Throw
+    }
+
+    It 'Accepts valid Intent extras array with --ez flag and true' {
+        { Test-IntentExtrasArray -Arguments @('--ez', 'boolKey', 'true') } | Should -Not -Throw
+    }
+
+    It 'Accepts valid Intent extras array with --ez flag and false' {
+        { Test-IntentExtrasArray -Arguments @('--ez', 'boolKey', 'false') } | Should -Not -Throw
+    }
+
+    It 'Accepts valid Intent extras array with -ei flag' {
+        { Test-IntentExtrasArray -Arguments @('-ei', 'intKey', '42') } | Should -Not -Throw
+    }
+
+    It 'Accepts valid Intent extras array with -el flag' {
+        { Test-IntentExtrasArray -Arguments @('-el', 'longKey', '1234567890') } | Should -Not -Throw
+    }
+
+    It 'Accepts valid Intent extras array with --ei flag' {
+        { Test-IntentExtrasArray -Arguments @('--ei', 'intKey', '42') } | Should -Not -Throw
+    }
+
+    It 'Accepts valid Intent extras array with --el flag' {
+        { Test-IntentExtrasArray -Arguments @('--el', 'longKey', '1234567890') } | Should -Not -Throw
+    }
+
+    It 'Accepts multiple Intent extras in array' {
+        { Test-IntentExtrasArray -Arguments @('-e', 'key1', 'value1', '-ez', 'key2', 'false', '-ei', 'key3', '100') } | Should -Not -Throw
+    }
+
+    It 'Accepts empty array' {
+        { Test-IntentExtrasArray -Arguments @() } | Should -Not -Throw
+    }
+
+    It 'Accepts null' {
+        { Test-IntentExtrasArray -Arguments $null } | Should -Not -Throw
+    }
+
+    It 'Accepts keys and values with spaces' {
+        { Test-IntentExtrasArray -Arguments @('-e', 'key with spaces', 'value with spaces') } | Should -Not -Throw
+    }
+
+    It 'Throws on invalid format without flag' {
+        { Test-IntentExtrasArray -Arguments @('key', 'value') } | Should -Throw '*Invalid Intent extras format*'
+    }
+
+    It 'Accepts unknown flags by ignoring validation' {
+        { Test-IntentExtrasArray -Arguments @('--new-flag', 'key', 'value') } | Should -Not -Throw
+    }
+
+    It 'Throws on incomplete known flag without key and value' {
+        { Test-IntentExtrasArray -Arguments @('-e') } | Should -Throw '*must be followed by key and value*'
+    }
+
+    It 'Throws on known flag with only key, missing value' {
+        { Test-IntentExtrasArray -Arguments @('-e', 'key') } | Should -Throw '*must be followed by key and value*'
+    }
+
+    It 'Throws on boolean flag with invalid value' {
+        { Test-IntentExtrasArray -Arguments @('-ez', 'boolKey', 'invalid') } | Should -Throw '*requires ''true'' or ''false'' value*'
+    }
+
+    It 'Throws on double-dash boolean flag with invalid value' {
+        { Test-IntentExtrasArray -Arguments @('--ez', 'boolKey', 'invalid') } | Should -Throw '*requires ''true'' or ''false'' value*'
+    }
+
+    It 'Accepts mixed known and unknown flags' {
+        { Test-IntentExtrasArray -Arguments @('-e', 'key1', 'value1', '--new-flag', 'key2', 'value2', '-ez', 'bool', 'true') } | Should -Not -Throw
+    }
+
+    It 'Throws on non-flag arguments' {
+        { Test-IntentExtrasArray -Arguments @('not-a-flag', 'value') } | Should -Throw '*Expected Intent extras flag*'
+    }
+}
+
+
