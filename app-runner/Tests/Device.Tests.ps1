@@ -237,7 +237,7 @@ Describe '<TargetName>' -Tag 'RequiresDevice' -ForEach $TestTargets {
         }
 
         It 'Invoke-DeviceApp executes application' -Skip:$shouldSkip {
-            $result = Invoke-DeviceApp -ExecutablePath $testApp -Arguments ''
+            $result = Invoke-DeviceApp -ExecutablePath $testApp -Arguments @()
             $result | Should -Not -BeNullOrEmpty
             $result | Should -BeOfType [hashtable]
             $result.Keys | Should -Contain 'Output'
@@ -246,7 +246,7 @@ Describe '<TargetName>' -Tag 'RequiresDevice' -ForEach $TestTargets {
         }
 
         It 'Invoke-DeviceApp with arguments works' -Skip:$shouldSkip {
-            $result = Invoke-DeviceApp -ExecutablePath $testApp -Arguments 'error'
+            $result = Invoke-DeviceApp -ExecutablePath $testApp -Arguments @('error')
             $result | Should -Not -BeNullOrEmpty
             $result.Output | Should -Contain 'Sample: ERROR'
             if ($Platform -ne 'Switch') {
@@ -557,5 +557,76 @@ Describe '<TargetName>' -Tag 'RequiresDevice' -ForEach $TestTargets {
             # failure after semaphore acquisition without affecting the device.
             # Manual testing is recommended for this scenario.
         }
+    }
+}
+
+Context 'ConvertArgumentsToString (via Mock Provider)' {
+    BeforeEach {
+        Connect-Device -Platform 'Mock'
+        $script:provider = (Get-DeviceSession).Provider
+    }
+
+    AfterEach {
+        Disconnect-Device
+    }
+
+    It 'Handles empty array' {
+        $result = $provider.ConvertArgumentsToString(@())
+        $result | Should -Be ""
+    }
+
+    It 'Handles null array' {
+        $result = $provider.ConvertArgumentsToString($null)
+        $result | Should -Be ""
+    }
+
+    It 'Handles simple arguments without spaces' {
+        $result = $provider.ConvertArgumentsToString(@('--debug', '--verbose'))
+        $result | Should -Be "--debug --verbose"
+    }
+
+    It 'Handles arguments with spaces using single quotes' {
+        $result = $provider.ConvertArgumentsToString(@('--config', 'my config.txt'))
+        $result | Should -Be "--config 'my config.txt'"
+    }
+
+    It 'Handles arguments with single quotes properly' {
+        $result = $provider.ConvertArgumentsToString(@('--message', "It's working"))
+        $result | Should -Be "--message 'It'\''s working'"
+    }
+
+    It 'Handles arguments with double quotes by escaping them' {
+        $result = $provider.ConvertArgumentsToString(@('--text', 'He said "hello"'))
+        $result | Should -Be '--text ''He said "hello"'''
+    }
+
+    It 'Handles arguments with special characters' {
+        $result = $provider.ConvertArgumentsToString(@('--regex', '[a-z]+'))
+        $result | Should -Be '--regex [a-z]+'
+    }
+
+    It 'Handles mixed argument types' {
+        $result = $provider.ConvertArgumentsToString(@('--simple', '--with spaces', "it's", 'normal'))
+        $result | Should -Be "--simple '--with spaces' 'it'\''s' normal"
+    }
+
+    It 'Handles pipe characters' {
+        $result = $provider.ConvertArgumentsToString(@('--command', 'echo hello | grep hi'))
+        $result | Should -Be "--command 'echo hello | grep hi'"
+    }
+
+    It 'Handles ampersand characters' {
+        $result = $provider.ConvertArgumentsToString(@('--url', 'http://example.com?a=1&b=2'))
+        $result | Should -Be "--url 'http://example.com?a=1&b=2'"
+    }
+
+    It 'Handles empty string arguments' {
+        $result = $provider.ConvertArgumentsToString(@('--flag', '', 'value'))
+        $result | Should -Be '--flag  value'
+    }
+
+    It 'Handles arguments with redirections' {
+        $result = $provider.ConvertArgumentsToString(@('--output', 'file > /dev/null'))
+        $result | Should -Be "--output 'file > /dev/null'"
     }
 }

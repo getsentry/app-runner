@@ -120,6 +120,33 @@ class DeviceProvider {
         return [BuiltCommand]::new($command, $processingCommand)
     }
 
+    # Helper method to convert string array arguments to properly formatted string
+    # Joins with spaces and quotes arguments containing spaces or special characters
+    # Preserves arguments that are already quoted with matching quotes
+    [string] ConvertArgumentsToString([string[]]$Arguments) {
+        if (-not $Arguments -or $Arguments.Count -eq 0) {
+            return ""
+        }
+
+        $formattedArgs = @()
+
+        foreach ($arg in $Arguments) {
+            # If argument is already quoted with matching quotes, preserve it as-is
+            if ($arg.Length -ge 2 -and (($arg[0] -eq '"' -and $arg[-1] -eq '"') -or ($arg[0] -eq "'" -and $arg[-1] -eq "'"))) {
+                # Preserve original formatting for already-quoted arguments because
+                # the argument was intentionally quoted by the caller for a specific reason
+                $formattedArgs += $arg
+            } elseif ($arg -match '[\s"''&|<>^]' -or $arg -eq '--') {
+                # Escape single quotes with shell-compatible escaping
+                $escapedArg = $arg -replace "'", "'\''"
+                $formattedArgs += "'" + $escapedArg + "'"
+            } else {
+                $formattedArgs += $arg
+            }
+        }
+
+        return $formattedArgs -join ' '
+    }
 
     [void] LogNotImplemented([string]$operation) {
         Write-Warning "$($this.Platform) $operation not yet implemented"
@@ -372,14 +399,15 @@ class DeviceProvider {
         return @{}
     }
 
-    [hashtable] RunApplication([string]$ExecutablePath, [string]$Arguments, [string]$LogFilePath = $null) {
+    [hashtable] RunApplication([string]$ExecutablePath, [string[]]$Arguments, [string]$LogFilePath = $null) {
         Write-Debug "$($this.Platform): Running application: $ExecutablePath with arguments: $Arguments"
 
-        $command = $this.BuildCommand('launch', @($ExecutablePath, $Arguments))
+        $argumentsString = $this.ConvertArgumentsToString($Arguments)
+        $command = $this.BuildCommand('launch', @($ExecutablePath, $argumentsString))
         return $this.InvokeApplicationCommand($command, $ExecutablePath, $Arguments)
     }
 
-    [hashtable] InvokeApplicationCommand([BuiltCommand]$builtCommand, [string]$ExecutablePath, [string]$Arguments) {
+    [hashtable] InvokeApplicationCommand([BuiltCommand]$builtCommand, [string]$ExecutablePath, [string[]]$Arguments) {
         Write-Debug "$($this.Platform): Invoking $($builtCommand.Command)"
 
         $result = $null

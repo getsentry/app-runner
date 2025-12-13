@@ -304,7 +304,7 @@ class SauceLabsProvider : DeviceProvider {
         }
     }
 
-    [hashtable] RunApplication([string]$ExecutablePath, [string]$Arguments, [string]$LogFilePath = $null) {
+    [hashtable] RunApplication([string]$ExecutablePath, [string[]]$Arguments, [string]$LogFilePath = $null) {
         Write-Debug "$($this.Platform): Running application: $ExecutablePath"
 
         if (-not $this.SessionId) {
@@ -324,14 +324,16 @@ class SauceLabsProvider : DeviceProvider {
             $this.CurrentPackageName = $packageName
 
             # Validate Intent extras format
-            if ($Arguments) {
-                Test-IntentExtrasFormat -Arguments $Arguments | Out-Null
+            if ($Arguments -and $Arguments.Count -gt 0) {
+                Test-IntentExtrasArray -Arguments $Arguments | Out-Null
             }
 
             # Launch activity with Intent extras
             Write-Host "Launching: $packageName/$activityName" -ForegroundColor Cyan
-            if ($Arguments) {
-                Write-Host "  Arguments: $Arguments" -ForegroundColor Cyan
+
+            $argumentsString = $this.ConvertArgumentsToString($Arguments)
+            if ($argumentsString) {
+                Write-Host "  Arguments: $argumentsString" -ForegroundColor Cyan
             }
 
             $launchBody = @{
@@ -342,11 +344,12 @@ class SauceLabsProvider : DeviceProvider {
                 intentCategory  = 'android.intent.category.LAUNCHER'
             }
 
-            if ($Arguments) {
-                $launchBody['optionalIntentArguments'] = $Arguments
+            if ($argumentsString) {
+                $launchBody['optionalIntentArguments'] = $argumentsString
             }
 
             try {
+                Write-Debug "Launching activity with arguments: $argumentsString"
                 $launchResponse = $this.InvokeSauceLabsApi('POST', "$baseUri/appium/device/start_activity", $launchBody, $false, $null)
                 Write-Debug "Launch response: $($launchResponse | ConvertTo-Json)"
             }

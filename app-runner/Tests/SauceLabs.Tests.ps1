@@ -38,7 +38,7 @@ BeforeDiscovery {
                 -Target 'Samsung_Galaxy_S23_15_real_sjc1' `
                 -FixturePath $androidFixture `
                 -ExePath 'com.sentry.test.minimal/.MainActivity' `
-                -Arguments '-e sentry test'
+                -Arguments @('-e', 'sentry', 'test')
         } else {
             $message = "Android fixture not found at $androidFixture"
             if ($isCI) {
@@ -56,7 +56,7 @@ BeforeDiscovery {
         #         -Target 'iPhone 13 Pro' `
         #         -FixturePath $iosFixture `
         #         -ExePath 'com.saucelabs.mydemoapp.ios' `
-        #         -Arguments '--test-arg value'
+        #         -Arguments @('--test-arg', 'value')
         # } else {
         #     $message = "iOS fixture not found at $iosFixture"
         #     if ($isCI) {

@@ -37,7 +37,7 @@ try {
 
     # Step 5: Run an application (session-aware)
     Write-Host "`n4. Running application..." -ForegroundColor Green
-    $result = Invoke-DeviceApp -ExecutablePath 'MyTestGame.exe' -Arguments '--debug --level=verbose'
+    $result = Invoke-DeviceApp -ExecutablePath 'MyTestGame.exe' -Arguments @('--debug', '--level=verbose')
     Write-Host "   Application started successfully on $($result.Platform)" -ForegroundColor Green
 
     # Step 6: Collect diagnostics (all session-aware)

@@ -11,7 +11,7 @@ function Invoke-DeviceApp {
     Path to the executable file to run on the device.
 
     .PARAMETER Arguments
-    Arguments to pass to the executable when starting it.
+    Array of arguments to pass to the executable when starting it.
 
     .PARAMETER LogFilePath
     Optional path to a log file on the device to retrieve instead of using system logs (syslog/logcat).
@@ -20,7 +20,7 @@ function Invoke-DeviceApp {
     - Android: Use absolute path like "/data/data/com.example.app/files/logs/app.log"
 
     .EXAMPLE
-    Invoke-DeviceApp -ExecutablePath "MyGame.exe" -Arguments "--debug --level=1"
+    Invoke-DeviceApp -ExecutablePath "MyGame.exe" -Arguments @("--debug", "--level=1")
 
     .EXAMPLE
     Invoke-DeviceApp -ExecutablePath "com.example.app" -LogFilePath "@com.example.app:documents/logs/app.log"
@@ -32,7 +32,7 @@ function Invoke-DeviceApp {
         [string]$ExecutablePath,
 
         [Parameter(Mandatory = $false)]
-        [string]$Arguments = "",
+        [string[]]$Arguments = @(),
 
         [Parameter(Mandatory = $false)]
         [string]$LogFilePath = $null
