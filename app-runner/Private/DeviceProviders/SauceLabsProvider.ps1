@@ -371,8 +371,8 @@ class SauceLabsProvider : DeviceProvider {
                 $body = @{
                     script = "mobile: launchApp"
                     args = @{
-	                    bundleId = $bundleId
-	                    arguments = $Arguments
+                        bundleId = $bundleId
+                        arguments = $Arguments
                     }
                 }
                 $launchResponse = $this.InvokeSauceLabsApi('POST', "$baseUri/execute/sync", $body, $false, $null)
@@ -397,7 +397,7 @@ class SauceLabsProvider : DeviceProvider {
             $body = @{
                 script = 'mobile: queryAppState'
                 args = @{
-                	$appParameter = $this.CurrentPackageName
+                    $appParameter = $this.CurrentPackageName
                 }
             }
 
@@ -475,13 +475,14 @@ class SauceLabsProvider : DeviceProvider {
             }
         }
 
-        # Output logs as folded group in GitHub Actions
+        # Output logs.
+        # NOTE: System logs are very noisy, so only enabled on GitHub and in a folded group.
         if ($formattedLogs -and $env:GITHUB_ACTIONS -eq 'true') {
-        	Write-Host "::group::Logs"
-	         $formattedLogs | ForEach-Object {
-	             Write-Debug "$_"
-	         }
-         	Write-Host "::endgroup::"
+            Write-GitHub "::group::Logs"
+            $formattedLogs | ForEach-Object {
+                 Write-Debug "$_"
+            }
+            Write-GitHub "::endgroup::"
         }
 
         return @{
