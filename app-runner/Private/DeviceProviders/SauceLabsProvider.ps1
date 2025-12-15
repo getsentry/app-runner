@@ -777,7 +777,7 @@ class SauceLabsProvider : DeviceProvider {
             }
         }
 
-        Write-Error $errorMsg
+        Write-Warning $errorMsg
         throw
     }
 
