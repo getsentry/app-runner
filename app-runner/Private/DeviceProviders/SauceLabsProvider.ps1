@@ -475,6 +475,15 @@ class SauceLabsProvider : DeviceProvider {
             }
         }
 
+        # Output logs as folded group in GitHub Actions
+        if ($formattedLogs -and $env:GITHUB_ACTIONS -eq 'true') {
+        	Write-Host "::group::Logs"
+	         $formattedLogs | ForEach-Object {
+	             Write-Debug "$_"
+	         }
+         	Write-Host "::endgroup::"
+        }
+
         return @{
             Platform       = $this.Platform
             ExecutablePath = $ExecutablePath
