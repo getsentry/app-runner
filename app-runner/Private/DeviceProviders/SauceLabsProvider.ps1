@@ -367,21 +367,15 @@ class SauceLabsProvider : DeviceProvider {
                 Write-Host "  Arguments: $Arguments" -ForegroundColor Cyan
             }
 
-            $launchBody = @{
-                bundleId = $bundleId
-            }
-
-            if ($Arguments) {
-                $launchBody['arguments'] = $Arguments
-            }
-
             try {
-                # Use mobile: launchApp for iOS
-                $scriptBody = @{
+                $body = @{
                     script = "mobile: launchApp"
-                    args   = $launchBody
+                    args = @{
+	                    bundleId = $bundleId
+	                    arguments = $Arguments
+                    }
                 }
-                $launchResponse = $this.InvokeSauceLabsApi('POST', "$baseUri/execute/sync", $scriptBody, $false, $null)
+                $launchResponse = $this.InvokeSauceLabsApi('POST', "$baseUri/execute/sync", $body, $false, $null)
                 Write-Debug "Launch response: $($launchResponse | ConvertTo-Json)"
             }
             catch {
@@ -400,15 +394,15 @@ class SauceLabsProvider : DeviceProvider {
             # Query app state using Appium's mobile: queryAppState
             # Use correct parameter name based on platform: appId for Android, bundleId for iOS
             $appParameter = if ($this.MobilePlatform -eq 'Android') { 'appId' } else { 'bundleId' }
-            $stateBody = @{
+            $body = @{
                 script = 'mobile: queryAppState'
-                args   = @(
-                    @{ $appParameter = $this.CurrentPackageName } # Use stored package/bundle ID
-                )
+                args = @{
+                	$appParameter = $this.CurrentPackageName
+                }
             }
 
             try {
-                $stateResponse = $this.InvokeSauceLabsApi('POST', "$baseUri/execute/sync", $stateBody, $false, $null)
+                $stateResponse = $this.InvokeSauceLabsApi('POST', "$baseUri/execute/sync", $body, $false, $null)
                 $appState = $stateResponse.value
 
                 Write-Debug "App state: $appState (elapsed: $([int]((Get-Date) - $startTime).TotalSeconds)s)"
@@ -623,9 +617,9 @@ class SauceLabsProvider : DeviceProvider {
 
         try {
             $baseUri = "https://ondemand.$($this.Region).saucelabs.com/wd/hub/session/$($this.SessionId)"
-            $scriptBody = @{ script = 'mobile: listApps'; args = @() }
+            $body = @{ script = 'mobile: listApps'; args = @() }
 
-            $response = $this.InvokeSauceLabsApi('POST', "$baseUri/execute/sync", $scriptBody, $false, $null)
+            $response = $this.InvokeSauceLabsApi('POST', "$baseUri/execute/sync", $body, $false, $null)
 
             if ($response -and $response.value) {
                 $apps = $response.value
