@@ -72,17 +72,17 @@ function Test-IntentExtrasArray {
         return $true
     }
 
-    # Only validate common Intent extras flags that we understand
-    # Ignore unknown flags to avoid breaking when Android adds new ones
-    $knownFlags = @('-e', '-es', '--es', '-ez', '--ez', '-ei', '--ei', '-el', '--el')
+    # Only validate specific patterns we understand and can verify
+    # Don't throw errors on unknown patterns - just validate what we know
+    $knownKeyValueFlags = @('-e', '-es', '--es', '-ez', '--ez', '-ei', '--ei', '-el', '--el')
 
-    $i = 0
-    while ($i -lt $Arguments.Count) {
+    # Validate only the patterns we understand
+    for ($i = 0; $i -lt $Arguments.Count; $i++) {
         $currentArg = $Arguments[$i]
-
-        # If this looks like a flag we know, validate its structure
-        if ($knownFlags -contains $currentArg) {
-            # Ensure we have at least 2 more arguments (key and value)
+        
+        # Only validate arguments that are known key-value flags
+        if ($knownKeyValueFlags -contains $currentArg) {
+            # For known key-value flags, ensure proper structure
             if ($i + 2 -ge $Arguments.Count) {
                 throw "Invalid Intent extras format: Flag '$currentArg' must be followed by key and value. Missing arguments."
             }
@@ -95,13 +95,11 @@ function Test-IntentExtrasArray {
                 throw "Invalid Intent extras format: Boolean flag '$currentArg' requires 'true' or 'false' value, got: '$value'"
             }
 
-            # Skip the key and value we just processed
-            $i += 3
-        } else {
-            # Unknown flag - skip it
-            # This allows other Android flags to work without breaking our validation
-            $i += 1
+            # Skip the key and value we just validated
+            $i += 2
         }
+        # For all other arguments (including single tokens like --grant-read-uri-permission),
+        # just continue - don't validate what we don't understand
     }
 
     return $true

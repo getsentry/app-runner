@@ -223,7 +223,7 @@ class AdbProvider : DeviceProvider {
         # Launch activity
         Write-Host "Launching: $ExecutablePath" -ForegroundColor Cyan
 
-        $argumentsString = $this.ConvertArgumentsToString($Arguments)
+        $argumentsString = ConvertTo-ArgumentString $Arguments
         if ($argumentsString) {
             Write-Host "  Arguments: $argumentsString" -ForegroundColor Cyan
         }

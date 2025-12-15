@@ -331,7 +331,7 @@ class SauceLabsProvider : DeviceProvider {
             # Launch activity with Intent extras
             Write-Host "Launching: $packageName/$activityName" -ForegroundColor Cyan
 
-            $argumentsString = $this.ConvertArgumentsToString($Arguments)
+            $argumentsString = ConvertTo-ArgumentString $Arguments
             if ($argumentsString) {
                 Write-Host "  Arguments: $argumentsString" -ForegroundColor Cyan
             }
@@ -372,17 +372,7 @@ class SauceLabsProvider : DeviceProvider {
             }
 
             if ($Arguments) {
-                # Parse arguments string into array, handling quoted strings and standalone "--" separator
-                $argumentsArray = @()
-
-                # Split the arguments string by spaces, but handle quoted strings (both single and double quotes)
-                $argTokens = [regex]::Matches($Arguments, '(\"[^\"]*\"|''[^'']*''|\S+)') | ForEach-Object { $_.Value.Trim('"', "'") }
-
-                foreach ($token in $argTokens) {
-                    $argumentsArray += $token
-                }
-
-                $launchBody['arguments'] = $argumentsArray
+                $launchBody['arguments'] = $Arguments
             }
 
             try {

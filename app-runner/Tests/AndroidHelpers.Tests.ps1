@@ -233,8 +233,8 @@ Context 'Test-IntentExtrasArray' {
         { Test-IntentExtrasArray -Arguments @('-e', 'key with spaces', 'value with spaces') } | Should -Not -Throw
     }
 
-    It 'Throws on invalid format without flag' {
-        { Test-IntentExtrasArray -Arguments @('key', 'value') } | Should -Throw '*Invalid Intent extras format*'
+    It 'Accepts unknown arguments without throwing' {
+        { Test-IntentExtrasArray -Arguments @('key', 'value') } | Should -Not -Throw
     }
 
     It 'Accepts unknown flags by ignoring validation' {
@@ -261,9 +261,11 @@ Context 'Test-IntentExtrasArray' {
         { Test-IntentExtrasArray -Arguments @('-e', 'key1', 'value1', '--new-flag', 'key2', 'value2', '-ez', 'bool', 'true') } | Should -Not -Throw
     }
 
-    It 'Throws on non-flag arguments' {
-        { Test-IntentExtrasArray -Arguments @('not-a-flag', 'value') } | Should -Throw '*Expected Intent extras flag*'
+    It 'Accepts single-token arguments like --grant-read-uri-permission' {
+        { Test-IntentExtrasArray -Arguments @('--grant-read-uri-permission') } | Should -Not -Throw
+    }
+
+    It 'Accepts mixed single tokens and unknown arguments' {
+        { Test-IntentExtrasArray -Arguments @('not-a-flag', 'value', '--activity-clear-task') } | Should -Not -Throw
     }
 }
-
-

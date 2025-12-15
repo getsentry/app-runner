@@ -6,6 +6,8 @@
 # For REMOTE gaming consoles (Xbox, PS5, Switch), see Device.Tests.ps1 which requires platform SDKs.
 $ErrorActionPreference = 'Stop'
 
+$global:DebugPreference = "Continue"
+
 BeforeDiscovery {
     # Detect current platform and add as test target
     function Get-CurrentDesktopPlatform {
