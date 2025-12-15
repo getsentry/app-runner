@@ -637,7 +637,11 @@ class SauceLabsProvider : DeviceProvider {
                         Found = $true
                         BundleId = $this.CurrentPackageName
                         FileSharingEnabled = [bool]$targetApp.UIFileSharingEnabled
-                        Name = $targetApp.CFBundleDisplayName -or $targetApp.CFBundleName -or "Unknown"
+                        Name = $(
+                            if ($targetApp.CFBundleDisplayName) { $targetApp.CFBundleDisplayName }
+                            elseif ($targetApp.CFBundleName) { $targetApp.CFBundleName }
+                            else { "Unknown" }
+                        )
                         AllApps = $bundleIds
                     }
                 }
