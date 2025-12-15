@@ -253,7 +253,10 @@ class XboxProvider : DeviceProvider {
     # - A package identifier (AUMID string) for already-installed packages (uses xbapp launch)
     # - A .xvc file path (ERROR - user must use Install-DeviceApp first)
     [hashtable] RunApplication([string]$AppPath, [string[]]$Arguments, [string]$LogFilePath = $null) {
-        # LogFilePath parameter ignored in this implementation
+	    if (-not ([string]::IsNullOrEmpty($LogFilePath))) {
+	        Write-Warning "LogFilePath parameter is not supported on this platform."
+	    }
+
         if (Test-Path $AppPath -PathType Container) {
             # It's a directory - use loose executable flow (xbrun)
             $appExecutableName = Get-ChildItem -Path $AppPath -File -Filter '*.exe' | Select-Object -First 1 -ExpandProperty Name

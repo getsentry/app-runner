@@ -199,6 +199,10 @@ class AdbProvider : DeviceProvider {
         # LogFilePath parameter ignored in this implementation
         Write-Debug "$($this.Platform): Running application: $ExecutablePath"
 
+        if (-not ([string]::IsNullOrEmpty($LogFilePath))) {
+            Write-Warning "LogFilePath parameter is not supported on this platform."
+        }
+
         # Parse ExecutablePath: "package.name/activity.name"
         $parsed = ConvertFrom-AndroidActivityPath -ExecutablePath $ExecutablePath
         $packageName = $parsed.PackageName

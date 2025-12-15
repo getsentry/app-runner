@@ -15,6 +15,7 @@ function Invoke-DeviceApp {
 
     .PARAMETER LogFilePath
     Optional path to a log file on the device to retrieve instead of using system logs (syslog/logcat).
+    This parameter is only supported on SauceLabs platforms for now.
     Path format is platform-specific:
     - iOS: Use bundle format like "@com.example.app:documents/logs/app.log"
     - Android: Use absolute path like "/data/data/com.example.app/files/logs/app.log"
