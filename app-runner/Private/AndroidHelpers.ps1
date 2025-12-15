@@ -76,11 +76,9 @@ function Test-IntentExtrasArray {
     # Don't throw errors on unknown patterns - just validate what we know
     $knownKeyValueFlags = @('-e', '-es', '--es', '-ez', '--ez', '-ei', '--ei', '-el', '--el')
 
-    # Validate only the patterns we understand
     for ($i = 0; $i -lt $Arguments.Count; $i++) {
         $currentArg = $Arguments[$i]
-        
-        # Only validate arguments that are known key-value flags
+
         if ($knownKeyValueFlags -contains $currentArg) {
             # For known key-value flags, ensure proper structure
             if ($i + 2 -ge $Arguments.Count) {

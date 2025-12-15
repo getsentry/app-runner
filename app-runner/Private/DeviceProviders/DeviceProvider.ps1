@@ -121,7 +121,6 @@ class DeviceProvider {
     }
 
 
-
     [void] LogNotImplemented([string]$operation) {
         Write-Warning "$($this.Platform) $operation not yet implemented"
     }
@@ -380,7 +379,7 @@ class DeviceProvider {
             Write-Warning "LogFilePath parameter is not supported on this platform."
         }
 
-        $argumentsString = ConvertTo-ArgumentString($Arguments)
+        $argumentsString = $Arguments -join ' '
         $command = $this.BuildCommand('launch', @($ExecutablePath, $argumentsString))
         return $this.InvokeApplicationCommand($command, $ExecutablePath, $Arguments)
     }

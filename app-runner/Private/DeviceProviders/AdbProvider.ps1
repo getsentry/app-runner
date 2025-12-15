@@ -227,7 +227,7 @@ class AdbProvider : DeviceProvider {
         # Launch activity
         Write-Host "Launching: $ExecutablePath" -ForegroundColor Cyan
 
-        $argumentsString = ConvertTo-ArgumentString $Arguments
+        $argumentsString = $Arguments -join ' '
         if ($argumentsString) {
             Write-Host "  Arguments: $argumentsString" -ForegroundColor Cyan
         }

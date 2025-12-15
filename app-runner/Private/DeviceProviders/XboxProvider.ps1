@@ -242,7 +242,7 @@ class XboxProvider : DeviceProvider {
         # Not giving the argument here stops any foreground app
         $this.InvokeCommand('stop-app', @(''))
 
-        $argumentsString = ConvertTo-ArgumentString $Arguments
+        $argumentsString = $Arguments -join ' '
         $builtCommand = $this.BuildCommand('launch-app', @($PackageIdentity, $argumentsString))
         return $this.InvokeApplicationCommand($builtCommand, $PackageIdentity, $Arguments)
     }
@@ -266,7 +266,7 @@ class XboxProvider : DeviceProvider {
             Write-Host "Mirroring directory $AppPath to Xbox devkit $xboxTempDir..."
             $this.InvokeCommand('xbcopy', @($AppPath, "x$xboxTempDir"))
 
-            $argumentsString = ConvertTo-ArgumentString $Arguments
+            $argumentsString = $Arguments -join ' '
             $builtCommand = $this.BuildCommand('launch', @($xboxTempDir, "$xboxTempDir\$appExecutableName", $argumentsString))
             return $this.InvokeApplicationCommand($builtCommand, $appExecutableName, $Arguments)
         } elseif (Test-Path $AppPath -PathType Leaf) {

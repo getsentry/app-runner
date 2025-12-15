@@ -331,7 +331,7 @@ class SauceLabsProvider : DeviceProvider {
             # Launch activity with Intent extras
             Write-Host "Launching: $packageName/$activityName" -ForegroundColor Cyan
 
-            $argumentsString = ConvertTo-ArgumentString $Arguments
+            $argumentsString = $Arguments -join ' '
             if ($argumentsString) {
                 Write-Host "  Arguments: $argumentsString" -ForegroundColor Cyan
             }
@@ -480,7 +480,7 @@ class SauceLabsProvider : DeviceProvider {
         if ($formattedLogs -and $env:GITHUB_ACTIONS -eq 'true') {
             Write-GitHub "::group::Logs"
             $formattedLogs | ForEach-Object {
-                 Write-Debug "$_"
+                 Write-Host "$_"
             }
             Write-GitHub "::endgroup::"
         }
