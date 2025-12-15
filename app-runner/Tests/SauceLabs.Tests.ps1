@@ -8,7 +8,7 @@ BeforeDiscovery {
             [string]$Target,
             [string]$FixturePath,
             [string]$ExePath,
-            [string]$Arguments
+            [string[]]$Arguments
         )
 
         $TargetName = "$Platform-$Target"
