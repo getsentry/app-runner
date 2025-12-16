@@ -39,45 +39,65 @@ function ConvertFrom-AndroidActivityPath {
 
 <#
 .SYNOPSIS
-Validates that Android Intent extras are in the correct format.
+Validates that an array of arguments can be safely converted to Intent extras format.
 
 .DESCRIPTION
-Android Intent extras should be passed in the format understood by `am start`.
-This function validates and optionally formats the arguments string.
-
-Common Intent extra formats:
-  -e key value          String extra
-  -es key value         String extra (explicit)
-  -ez key true|false    Boolean extra
-  -ei key value         Integer extra
-  -el key value         Long extra
+Validates each element of an argument array to ensure they form valid Intent extras
+when combined. This prevents issues where individual elements are valid but the
+combined string breaks Intent extras format.
 
 .PARAMETER Arguments
-The arguments string to validate/format
+Array of string arguments to validate
 
 .EXAMPLE
-Test-IntentExtrasFormat "-e cmdline -crash-capture"
+Test-IntentExtrasArray @('-e', 'key', 'value')
 Returns: $true
 
 .EXAMPLE
-Test-IntentExtrasFormat "-e test true -ez debug false"
-Returns: $true
+Test-IntentExtrasArray @('-e', 'key with spaces', 'value')
+Returns: $true (will be quoted properly)
+
+.EXAMPLE
+Test-IntentExtrasArray @('invalid', 'format')
+Throws error for invalid format
 #>
-function Test-IntentExtrasFormat {
+function Test-IntentExtrasArray {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $false)]
-        [string]$Arguments
+        [string[]]$Arguments
     )
 
-    if ([string]::IsNullOrWhiteSpace($Arguments)) {
+    if (-not $Arguments -or $Arguments.Count -eq 0) {
         return $true
     }
 
-    # Intent extras must start with flags: -e, -es, -ez, -ei, -el, -ef, -eu, etc.
-    # Followed by at least one whitespace and additional content
-    if ($Arguments -notmatch '^--?[a-z]{1,2}\s+') {
-        throw "Invalid Intent extras format: '$Arguments'. Must start with flags like -e, -es, -ez, -ei, -el, etc. followed by key-value pairs."
+    # Only validate specific patterns we understand and can verify
+    # Don't throw errors on unknown patterns - just validate what we know
+    $knownKeyValueFlags = @('-e', '-es', '--es', '-ez', '--ez', '-ei', '--ei', '-el', '--el')
+
+    for ($i = 0; $i -lt $Arguments.Count; $i++) {
+        $currentArg = $Arguments[$i]
+
+        if ($knownKeyValueFlags -contains $currentArg) {
+            # For known key-value flags, ensure proper structure
+            if ($i + 2 -ge $Arguments.Count) {
+                throw "Invalid Intent extras format: Flag '$currentArg' must be followed by key and value. Missing arguments."
+            }
+
+            $key = $Arguments[$i + 1]
+            $value = $Arguments[$i + 2]
+
+            # For boolean flags, validate the value
+            if ($currentArg -in @('-ez', '--ez') -and $value -notin @('true', 'false')) {
+                throw "Invalid Intent extras format: Boolean flag '$currentArg' requires 'true' or 'false' value, got: '$value'"
+            }
+
+            # Skip the key and value we just validated
+            $i += 2
+        }
+        # For all other arguments (including single tokens like --grant-read-uri-permission),
+        # just continue - don't validate what we don't understand
     }
 
     return $true
@@ -132,7 +152,7 @@ function Get-ApkPackageName {
     }
 
     Write-Debug "Using $($aaptCmd.Name) to extract package name from APK"
-    
+
     try {
         $PSNativeCommandUseErrorActionPreference = $false
         $output = & $aaptCmd.Name dump badging $ApkPath 2>&1

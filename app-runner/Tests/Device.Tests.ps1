@@ -237,7 +237,7 @@ Describe '<TargetName>' -Tag 'RequiresDevice' -ForEach $TestTargets {
         }
 
         It 'Invoke-DeviceApp executes application' -Skip:$shouldSkip {
-            $result = Invoke-DeviceApp -ExecutablePath $testApp -Arguments ''
+            $result = Invoke-DeviceApp -ExecutablePath $testApp -Arguments @()
             $result | Should -Not -BeNullOrEmpty
             $result | Should -BeOfType [hashtable]
             $result.Keys | Should -Contain 'Output'
@@ -246,7 +246,7 @@ Describe '<TargetName>' -Tag 'RequiresDevice' -ForEach $TestTargets {
         }
 
         It 'Invoke-DeviceApp with arguments works' -Skip:$shouldSkip {
-            $result = Invoke-DeviceApp -ExecutablePath $testApp -Arguments 'error'
+            $result = Invoke-DeviceApp -ExecutablePath $testApp -Arguments @('error')
             $result | Should -Not -BeNullOrEmpty
             $result.Output | Should -Contain 'Sample: ERROR'
             if ($Platform -ne 'Switch') {
