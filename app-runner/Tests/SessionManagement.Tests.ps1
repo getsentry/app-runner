@@ -139,7 +139,7 @@ Context 'Invoke-DeviceApp' {
     It 'Should work with no arguments' {
         Connect-Device -Platform 'Mock'
         $result = Invoke-DeviceApp -ExecutablePath 'MyGame.exe'
-        $result.Arguments | Should -Be ''
+        $result.Arguments | Should -Be @()
     }
 }
 
