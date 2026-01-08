@@ -48,23 +48,23 @@ BeforeDiscovery {
             }
         }
 
-        # Check iOS Fixture (not supported yet)
-        # $iosFixture = Join-Path $PSScriptRoot 'Fixtures' 'iOS' 'TestApp.ipa'
-        # if (Test-Path $iosFixture) {
-        #     $TestTargets += Get-TestTarget `
-        #         -Platform 'iOSSauceLabs' `
-        #         -Target 'iPhone 13 Pro' `
-        #         -FixturePath $iosFixture `
-        #         -ExePath 'com.saucelabs.mydemoapp.ios' `
-        #         -Arguments @('--test-arg', 'value')
-        # } else {
-        #     $message = "iOS fixture not found at $iosFixture"
-        #     if ($isCI) {
-        #         throw "$message. This is required in CI."
-        #     } else {
-        #         Write-Warning "$message. iOSSauceLabs tests will be skipped."
-        #     }
-        # }
+        # Check iOS Fixture
+        $iosFixture = Join-Path $PSScriptRoot 'Fixtures' 'iOS' 'TestApp.ipa'
+        if (Test-Path $iosFixture) {
+            $TestTargets += Get-TestTarget `
+                -Platform 'iOSSauceLabs' `
+                -Target 'iPhone_15_Pro_18_real_sjc1' `
+                -FixturePath $iosFixture `
+                -ExePath 'io.sentry.apprunner.TestApp' `
+                -Arguments @('--test-mode', 'sentry')
+        } else {
+            $message = "iOS fixture not found at $iosFixture"
+            if ($isCI) {
+                throw "$message. This is required in CI."
+            } else {
+                Write-Warning "$message. iOSSauceLabs tests will be skipped."
+            }
+        }
     }
     else {
         $message = "SauceLabs credentials not found. Required environment variables: SAUCE_USERNAME, SAUCE_ACCESS_KEY, SAUCE_REGION"
