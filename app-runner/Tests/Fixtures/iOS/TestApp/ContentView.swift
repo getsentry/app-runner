@@ -8,12 +8,44 @@
 import SwiftUI
 
 struct ContentView: View {
+    @EnvironmentObject var appState: AppState
+
     var body: some View {
-        VStack {
-            Image(systemName: "globe")
-                .imageScale(.large)
-                .foregroundStyle(.tint)
-            Text("Hello, world!")
+        VStack(spacing: 20) {
+            Text("SentryTestApp")
+                .font(.title)
+                .fontWeight(.bold)
+
+            Text("Auto-closing in 3 seconds...")
+                .font(.headline)
+                .foregroundColor(.orange)
+
+            if appState.launchArguments.isEmpty {
+                Text("No launch arguments received")
+                    .foregroundColor(.secondary)
+            } else {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Launch Arguments (\(appState.launchArguments.count)):")
+                        .font(.headline)
+
+                    ScrollView {
+                        VStack(alignment: .leading, spacing: 4) {
+                            ForEach(Array(appState.launchArguments.enumerated()), id: \.offset) {
+                                index, arg in
+                                Text("\(index + 1). \(arg)")
+                                    .font(.system(.body, design: .monospaced))
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 2)
+                                    .background(Color.gray.opacity(0.1))
+                                    .cornerRadius(4)
+                            }
+                        }
+                    }
+                    .frame(maxHeight: 200)
+                }
+            }
+
+            Spacer()
         }
         .padding()
     }
@@ -21,4 +53,5 @@ struct ContentView: View {
 
 #Preview {
     ContentView()
+        .environmentObject(AppState())
 }
