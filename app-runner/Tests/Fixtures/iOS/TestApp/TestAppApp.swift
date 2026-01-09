@@ -26,6 +26,7 @@ struct TestAppApp: App {
     }
 
     init() {
+        createTestFiles()
         processLaunchArguments()
         startAutoCloseTimer()
     }
@@ -74,6 +75,22 @@ struct TestAppApp: App {
         os_log("Application terminated", log: Self.logger, type: .info)
         exit(0)
     }
+
+    private func createTestFiles() {
+        do {
+            let documentsURL = try FileManager.default.url(
+                for: .documentDirectory, in: .userDomainMask, appropriateFor: nil, create: true)
+
+            // Create test file for CopyDeviceItem and LogFilePath testing
+            let testFileURL = documentsURL.appendingPathComponent("test-file.txt")
+            try "Test file content".write(to: testFileURL, atomically: true, encoding: .utf8)
+        } catch {
+            os_log(
+                "Failed to create test file: %@", log: Self.logger, type: .error,
+                error.localizedDescription)
+        }
+    }
+
 }
 
 class AppState: ObservableObject {
