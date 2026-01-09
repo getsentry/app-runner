@@ -689,6 +689,19 @@ class SauceLabsProvider : DeviceProvider {
             throw "No active SauceLabs session. Call InstallApp first to create a session."
         }
 
+        # Extract package/bundle ID from path if CurrentPackageName is not set
+        if (-not $this.CurrentPackageName) {
+            if ($DevicePath -match '^@([^:]+):') {
+                # iOS format: @bundle.id:documents/file.txt
+                $this.CurrentPackageName = $matches[1]
+                Write-Debug "Extracted iOS bundle ID from path: $($this.CurrentPackageName)"
+            } elseif ($DevicePath -match '/Android/data/([^/]+)/') {
+                # Android format: /storage/.../Android/data/package.name/files/file.txt
+                $this.CurrentPackageName = $matches[1]
+                Write-Debug "Extracted Android package name from path: $($this.CurrentPackageName)"
+            }
+        }
+
         try {
             # Pull file from device via Appium API
             $baseUri = "https://ondemand.$($this.Region).saucelabs.com/wd/hub/session/$($this.SessionId)"
