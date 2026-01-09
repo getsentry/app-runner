@@ -783,8 +783,11 @@ class SauceLabsProvider : DeviceProvider {
 
                 if ($this.CurrentPackageName) {
                     $errorMsg += "`n`nWorking path formats:"
+                    $errorMsg += "`n- External app storage: /storage/emulated/0/Android/data/$($this.CurrentPackageName)/files/app.log (RECOMMENDED)"
                     $errorMsg += "`n- Internal storage: /data/data/$($this.CurrentPackageName)/files/app.log (needs debuggable=true)"
                     $errorMsg += "`n- App-relative: @$($this.CurrentPackageName)/files/app.log (needs debuggable=true)"
+                    $errorMsg += "`n`nNote: External app storage (/storage/emulated/0/Android/data/...) has proven most reliable"
+                    $errorMsg += "`n      for SauceLabs file operations. App should create files using getExternalFilesDir()."
                 }
             }
         }
