@@ -606,18 +606,32 @@ class SauceLabsProvider : DeviceProvider {
 
     <#
     .SYNOPSIS
-    Checks if the current app supports file sharing capability on iOS devices.
+    Checks if the current app supports file sharing capability (iOS only).
 
     .DESCRIPTION
     Uses Appium's mobile: listApps command to retrieve app information and check
     if UIFileSharingEnabled is set for the current app bundle.
+    
+    This method is iOS-specific. On Android, file access is controlled by the
+    android:debuggable flag in AndroidManifest.xml rather than app-level settings.
 
     .OUTPUTS
     Hashtable with app capability information including Found, FileSharingEnabled, and AllApps.
+    On Android platforms, returns a graceful response indicating the feature is not applicable.
     #>
     [hashtable] CheckAppFileSharingCapability() {
         if (-not $this.SessionId) {
             throw "No active SauceLabs session. Call InstallApp first to create a session."
+        }
+
+        # Handle Android gracefully - file sharing capability is not applicable
+        if ($this.MobilePlatform -eq 'Android') {
+            return @{
+                Found = $false
+                FileSharingEnabled = $false
+                AllApps = [array]@()
+                Note = "CheckAppFileSharingCapability is iOS-only. Android file access is controlled by android:debuggable flag."
+            }
         }
 
         try {
