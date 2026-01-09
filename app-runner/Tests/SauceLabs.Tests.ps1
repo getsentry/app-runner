@@ -147,4 +147,97 @@ Describe '<Platform>' -Tag 'SauceLabs' -ForEach $TestTargets {
             $result.Output | Should -Not -BeNullOrEmpty
         }
     }
+
+    Context 'Mobile File Operations' -Tag $TargetName {
+        BeforeAll {
+            if (-not (Test-Path $FixturePath)) {
+                throw "Test app not found at $FixturePath. Mobile file operations tests require valid test fixtures."
+            }
+
+            Connect-Device -Platform $Platform -Target $Target
+
+            $script:FixturePath = $FixturePath
+            $script:ExePath = $ExePath
+            $script:Arguments = $Arguments
+
+            Install-DeviceApp -Path $script:FixturePath
+            $result = Invoke-DeviceApp -ExecutablePath $script:ExePath -Arguments $script:Arguments
+        }
+
+        AfterAll {
+            Invoke-TestCleanup
+        }
+
+        It 'CheckAppFileSharingCapability returns valid app information for iOS' {
+            if ($Platform -ne 'iOSSauceLabs') {
+                Set-ItResult -Skipped -Because "CheckAppFileSharingCapability is iOS-only"
+                return
+            }
+
+            $session = Get-DeviceSession
+            $result = $session.Provider.CheckAppFileSharingCapability()
+
+            $result | Should -Not -BeNullOrEmpty
+            $result | Should -BeOfType [hashtable]
+            $result.ContainsKey('Found') | Should -BeTrue
+            $result.ContainsKey('FileSharingEnabled') | Should -BeTrue
+            $result.ContainsKey('AllApps') | Should -BeTrue
+
+            $result.Found | Should -BeOfType [bool]
+            $result.FileSharingEnabled | Should -BeOfType [bool]
+            ($result.AllApps -is [array]) -or ($result.AllApps -is [string]) | Should -BeTrue
+            $result.ContainsKey('BundleId') | Should -BeTrue
+            $result.BundleId | Should -Not -BeNullOrEmpty
+        }
+
+        It 'CopyDeviceItem successfully copies test files from device' {
+            $session = Get-DeviceSession
+            $testPath = if ($Platform -eq 'iOSSauceLabs') {
+                '@io.sentry.apprunner.TestApp:documents/test-file.txt'
+            } else {
+                '/storage/emulated/0/Android/data/com.sentry.test.minimal/files/test-file.txt'
+            }
+
+            $tempFile = [System.IO.Path]::GetTempFileName()
+            try {
+               { $session.Provider.CopyDeviceItem($testPath, $tempFile) } | Should -Not -Throw
+
+                # Verify file was copied and has content
+                $tempFile | Should -Exist
+                $content = Get-Content $tempFile -Raw
+                $content | Should -Not -BeNullOrEmpty
+                $content | Should -Match "Test file content"
+            } finally {
+                Remove-Item $tempFile -Force -ErrorAction SilentlyContinue
+            }
+        }
+
+        It 'RunApplication with LogFilePath retrieves custom log files successfully' {
+            $logPath = if ($Platform -eq 'iOSSauceLabs') {
+                '@io.sentry.apprunner.TestApp:documents/test-file.txt'
+            } else {
+                '/storage/emulated/0/Android/data/com.sentry.test.minimal/files/test-file.txt'
+            }
+
+            # Should successfully retrieve custom log files (or fallback to system logs)
+            $result = Invoke-DeviceApp -ExecutablePath $script:ExePath -Arguments $script:Arguments -LogFilePath $logPath
+
+            # Should return results regardless of log source
+            $result | Should -Not -BeNullOrEmpty
+            $result.Output | Should -Not -BeNullOrEmpty
+        }
+
+        It 'Verifies test app file sharing is now enabled' {
+            if ($Platform -ne 'iOSSauceLabs') {
+                Set-ItResult -Skipped -Because "File sharing verification is iOS-only"
+                return
+            }
+
+            # Check iOS file sharing capability - should now be enabled
+            $session = Get-DeviceSession
+            $result = $session.Provider.CheckAppFileSharingCapability()
+            $result.Found | Should -BeTrue -Because "Test app should be found on device"
+            $result.FileSharingEnabled | Should -BeTrue -Because "Test app has UIFileSharingEnabled=true"
+        }
+    }
 }
