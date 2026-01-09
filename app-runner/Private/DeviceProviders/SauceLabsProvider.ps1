@@ -323,11 +323,6 @@ class SauceLabsProvider : DeviceProvider {
             $activityName = $parsed.ActivityName
             $this.CurrentPackageName = $packageName
 
-            # Validate Intent extras format
-            if ($Arguments -and $Arguments.Count -gt 0) {
-                Test-IntentExtrasArray -Arguments $Arguments | Out-Null
-            }
-
             # Launch activity with Intent extras
             Write-Host "Launching: $packageName/$activityName" -ForegroundColor Cyan
 

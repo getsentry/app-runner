@@ -209,11 +209,6 @@ class AdbProvider : DeviceProvider {
         $activityName = $parsed.ActivityName
         $this.CurrentPackageName = $packageName
 
-        # Validate Intent extras format
-        if ($Arguments -and $Arguments.Count -gt 0) {
-            Test-IntentExtrasArray -Arguments $Arguments | Out-Null
-        }
-
         $timeoutSeconds = $this.Timeouts['run-timeout']
         $pidRetrySeconds = $this.Timeouts['pid-retry']
         $processCheckIntervalSeconds = $this.Timeouts['process-check-interval']
