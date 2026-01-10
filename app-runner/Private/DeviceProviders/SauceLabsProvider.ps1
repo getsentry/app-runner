@@ -611,7 +611,7 @@ class SauceLabsProvider : DeviceProvider {
     .DESCRIPTION
     Uses Appium's mobile: listApps command to retrieve app information and check
     if UIFileSharingEnabled is set for the current app bundle.
-    
+
     This method is iOS-specific. On Android, file access is controlled by the
     android:debuggable flag in AndroidManifest.xml rather than app-level settings.
 
@@ -683,8 +683,17 @@ class SauceLabsProvider : DeviceProvider {
 
     .PARAMETER DevicePath
     Path to the file on the device:
-    - iOS: Bundle format @bundle.id:documents/file.log
-    - Android: Absolute path /data/data/package.name/files/logs/file.log (requires debuggable=true)
+    - iOS:
+      - Bundle format: @bundle.id:documents/file.log
+      - App must have UIFileSharingEnabled=true in Info.plist
+      - Files must be located in the app's Documents directory
+    - Android:
+      - External storage (recommended): /storage/emulated/0/Android/data/PACKAGE.NAME/files/file.log
+        • Most reliable for SauceLabs cloud devices
+        • App should write files using getExternalFilesDir()
+      - Internal storage (not recommended): /data/data/PACKAGE.NAME/files/file.log
+        • Requires android:debuggable="true" in AndroidManifest.xml
+        • Less reliable due to encryption and permissions
 
     .PARAMETER Destination
     Local destination path where the file should be saved.
