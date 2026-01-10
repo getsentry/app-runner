@@ -803,7 +803,7 @@ class SauceLabsProvider : DeviceProvider {
         }
 
         Write-Warning $errorMsg
-        throw
+        throw $Error.Exception
     }
 
     # Override DetectAndSetDefaultTarget - not needed for SauceLabs
