@@ -14,12 +14,11 @@
 $ErrorActionPreference = 'Stop'
 
 $ProjectRoot = $PSScriptRoot
-$ProjectFile = Join-Path (Split-Path $ProjectRoot -Parent) "TestApp.xcodeproj"
 
 Write-Information "Building SentryTestApp debug IPA..." -InformationAction Continue
 
 try {
-    Push-Location (Split-Path $ProjectFile -Parent)
+    Push-Location $ProjectRoot
 
     # Clean previous builds
     & xcodebuild -project TestApp.xcodeproj -scheme TestApp clean -quiet
@@ -48,7 +47,7 @@ try {
 
     # Export IPA
     $exportPath = Join-Path $ProjectRoot "export"
-    $exportOptionsFile = Join-Path $ProjectRoot "ExportOptions.plist"
+    $exportOptionsFile = Join-Path $ProjectRoot "TestApp/ExportOptions.plist"
 
     if (Test-Path $exportPath) {
         Remove-Item $exportPath -Recurse -Force
@@ -71,7 +70,7 @@ try {
         throw "No IPA file found in export directory"
     }
 
-    $targetIPA = Join-Path (Split-Path $ProjectRoot -Parent) "TestApp.ipa"
+    $targetIPA = Join-Path $ProjectRoot "TestApp.ipa"
     Copy-Item -Path $exportedIPA.FullName -Destination $targetIPA -Force
 
     Write-Information "✓ IPA built successfully: $targetIPA" -InformationAction Continue
