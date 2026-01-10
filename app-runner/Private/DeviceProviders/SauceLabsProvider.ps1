@@ -612,8 +612,10 @@ class SauceLabsProvider : DeviceProvider {
     Uses Appium's mobile: listApps command to retrieve app information and check
     if UIFileSharingEnabled is set for the current app bundle.
 
-    This method is iOS-specific. On Android, file access is controlled by the
-    android:debuggable flag in AndroidManifest.xml rather than app-level settings.
+    This method is iOS-specific. On Android, file access to app's internal storage requires
+    the android:debuggable flag in AndroidManifest.xml due to system-level security restrictions
+    and storage encryption. External storage access through paths like /storage/emulated/0/Android/data/
+    does not require the debuggable flag and is the recommended approach for SauceLabs environments.
 
     .OUTPUTS
     Hashtable with app capability information including Found, FileSharingEnabled, and AllApps.
