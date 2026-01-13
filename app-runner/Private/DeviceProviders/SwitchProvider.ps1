@@ -20,6 +20,10 @@ class SwitchProvider : DeviceProvider {
     SwitchProvider() {
         $this.Platform = 'Switch'
 
+        # Switch supports checking if a default target is set even with multiple targets registered,
+        # so start detection at state 0 (check default first) instead of state 1 (list all targets)
+        $this.DetectTargetInitialState = 0
+
         # Set SDK path if NINTENDO_SDK_ROOT environment variable is available
         $nintendoSdkRoot = $env:NINTENDO_SDK_ROOT
         if ($nintendoSdkRoot) {
