@@ -55,6 +55,16 @@ class SwitchProvider : DeviceProvider {
         return $statusData.IpAddress
     }
 
+    # Override Connect to support target parameter
+    # Sets the default target via ControlTarget so subsequent commands (including RunOnTarget via ctest) use it
+    [hashtable] Connect([string]$target) {
+        if (-not [string]::IsNullOrEmpty($target)) {
+            Write-Debug "$($this.Platform): Setting target device: $target"
+            $this.InvokeCommand('set-default-target', @($target))
+        }
+        return $this.Connect()
+    }
+
     # Override Connect to provide Switch specific wakeup
     [hashtable] Connect() {
         Write-Debug 'Connecting to Switch Devkit...'
