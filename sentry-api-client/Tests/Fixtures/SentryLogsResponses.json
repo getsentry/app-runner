@@ -1,0 +1,85 @@
+{
+  "logs_list": {
+    "data": [
+      {
+        "timestamp": "2025-01-14T14:32:45.123Z",
+        "message": "User authentication completed successfully",
+        "sentry.severity": "info",
+        "sentry.severity_number": 9,
+        "trace": "abc123def456789012345678901234ab",
+        "sentry.item_id": "log-item-001",
+        "test.id": "integration-test-001",
+        "user.id": "12345",
+        "service.name": "auth-service"
+      },
+      {
+        "timestamp": "2025-01-14T14:32:46.456Z",
+        "message": "Database query executed: SELECT * FROM users",
+        "sentry.severity": "debug",
+        "sentry.severity_number": 5,
+        "trace": "abc123def456789012345678901234ab",
+        "sentry.item_id": "log-item-002",
+        "test.id": "integration-test-001",
+        "db.operation": "SELECT",
+        "db.table": "users"
+      },
+      {
+        "timestamp": "2025-01-14T14:32:47.789Z",
+        "message": "Request completed with status 200",
+        "sentry.severity": "info",
+        "sentry.severity_number": 9,
+        "trace": "abc123def456789012345678901234ab",
+        "sentry.item_id": "log-item-003",
+        "test.id": "integration-test-001",
+        "http.status_code": "200"
+      },
+      {
+        "timestamp": "2025-01-14T14:33:00.000Z",
+        "message": "Connection timeout to external service",
+        "sentry.severity": "error",
+        "sentry.severity_number": 17,
+        "trace": "def456789012345678901234abcdef00",
+        "sentry.item_id": "log-item-004",
+        "test.id": "integration-test-002",
+        "service.name": "external-api",
+        "error.type": "timeout"
+      }
+    ],
+    "meta": {
+      "fields": {
+        "timestamp": "date",
+        "message": "string",
+        "sentry.severity": "string",
+        "sentry.severity_number": "number",
+        "trace": "string",
+        "sentry.item_id": "string"
+      },
+      "units": {}
+    }
+  },
+  "logs_empty": {
+    "data": [],
+    "meta": {
+      "fields": {
+        "timestamp": "date",
+        "message": "string",
+        "sentry.severity": "string"
+      },
+      "units": {}
+    }
+  },
+  "logs_error_responses": {
+    "invalid_dataset": {
+      "detail": "Dataset 'invalid' is not valid. Valid datasets are: discover, transactions, ourlogs"
+    },
+    "missing_field": {
+      "detail": "field is required"
+    },
+    "invalid_query": {
+      "detail": "Invalid query: unexpected token"
+    },
+    "unauthorized": {
+      "detail": "Authentication credentials were not provided."
+    }
+  }
+}
