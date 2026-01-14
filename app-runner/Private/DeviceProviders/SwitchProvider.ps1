@@ -153,9 +153,9 @@ class SwitchProvider : DeviceProvider {
         Write-Debug "$($this.Platform): Taking screenshot (directory: $directory, file: $filename)"
 
         # Build command with --target if target was specified during Connect()
-        $targetArg = if (-not [string]::IsNullOrEmpty($this.Target)) { "--target $($this.Target) " } else { '' }
+        $targetArg = if (-not [string]::IsNullOrEmpty($this.Target)) { " --target $($this.Target)" } else { '' }
         $toolPath = $this.GetToolPath($this.TargetControlTool)
-        $command = "& '$toolPath' ${targetArg}take-screenshot --directory `"$directory`" --file-name `"$filename`" 2>&1"
+        $command = "& '$toolPath' take-screenshot${targetArg} --directory `"$directory`" --file-name `"$filename`" 2>&1"
 
         Write-Debug "$($this.Platform): Invoking screenshot command: $command"
         $result = Invoke-Expression "$command | $($this.DebugOutputForwarder)"
