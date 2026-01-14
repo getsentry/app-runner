@@ -117,7 +117,7 @@ Describe 'SentryApiClient Logs Functions' {
             Assert-MockCalled -ModuleName SentryApiClient Invoke-WebRequest -ParameterFilter {
                 $Uri -match 'field=timestamp' -and
                 $Uri -match 'field=message' -and
-                $Uri -match 'field=sentry\.severity'
+                $Uri -match 'field=severity'
             }
         }
 
@@ -251,8 +251,8 @@ Describe 'SentryApiClient Logs Functions' {
             $firstLog = $result.data[0]
             $firstLog.timestamp | Should -Not -BeNullOrEmpty
             $firstLog.message | Should -Not -BeNullOrEmpty
-            $firstLog.'sentry.severity' | Should -Not -BeNullOrEmpty
-            $firstLog.'sentry.item_id' | Should -Not -BeNullOrEmpty
+            $firstLog.severity | Should -Not -BeNullOrEmpty
+            $firstLog.id | Should -Not -BeNullOrEmpty
         }
 
         It 'Should return logs with custom attributes' {

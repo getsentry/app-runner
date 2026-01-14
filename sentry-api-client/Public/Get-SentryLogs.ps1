@@ -78,10 +78,9 @@ function Get-SentryLogs {
         $Fields = @(
             'timestamp',
             'message',
-            'sentry.severity',
-            'sentry.severity_number',
+            'severity',
             'trace',
-            'sentry.item_id'
+            'id'
         )
     }
 

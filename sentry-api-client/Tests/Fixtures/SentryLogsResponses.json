@@ -4,10 +4,9 @@
       {
         "timestamp": "2025-01-14T14:32:45.123Z",
         "message": "User authentication completed successfully",
-        "sentry.severity": "info",
-        "sentry.severity_number": 9,
+        "severity": "info",
         "trace": "abc123def456789012345678901234ab",
-        "sentry.item_id": "log-item-001",
+        "id": "log-item-001",
         "test.id": "integration-test-001",
         "user.id": "12345",
         "service.name": "auth-service"
@@ -15,10 +14,9 @@
       {
         "timestamp": "2025-01-14T14:32:46.456Z",
         "message": "Database query executed: SELECT * FROM users",
-        "sentry.severity": "debug",
-        "sentry.severity_number": 5,
+        "severity": "debug",
         "trace": "abc123def456789012345678901234ab",
-        "sentry.item_id": "log-item-002",
+        "id": "log-item-002",
         "test.id": "integration-test-001",
         "db.operation": "SELECT",
         "db.table": "users"
@@ -26,20 +24,18 @@
       {
         "timestamp": "2025-01-14T14:32:47.789Z",
         "message": "Request completed with status 200",
-        "sentry.severity": "info",
-        "sentry.severity_number": 9,
+        "severity": "info",
         "trace": "abc123def456789012345678901234ab",
-        "sentry.item_id": "log-item-003",
+        "id": "log-item-003",
         "test.id": "integration-test-001",
         "http.status_code": "200"
       },
       {
         "timestamp": "2025-01-14T14:33:00.000Z",
         "message": "Connection timeout to external service",
-        "sentry.severity": "error",
-        "sentry.severity_number": 17,
+        "severity": "error",
         "trace": "def456789012345678901234abcdef00",
-        "sentry.item_id": "log-item-004",
+        "id": "log-item-004",
         "test.id": "integration-test-002",
         "service.name": "external-api",
         "error.type": "timeout"
@@ -49,10 +45,9 @@
       "fields": {
         "timestamp": "date",
         "message": "string",
-        "sentry.severity": "string",
-        "sentry.severity_number": "number",
+        "severity": "string",
         "trace": "string",
-        "sentry.item_id": "string"
+        "id": "string"
       },
       "units": {}
     }

@@ -48,5 +48,16 @@ function Get-SentryLogsByAttribute {
     )
 
     $Query = "$AttributeName`:$AttributeValue"
-    return Get-SentryLogs -Query $Query -Limit $Limit -StatsPeriod $StatsPeriod
+
+    # Include the queried attribute in the fields so it's returned in the response
+    $Fields = @(
+        'timestamp',
+        'message',
+        'severity',
+        'trace',
+        'id',
+        $AttributeName
+    )
+
+    return Get-SentryLogs -Query $Query -Limit $Limit -StatsPeriod $StatsPeriod -Fields $Fields
 }

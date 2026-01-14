@@ -235,20 +235,18 @@ function New-MockSentryApiResponder {
 
 function New-MockSentryLog {
     param(
-        [string]$ItemId = "log-$(New-Guid)",
+        [string]$Id = "log-$(New-Guid)",
         [string]$Message = 'Test log message',
         [string]$Severity = 'info',
-        [int]$SeverityNumber = 9,
         [string]$TraceId = (New-Guid).ToString().Replace('-', ''),
         [string]$Timestamp = (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ss.fffZ'),
         [hashtable]$Attributes = @{}
     )
 
     $log = @{
-        'sentry.item_id' = $ItemId
+        'id' = $Id
         'message' = $Message
-        'sentry.severity' = $Severity
-        'sentry.severity_number' = $SeverityNumber
+        'severity' = $Severity
         'trace' = $TraceId
         'timestamp' = $Timestamp
     }
