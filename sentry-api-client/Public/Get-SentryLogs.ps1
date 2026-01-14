@@ -73,14 +73,14 @@ function Get-SentryLogs {
     }
     $FinalQuery = $QueryParts -join ' '
 
-    # Default fields for logs if not specified
+    # Default fields for logs if not specified (matching API format)
     if (-not $Fields -or $Fields.Count -eq 0) {
         $Fields = @(
-            'timestamp',
-            'message',
-            'severity',
+            'id',
             'trace',
-            'id'
+            'severity',
+            'timestamp',
+            'message'
         )
     }
 
