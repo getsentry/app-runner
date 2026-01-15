@@ -24,7 +24,7 @@ function Invoke-SentryApiRequest {
     }
 
     try {
-        Write-Host "Sentry API: $Method $Uri" -ForegroundColor Cyan
+        Write-Debug "Making $Method request to: $Uri"
 
         # Use Invoke-WebRequest instead of Invoke-RestMethod to get explicit control over JSON parsing
         # Invoke-RestMethod silently returns strings when JSON parsing fails (e.g., with empty string keys)
