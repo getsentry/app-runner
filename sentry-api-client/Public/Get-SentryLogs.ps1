@@ -88,6 +88,7 @@ function Get-SentryLogs {
         dataset     = 'ourlogs'
         statsPeriod = $StatsPeriod
         per_page    = $Limit
+        field       = $Fields
     }
 
     if ($FinalQuery) {
@@ -98,26 +99,7 @@ function Get-SentryLogs {
         $QueryParams.cursor = $Cursor
     }
 
-    # Add fields to query params - the API expects multiple field parameters
-    # Build query string manually to handle multiple field values
-    $QueryStringParts = @()
-    foreach ($Key in $QueryParams.Keys) {
-        $Value = $QueryParams[$Key]
-        if ($null -ne $Value -and $Value -ne '') {
-            if ($Key -eq 'query') {
-                $QueryStringParts += "$Key=$([System.Web.HttpUtility]::UrlEncode($Value))"
-            } else {
-                $QueryStringParts += "$Key=$Value"
-            }
-        }
-    }
-
-    # Add field parameters
-    foreach ($Field in $Fields) {
-        $QueryStringParts += "field=$([System.Web.HttpUtility]::UrlEncode($Field))"
-    }
-
-    $QueryString = $QueryStringParts -join '&'
+    $QueryString = Build-QueryString -Parameters $QueryParams
     $Uri = Get-SentryOrganizationUrl -Resource "events/" -QueryString $QueryString
 
     try {

@@ -80,9 +80,16 @@ function Build-QueryString {
     foreach ($Key in $Parameters.Keys) {
         $Value = $Parameters[$Key]
         if ($null -ne $Value -and $Value -ne '') {
-            if ($Key -eq 'query') {
+            if ($Value -is [array]) {
+                # Handle arrays: produce multiple key=value pairs (e.g., field=a&field=b)
+                foreach ($Item in $Value) {
+                    $QueryParams += "$Key=$([System.Web.HttpUtility]::UrlEncode($Item))"
+                }
+            }
+            elseif ($Key -eq 'query') {
                 $QueryParams += "$Key=$([System.Web.HttpUtility]::UrlEncode($Value))"
-            } else {
+            }
+            else {
                 $QueryParams += "$Key=$Value"
             }
         }
