@@ -3,76 +3,29 @@
     "data": [
       {
         "id": "019bbce4569e7f5f81466757e8f847a1",
-        "project.id": 6253052,
         "trace": "abc123def456789012345678901234ab",
-        "severity_number": null,
         "severity": "info",
         "timestamp": "2025-01-14T14:32:45+00:00",
-        "timestamp_precise": 1.768400639646379e+18,
-        "observed_timestamp": "1768400639662594961",
-        "message.template": null,
-        "message": "User authentication completed successfully",
-        "test_id": "integration-test-001",
-        "user.id": "12345",
-        "service.name": "auth-service"
+        "message": "Test log message",
+        "test_id": "integration-test-001"
       },
       {
         "id": "019bbce4569e7f5f81466757e8f847a2",
-        "project.id": 6253052,
         "trace": "abc123def456789012345678901234ab",
-        "severity_number": null,
-        "severity": "debug",
+        "severity": "warn",
         "timestamp": "2025-01-14T14:32:46+00:00",
-        "timestamp_precise": 1.768400640646379e+18,
-        "observed_timestamp": "1768400640662594961",
-        "message.template": null,
-        "message": "Database query executed: SELECT * FROM users",
-        "test_id": "integration-test-001",
-        "db.operation": "SELECT",
-        "db.table": "users"
-      },
-      {
-        "id": "019bbce4569e7f5f81466757e8f847a3",
-        "project.id": 6253052,
-        "trace": "abc123def456789012345678901234ab",
-        "severity_number": null,
-        "severity": "info",
-        "timestamp": "2025-01-14T14:32:47+00:00",
-        "timestamp_precise": 1.768400641646379e+18,
-        "observed_timestamp": "1768400641662594961",
-        "message.template": null,
-        "message": "Request completed with status 200",
-        "test_id": "integration-test-001",
-        "http.status_code": "200"
-      },
-      {
-        "id": "019bbce4569e7f5f81466757e8f847a4",
-        "project.id": 6253052,
-        "trace": "def456789012345678901234abcdef00",
-        "severity_number": null,
-        "severity": "error",
-        "timestamp": "2025-01-14T14:33:00+00:00",
-        "timestamp_precise": 1.768400680646379e+18,
-        "observed_timestamp": "1768400680662594961",
-        "message.template": null,
-        "message": "Connection timeout to external service",
-        "test_id": "integration-test-002",
-        "service.name": "external-api",
-        "error.type": "timeout"
+        "message": "Warning log message",
+        "test_id": "integration-test-001"
       }
     ],
     "meta": {
       "fields": {
         "id": "string",
-        "project.id": "number",
         "trace": "string",
-        "severity_number": "number",
         "severity": "string",
         "timestamp": "date",
-        "timestamp_precise": "number",
-        "observed_timestamp": "string",
-        "message.template": "string",
-        "message": "string"
+        "message": "string",
+        "test_id": "string"
       },
       "units": {}
     }
@@ -80,28 +33,8 @@
   "logs_empty": {
     "data": [],
     "meta": {
-      "fields": {
-        "id": "string",
-        "trace": "string",
-        "severity": "string",
-        "timestamp": "date",
-        "message": "string"
-      },
+      "fields": {},
       "units": {}
-    }
-  },
-  "logs_error_responses": {
-    "invalid_dataset": {
-      "detail": "Dataset 'invalid' is not valid. Valid datasets are: discover, transactions, ourlogs"
-    },
-    "missing_field": {
-      "detail": "field is required"
-    },
-    "invalid_query": {
-      "detail": "Invalid query: unexpected token"
-    },
-    "unauthorized": {
-      "detail": "Authentication credentials were not provided."
     }
   }
 }

@@ -233,49 +233,4 @@ function New-MockSentryApiResponder {
     }.GetNewClosure()
 }
 
-function New-MockSentryLog {
-    param(
-        [string]$Id = "log-$(New-Guid)",
-        [string]$Message = 'Test log message',
-        [string]$Severity = 'info',
-        [string]$TraceId = (New-Guid).ToString().Replace('-', ''),
-        [string]$Timestamp = (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ss.fffZ'),
-        [hashtable]$Attributes = @{}
-    )
-
-    $log = @{
-        'id' = $Id
-        'message' = $Message
-        'severity' = $Severity
-        'trace' = $TraceId
-        'timestamp' = $Timestamp
-    }
-
-    # Merge custom attributes
-    foreach ($key in $Attributes.Keys) {
-        $log[$key] = $Attributes[$key]
-    }
-
-    return $log
-}
-
-function New-MockSentryLogsResponse {
-    param(
-        [array]$Logs = @(),
-        [hashtable]$Meta = @{
-            fields = @{
-                timestamp = 'date'
-                message = 'string'
-                'sentry.severity' = 'string'
-            }
-            units = @{}
-        }
-    )
-
-    return @{
-        data = $Logs
-        meta = $Meta
-    }
-}
-
 # Functions are automatically available when dot-sourced
