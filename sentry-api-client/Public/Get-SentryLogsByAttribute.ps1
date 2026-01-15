@@ -6,10 +6,10 @@ function Get-SentryLogsByAttribute {
     .DESCRIPTION
     Fetches Sentry structured logs that match a specific attribute name and value.
     This is a convenience wrapper around Get-SentryLogs for common use cases
-    like filtering by test.id for integration testing.
+    like filtering by test_id for integration testing.
 
     .PARAMETER AttributeName
-    The name of the attribute to filter by (e.g., 'test.id', 'user.id', 'service.name').
+    The name of the attribute to filter by (e.g., 'test_id', 'user_id', 'service_name').
 
     .PARAMETER AttributeValue
     The value of the attribute to match.
@@ -21,16 +21,10 @@ function Get-SentryLogsByAttribute {
     Relative time period (e.g., '24h', '7d'). Default is '24h'.
 
     .EXAMPLE
-    Get-SentryLogsByAttribute -AttributeName 'test.id' -AttributeValue 'integration-test-001'
-    # Retrieves logs with test.id='integration-test-001'
+    Get-SentryLogsByAttribute -AttributeName 'test_id' -AttributeValue 'integration-test-001'
 
     .EXAMPLE
-    Get-SentryLogsByAttribute -AttributeName 'user.id' -AttributeValue '12345' -StatsPeriod '7d'
-    # Retrieves logs for user 12345 from the last 7 days
-
-    .EXAMPLE
-    Get-SentryLogsByAttribute -AttributeName 'service.name' -AttributeValue 'auth-service' -Limit 50
-    # Retrieves up to 50 logs from the auth-service
+    Get-SentryLogsByAttribute -AttributeName 'user_id' -AttributeValue '12345' -StatsPeriod '7d'
     #>
     [CmdletBinding()]
     param(

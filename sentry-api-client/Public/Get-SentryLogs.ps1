@@ -9,7 +9,7 @@ function Get-SentryLogs {
     Uses the Sentry Discover API with the 'ourlogs' dataset.
 
     .PARAMETER Query
-    Search query string using Sentry search syntax (e.g., 'test.id:abc123', 'sentry.severity:error').
+    Search query string using Sentry search syntax (e.g., 'test_id:abc123', 'severity:error').
 
     .PARAMETER TraceId
     Filter logs by specific trace ID.
@@ -24,23 +24,16 @@ function Get-SentryLogs {
     Pagination cursor for retrieving subsequent pages of results.
 
     .PARAMETER Fields
-    Specific fields to return. Default includes: timestamp, message, sentry.severity, trace_id, sentry.item_id.
+    Specific fields to return. Default includes: id, trace, severity, timestamp, message.
 
     .EXAMPLE
-    Get-SentryLogs -Query 'test.id:integration-test-001'
-    # Retrieves logs with test.id attribute matching 'integration-test-001'
+    Get-SentryLogs -Query 'test_id:integration-test-001'
 
     .EXAMPLE
-    Get-SentryLogs -Query 'sentry.severity:error' -StatsPeriod '7d'
-    # Retrieves error logs from the last 7 days
+    Get-SentryLogs -Query 'severity:error' -StatsPeriod '7d'
 
     .EXAMPLE
     Get-SentryLogs -TraceId 'abc123def456' -Limit 50
-    # Retrieves up to 50 logs from a specific trace
-
-    .EXAMPLE
-    Get-SentryLogs -Query 'test.id:test-001 sentry.severity:info'
-    # Retrieves info logs with specific test.id
     #>
     [CmdletBinding()]
     param(
