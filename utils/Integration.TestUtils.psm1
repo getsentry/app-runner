@@ -292,7 +292,8 @@ function Get-SentryTestLog {
                 $logsJson = $logs | ConvertTo-Json -Depth 10
                 $logsJson | Out-File -FilePath (Get-OutputFilePath "logs-$AttributeName-$AttributeValue.json")
 
-                return $logs
+                # Use comma operator to ensure array is preserved (prevents PowerShell unwrapping single item)
+                return , @($logs)
             }
 
             Start-Sleep -Milliseconds 500
