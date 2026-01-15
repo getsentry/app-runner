@@ -259,7 +259,7 @@ Describe 'SentryApiClient Logs Functions' {
             $result = Get-SentryLogs
 
             $firstLog = $result.data[0]
-            $firstLog.'test.id' | Should -Be 'integration-test-001'
+            $firstLog.test_id | Should -Be 'integration-test-001'
         }
 
         It 'Should include meta information in response' {

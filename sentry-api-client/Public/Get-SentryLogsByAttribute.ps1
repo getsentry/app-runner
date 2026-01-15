@@ -49,6 +49,15 @@ function Get-SentryLogsByAttribute {
 
     $Query = "$AttributeName`:$AttributeValue"
 
-    # Don't specify fields - let the API return the default set which includes all common fields
-    return Get-SentryLogs -Query $Query -Limit $Limit -StatsPeriod $StatsPeriod
+    # Include default fields plus the attribute we're filtering by
+    $Fields = @(
+        'id',
+        'trace',
+        'severity',
+        'timestamp',
+        'message',
+        $AttributeName
+    )
+
+    return Get-SentryLogs -Query $Query -Limit $Limit -StatsPeriod $StatsPeriod -Fields $Fields
 }
