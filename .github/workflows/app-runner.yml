@@ -7,7 +7,6 @@ on:
     paths:
       - 'app-runner/**'
   pull_request:
-    branches: ['main']
     paths:
       - 'app-runner/**'
 
