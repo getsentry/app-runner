@@ -51,6 +51,11 @@ class DeviceProvider {
     [int]$MaxRetryAttempts = 2
     [bool]$IsRebooting = $false  # Internal flag to skip retry-on-timeout during reboot
 
+    # Target detection configuration
+    # State 0: Check if default target is set first (use when get-default-target works reliably)
+    # State 1: List targets first (use when get-default-target may fail if no targets registered)
+    [int]$DetectTargetInitialState = 1
+
     [string]$DebugOutputForwarder = "ForEach-Object { (`$_ | Out-String).TrimEnd() } | Where-Object { `$_.Length -gt 0 } | Tee-Object -variable capturedOutput | Foreach-Object { Write-Debug `$_ } ; `$capturedOutput"
 
     DeviceProvider() {
@@ -582,8 +587,10 @@ SDK Path: $($this.SdkPath)
         # Let's have a global timeout as a limit on how long we want to try this.
         $timeout = [DateTime]::UtcNow.AddSeconds(60)
 
-        # Start in state 1 (check if targets are registered) as trying to get default will fail if none are registered on some platforms.
-        $state = 1
+        # Initial state is configurable via $this.DetectTargetInitialState
+        # State 0: Check if default is set first (works when get-default-target is reliable)
+        # State 1: List targets first (safer when get-default-target may fail if no targets registered)
+        $state = $this.DetectTargetInitialState
         while ([DateTime]::UtcNow -lt $timeout) {
             switch ($state) {
                 0 {

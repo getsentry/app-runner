@@ -16,9 +16,14 @@ It handles connection management, device lifecycle operations, and application m
 class SwitchProvider : DeviceProvider {
     [string]$TargetControlTool = 'ControlTarget.exe'
     [string]$ApplicationRunnerTool = 'RunOnTarget.exe'
+    [string]$Target = $null  # Stores the target device identifier for commands that need explicit --target
 
     SwitchProvider() {
         $this.Platform = 'Switch'
+
+        # Switch supports checking if a default target is set even with multiple targets registered,
+        # so start detection at state 0 (check default first) instead of state 1 (list all targets)
+        $this.DetectTargetInitialState = 0
 
         # Set SDK path if NINTENDO_SDK_ROOT environment variable is available
         $nintendoSdkRoot = $env:NINTENDO_SDK_ROOT
@@ -53,6 +58,17 @@ class SwitchProvider : DeviceProvider {
         $status = $this.GetDeviceStatus()
         $statusData = $status.StatusData
         return $statusData.IpAddress
+    }
+
+    # Override Connect to support target parameter
+    # Sets the default target via ControlTarget so subsequent commands (including RunOnTarget via ctest) use it
+    [hashtable] Connect([string]$target) {
+        if (-not [string]::IsNullOrEmpty($target)) {
+            Write-Debug "$($this.Platform): Setting target device: $target"
+            $this.Target = $target
+            $this.InvokeCommand('set-default-target', @($target))
+        }
+        return $this.Connect()
     }
 
     # Override Connect to provide Switch specific wakeup
@@ -124,6 +140,31 @@ class SwitchProvider : DeviceProvider {
     [void] StopDevice() {
         ([DeviceProvider] $this).StopDevice();
         Start-Sleep -Seconds 3
+    }
+
+    # Override TakeScreenshot to pass --target when a target is specified
+    [void] TakeScreenshot([string]$OutputPath) {
+        $directory = Split-Path $OutputPath -Parent
+        $filename = Split-Path $OutputPath -Leaf
+        if (-not $directory) {
+            $directory = Get-Location
+        }
+
+        Write-Debug "$($this.Platform): Taking screenshot (directory: $directory, file: $filename)"
+
+        # Build command with --target if target was specified during Connect()
+        $targetArg = if (-not [string]::IsNullOrEmpty($this.Target)) { " --target $($this.Target)" } else { '' }
+        $toolPath = $this.GetToolPath($this.TargetControlTool)
+        $command = "& '$toolPath' take-screenshot${targetArg} --directory `"$directory`" --file-name `"$filename`" 2>&1"
+
+        Write-Debug "$($this.Platform): Invoking screenshot command: $command"
+        $result = Invoke-Expression "$command | $($this.DebugOutputForwarder)"
+        if ($LASTEXITCODE -ne 0) {
+            throw "Screenshot command failed with exit code $LASTEXITCODE"
+        }
+
+        $size = (Get-Item $OutputPath).Length
+        Write-Debug "Screenshot saved to $OutputPath ($size bytes)"
     }
 
     # override GetDeviceLogs to provide Switch specific log retrieval
