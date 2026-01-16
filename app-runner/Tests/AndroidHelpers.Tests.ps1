@@ -59,56 +59,6 @@ Describe 'AndroidHelpers' -Tag 'Unit', 'Android' {
         }
     }
 
-    Context 'Test-IntentExtrasFormat' {
-        It 'Accepts valid Intent extras with -e flag' {
-            { Test-IntentExtrasFormat -Arguments '-e key value' } | Should -Not -Throw
-        }
-
-        It 'Accepts valid Intent extras with -es flag' {
-            { Test-IntentExtrasFormat -Arguments '-es stringKey stringValue' } | Should -Not -Throw
-        }
-
-        It 'Accepts valid Intent extras with -ez flag' {
-            { Test-IntentExtrasFormat -Arguments '-ez boolKey true' } | Should -Not -Throw
-        }
-
-        It 'Accepts valid Intent extras with -ei flag' {
-            { Test-IntentExtrasFormat -Arguments '-ei intKey 42' } | Should -Not -Throw
-        }
-
-        It 'Accepts valid Intent extras with -el flag' {
-            { Test-IntentExtrasFormat -Arguments '-el longKey 1234567890' } | Should -Not -Throw
-        }
-
-        It 'Accepts multiple Intent extras' {
-            { Test-IntentExtrasFormat -Arguments '-e key1 value1 -ez key2 false -ei key3 100' } | Should -Not -Throw
-        }
-
-        It 'Accepts empty string' {
-            { Test-IntentExtrasFormat -Arguments '' } | Should -Not -Throw
-        }
-
-        It 'Accepts null' {
-            { Test-IntentExtrasFormat -Arguments $null } | Should -Not -Throw
-        }
-
-        It 'Accepts whitespace-only string' {
-            { Test-IntentExtrasFormat -Arguments '   ' } | Should -Not -Throw
-        }
-
-        It 'Throws on invalid format without flag' {
-            { Test-IntentExtrasFormat -Arguments 'key value' } | Should -Throw '*Invalid Intent extras format*'
-        }
-
-        It 'Throws on invalid format with wrong prefix' {
-            { Test-IntentExtrasFormat -Arguments '--key value' } | Should -Throw '*Invalid Intent extras format*'
-        }
-
-        It 'Throws on text without proper flag format' {
-            { Test-IntentExtrasFormat -Arguments 'some random text' } | Should -Throw '*Invalid Intent extras format*'
-        }
-    }
-
     Context 'Get-ApkPackageName error handling' {
         It 'Throws when APK file does not exist' {
             $nonExistentPath = Join-Path $TestDrive 'nonexistent-file.apk'

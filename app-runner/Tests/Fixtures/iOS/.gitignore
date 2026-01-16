@@ -1,0 +1,10 @@
+# User-specific Xcode files
+xcuserdata/
+
+# Build artifacts from Build-TestApp.ps1
+*.xcarchive
+export/
+
+# Temporary build files
+build/
+DerivedData/

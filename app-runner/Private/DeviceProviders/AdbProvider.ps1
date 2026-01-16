@@ -195,19 +195,19 @@ class AdbProvider : DeviceProvider {
         }
     }
 
-    [hashtable] RunApplication([string]$ExecutablePath, [string]$Arguments) {
+    [hashtable] RunApplication([string]$ExecutablePath, [string[]]$Arguments, [string]$LogFilePath = $null) {
+        # LogFilePath parameter ignored in this implementation
         Write-Debug "$($this.Platform): Running application: $ExecutablePath"
+
+        if (-not ([string]::IsNullOrEmpty($LogFilePath))) {
+            Write-Warning "LogFilePath parameter is not supported on this platform."
+        }
 
         # Parse ExecutablePath: "package.name/activity.name"
         $parsed = ConvertFrom-AndroidActivityPath -ExecutablePath $ExecutablePath
         $packageName = $parsed.PackageName
         $activityName = $parsed.ActivityName
         $this.CurrentPackageName = $packageName
-
-        # Validate Intent extras format
-        if ($Arguments) {
-            Test-IntentExtrasFormat -Arguments $Arguments | Out-Null
-        }
 
         $timeoutSeconds = $this.Timeouts['run-timeout']
         $pidRetrySeconds = $this.Timeouts['pid-retry']
@@ -221,11 +221,13 @@ class AdbProvider : DeviceProvider {
 
         # Launch activity
         Write-Host "Launching: $ExecutablePath" -ForegroundColor Cyan
-        if ($Arguments) {
-            Write-Host "  Arguments: $Arguments" -ForegroundColor Cyan
+
+        $argumentsString = $Arguments -join ' '
+        if ($argumentsString) {
+            Write-Host "  Arguments: $argumentsString" -ForegroundColor Cyan
         }
 
-        $launchOutput = $this.InvokeCommand('launch', @($this.DeviceSerial, $ExecutablePath, $Arguments))
+        $launchOutput = $this.InvokeCommand('launch', @($this.DeviceSerial, $ExecutablePath, $argumentsString))
 
         # Join output to string first since -match on arrays returns matching elements, not boolean
         if (($launchOutput -join "`n") -match 'Error') {

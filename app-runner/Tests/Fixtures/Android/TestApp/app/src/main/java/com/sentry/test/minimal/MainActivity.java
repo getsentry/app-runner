@@ -5,6 +5,9 @@ import android.content.Intent;
 import android.os.Bundle;
 import android.os.Handler;
 import android.util.Log;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
 
 /**
  * Minimal test activity that accepts intent parameters and auto-closes after a few seconds.
@@ -17,9 +20,12 @@ public class MainActivity extends Activity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        
+
         Log.i(TAG, "MainActivity started");
-        
+
+        // Create test files for CopyDeviceItem testing
+        createTestFiles();
+
         // Log all intent extras
         Intent intent = getIntent();
         if (intent != null && intent.getExtras() != null) {
@@ -32,7 +38,7 @@ public class MainActivity extends Activity {
         } else {
             Log.i(TAG, "No intent parameters received");
         }
-        
+
         // Auto-close after delay
         new Handler().postDelayed(new Runnable() {
             @Override
@@ -48,5 +54,20 @@ public class MainActivity extends Activity {
     protected void onDestroy() {
         super.onDestroy();
         Log.i(TAG, "MainActivity destroyed");
+    }
+
+    private void createTestFiles() {
+        // Create test file in external app files directory (accessible to SauceLabs)
+        File externalFilesDir = getExternalFilesDir(null);
+        if (externalFilesDir != null) {
+            try {
+                File testFile = new File(externalFilesDir, "test-file.txt");
+                FileOutputStream fos = new FileOutputStream(testFile);
+                fos.write("Test file content".getBytes());
+                fos.close();
+            } catch (IOException e) {
+                Log.e(TAG, "Failed to create test file: " + e.getMessage());
+            }
+        }
     }
 }

@@ -39,52 +39,6 @@ function ConvertFrom-AndroidActivityPath {
 
 <#
 .SYNOPSIS
-Validates that Android Intent extras are in the correct format.
-
-.DESCRIPTION
-Android Intent extras should be passed in the format understood by `am start`.
-This function validates and optionally formats the arguments string.
-
-Common Intent extra formats:
-  -e key value          String extra
-  -es key value         String extra (explicit)
-  -ez key true|false    Boolean extra
-  -ei key value         Integer extra
-  -el key value         Long extra
-
-.PARAMETER Arguments
-The arguments string to validate/format
-
-.EXAMPLE
-Test-IntentExtrasFormat "-e cmdline -crash-capture"
-Returns: $true
-
-.EXAMPLE
-Test-IntentExtrasFormat "-e test true -ez debug false"
-Returns: $true
-#>
-function Test-IntentExtrasFormat {
-    [CmdletBinding()]
-    param(
-        [Parameter(Mandatory = $false)]
-        [string]$Arguments
-    )
-
-    if ([string]::IsNullOrWhiteSpace($Arguments)) {
-        return $true
-    }
-
-    # Intent extras must start with flags: -e, -es, -ez, -ei, -el, -ef, -eu, etc.
-    # Followed by at least one whitespace and additional content
-    if ($Arguments -notmatch '^--?[a-z]{1,2}\s+') {
-        throw "Invalid Intent extras format: '$Arguments'. Must start with flags like -e, -es, -ez, -ei, -el, etc. followed by key-value pairs."
-    }
-
-    return $true
-}
-
-<#
-.SYNOPSIS
 Extracts the package name from an APK file using aapt.
 
 .DESCRIPTION
@@ -132,7 +86,7 @@ function Get-ApkPackageName {
     }
 
     Write-Debug "Using $($aaptCmd.Name) to extract package name from APK"
-    
+
     try {
         $PSNativeCommandUseErrorActionPreference = $false
         $output = & $aaptCmd.Name dump badging $ApkPath 2>&1

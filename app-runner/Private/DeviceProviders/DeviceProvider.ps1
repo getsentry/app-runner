@@ -372,14 +372,19 @@ class DeviceProvider {
         return @{}
     }
 
-    [hashtable] RunApplication([string]$ExecutablePath, [string]$Arguments) {
+    [hashtable] RunApplication([string]$ExecutablePath, [string[]]$Arguments, [string]$LogFilePath = $null) {
         Write-Debug "$($this.Platform): Running application: $ExecutablePath with arguments: $Arguments"
 
-        $command = $this.BuildCommand('launch', @($ExecutablePath, $Arguments))
+        if (-not ([string]::IsNullOrEmpty($LogFilePath))) {
+            Write-Warning "LogFilePath parameter is not supported on this platform."
+        }
+
+        $argumentsString = $Arguments -join ' '
+        $command = $this.BuildCommand('launch', @($ExecutablePath, $argumentsString))
         return $this.InvokeApplicationCommand($command, $ExecutablePath, $Arguments)
     }
 
-    [hashtable] InvokeApplicationCommand([BuiltCommand]$builtCommand, [string]$ExecutablePath, [string]$Arguments) {
+    [hashtable] InvokeApplicationCommand([BuiltCommand]$builtCommand, [string]$ExecutablePath, [string[]]$Arguments) {
         Write-Debug "$($this.Platform): Invoking $($builtCommand.Command)"
 
         $result = $null

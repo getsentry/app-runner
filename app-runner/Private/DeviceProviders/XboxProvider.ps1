@@ -238,11 +238,12 @@ class XboxProvider : DeviceProvider {
     }
 
     # Launch an already-installed packaged application
-    [hashtable] LaunchInstalledApp([string]$PackageIdentity, [string]$Arguments) {
+    [hashtable] LaunchInstalledApp([string]$PackageIdentity, [string[]]$Arguments) {
         # Not giving the argument here stops any foreground app
         $this.InvokeCommand('stop-app', @(''))
 
-        $builtCommand = $this.BuildCommand('launch-app', @($PackageIdentity, $Arguments))
+        $argumentsString = $Arguments -join ' '
+        $builtCommand = $this.BuildCommand('launch-app', @($PackageIdentity, $argumentsString))
         return $this.InvokeApplicationCommand($builtCommand, $PackageIdentity, $Arguments)
     }
 
@@ -251,7 +252,11 @@ class XboxProvider : DeviceProvider {
     # - A directory containing loose .exe files (uses xbrun)
     # - A package identifier (AUMID string) for already-installed packages (uses xbapp launch)
     # - A .xvc file path (ERROR - user must use Install-DeviceApp first)
-    [hashtable] RunApplication([string]$AppPath, [string]$Arguments) {
+    [hashtable] RunApplication([string]$AppPath, [string[]]$Arguments, [string]$LogFilePath = $null) {
+        if (-not ([string]::IsNullOrEmpty($LogFilePath))) {
+            Write-Warning "LogFilePath parameter is not supported on this platform."
+        }
+
         if (Test-Path $AppPath -PathType Container) {
             # It's a directory - use loose executable flow (xbrun)
             $appExecutableName = Get-ChildItem -Path $AppPath -File -Filter '*.exe' | Select-Object -First 1 -ExpandProperty Name
@@ -261,7 +266,8 @@ class XboxProvider : DeviceProvider {
             Write-Host "Mirroring directory $AppPath to Xbox devkit $xboxTempDir..."
             $this.InvokeCommand('xbcopy', @($AppPath, "x$xboxTempDir"))
 
-            $builtCommand = $this.BuildCommand('launch', @($xboxTempDir, "$xboxTempDir\$appExecutableName", $Arguments))
+            $argumentsString = $Arguments -join ' '
+            $builtCommand = $this.BuildCommand('launch', @($xboxTempDir, "$xboxTempDir\$appExecutableName", $argumentsString))
             return $this.InvokeApplicationCommand($builtCommand, $appExecutableName, $Arguments)
         } elseif (Test-Path $AppPath -PathType Leaf) {
             # It's a file - check if it's a .xvc package
