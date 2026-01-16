@@ -240,5 +240,72 @@ function Get-PackageAumid {
     return "${packageName}_${familyNameHash}!${appId}"
 }
 
+function Get-SentryTestLog {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$AttributeName,
+
+        [Parameter(Mandatory = $true)]
+        [string]$AttributeValue,
+
+        [Parameter()]
+        [int]$ExpectedCount = 1,
+
+        [Parameter()]
+        [int]$TimeoutSeconds = 120,
+
+        [Parameter()]
+        [string]$StatsPeriod = '24h'
+    )
+
+    Write-Host "Fetching Sentry logs by attribute: $AttributeName=$AttributeValue" -ForegroundColor Yellow
+    $progressActivity = "Waiting for Sentry logs with $AttributeName=$AttributeValue"
+
+    $startTime = Get-Date
+    $endTime = $startTime.AddSeconds($TimeoutSeconds)
+    $lastError = $null
+    $elapsedSeconds = 0
+
+    try {
+        do {
+            $logs = @()
+            $elapsedSeconds = [int]((Get-Date) - $startTime).TotalSeconds
+            $percentComplete = [math]::Min(100, ($elapsedSeconds / $TimeoutSeconds) * 100)
+
+            Write-Progress -Activity $progressActivity -Status "Elapsed: $elapsedSeconds/$TimeoutSeconds seconds" -PercentComplete $percentComplete
+
+            try {
+                $response = Get-SentryLogsByAttribute -AttributeName $AttributeName -AttributeValue $AttributeValue -StatsPeriod $StatsPeriod
+                if ($response.data -and $response.data.Count -ge $ExpectedCount) {
+                    $logs = $response.data
+                }
+            } catch {
+                $lastError = $_.Exception.Message
+                Write-Debug "Logs with $AttributeName=$AttributeValue not found yet: $lastError"
+            }
+
+            if ($logs.Count -ge $ExpectedCount) {
+                Write-Host "Found $($logs.Count) log(s) from Sentry" -ForegroundColor Green
+
+                # Save logs to file for debugging
+                $logsJson = $logs | ConvertTo-Json -Depth 10
+                $logsJson | Out-File -FilePath (Get-OutputFilePath "logs-$AttributeName-$AttributeValue.json")
+
+                # Use comma operator to ensure array is preserved (prevents PowerShell unwrapping single item)
+                return , @($logs)
+            }
+
+            Start-Sleep -Milliseconds 500
+            $currentTime = Get-Date
+        } while ($currentTime -lt $endTime)
+    } finally {
+        Write-Progress -Activity $progressActivity -Completed
+    }
+
+    $foundCount = if ($logs) { $logs.Count } else { 0 }
+    throw "Expected at least $ExpectedCount log(s) with $AttributeName=$AttributeValue but found $foundCount within $TimeoutSeconds seconds. Last error: $lastError"
+}
+
 # Export module functions
-Export-ModuleMember -Function Invoke-CMakeConfigure, Invoke-CMakeBuild, Set-OutputDir, Get-OutputFilePath, Get-EventIds, Get-SentryTestEvent, Get-PackageAumid
+Export-ModuleMember -Function Invoke-CMakeConfigure, Invoke-CMakeBuild, Set-OutputDir, Get-OutputFilePath, Get-EventIds, Get-SentryTestEvent, Get-SentryTestLog, Get-PackageAumid

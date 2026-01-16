@@ -24,6 +24,12 @@ Get-SentryEventsByTag -TagName 'environment' -TagValue 'production'
 # Find issues and events by tag
 Find-SentryEventByTag -TagName 'release' -TagValue 'v1.0.0'
 
+# Get structured logs
+Get-SentryLogs -Query 'severity:error' -StatsPeriod '24h'
+
+# Get logs by attribute
+Get-SentryLogsByAttribute -AttributeName 'test_id' -AttributeValue 'abc123'
+
 # Download Sentry CLI
 Get-SentryCLI -Version 'latest' -DownloadDirectory './bin'
 
@@ -91,6 +97,41 @@ Returns an object with:
 - `Issues`: Array of issue objects with tag information
 - `Events`: Array of the latest events for each issue
 - `NextCursor`: Cursor for pagination
+
+### Get-SentryLogs
+
+Retrieves structured logs from Sentry using the `ourlogs` dataset.
+
+```powershell
+# Query logs by severity
+Get-SentryLogs -Query 'severity:error' -StatsPeriod '24h'
+
+# Filter by trace ID
+Get-SentryLogs -TraceId 'abc123def456' -Limit 50
+
+# Custom fields
+Get-SentryLogs -Query 'test_id:integration-test-001' -Fields @('id', 'message', 'severity', 'test_id')
+```
+
+Parameters:
+
+- `Query`: Search query using Sentry search syntax
+- `TraceId`: Filter logs by specific trace ID
+- `StatsPeriod`: Time period (default: '24h')
+- `Limit`: Maximum logs to return (default: 100)
+- `Fields`: Fields to include in response (default: id, trace, severity, timestamp, message)
+
+### Get-SentryLogsByAttribute
+
+Convenience wrapper for filtering logs by a specific attribute. Automatically includes the attribute in response fields.
+
+```powershell
+# Filter by test ID
+Get-SentryLogsByAttribute -AttributeName 'test_id' -AttributeValue 'integration-test-001'
+
+# With custom time period
+Get-SentryLogsByAttribute -AttributeName 'user_id' -AttributeValue '12345' -StatsPeriod '7d'
+```
 
 ### Get-SentryCLI
 
