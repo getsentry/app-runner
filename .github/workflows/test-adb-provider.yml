@@ -59,6 +59,8 @@ jobs:
             -camera-front none
           script: |
             adb wait-for-device
+            echo "Waiting for Android to fully boot..."
+            adb shell 'while [[ -z $(getprop sys.boot_completed) ]]; do sleep 1; done'
             echo "Android emulator is ready"
             adb devices
             cd ${{ inputs.module-path }} && pwsh -Command "Invoke-Pester Tests/Adb.Tests.ps1 -CI"
