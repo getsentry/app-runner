@@ -304,8 +304,12 @@ class SauceLabsProvider : DeviceProvider {
         }
     }
 
-    [hashtable] RunApplication([string]$ExecutablePath, [string[]]$Arguments, [string]$LogFilePath = $null) {
+    [hashtable] RunApplication([string]$ExecutablePath, [string[]]$Arguments, [string]$LogFilePath = $null, [string]$WorkingDirectory = $null) {
         Write-Debug "$($this.Platform): Running application: $ExecutablePath"
+
+        if (-not ([string]::IsNullOrEmpty($WorkingDirectory))) {
+            Write-Warning "WorkingDirectory parameter is not supported on this platform."
+        }
 
         if (-not $this.SessionId) {
             throw "No active SauceLabs session. Call InstallApp first to create a session."

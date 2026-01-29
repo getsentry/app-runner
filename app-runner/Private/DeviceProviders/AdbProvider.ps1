@@ -195,8 +195,11 @@ class AdbProvider : DeviceProvider {
         }
     }
 
-    [hashtable] RunApplication([string]$ExecutablePath, [string[]]$Arguments, [string]$LogFilePath = $null) {
+    [hashtable] RunApplication([string]$ExecutablePath, [string[]]$Arguments, [string]$LogFilePath = $null, [string]$WorkingDirectory = $null) {
         # LogFilePath parameter ignored in this implementation
+        if (-not ([string]::IsNullOrEmpty($WorkingDirectory))) {
+            Write-Warning "WorkingDirectory parameter is not supported on this platform."
+        }
         Write-Debug "$($this.Platform): Running application: $ExecutablePath"
 
         if (-not ([string]::IsNullOrEmpty($LogFilePath))) {

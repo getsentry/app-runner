@@ -38,6 +38,7 @@ class PlayStation5Provider : DeviceProvider {
             'reset'              = @($this.TargetControlTool, 'power reboot')
             'getstatus'          = @($this.TargetControlTool, 'target info')
             'launch'             = @($this.ApplicationRunnerTool, '/elf "{0}" {1}')
+            'launch-workdir'     = @($this.ApplicationRunnerTool, '/workingDirectory:"{0}" /elf "{1}" {2}')
             'getlogs'            = @($this.TargetControlTool, 'target console /timestamp /history')
             'screenshot'         = @($this.TargetControlTool, 'target screenshot "{0}/{1}"')
             'healthcheck'        = @($this.TargetControlTool, 'diagnostics health-check')
@@ -52,6 +53,25 @@ class PlayStation5Provider : DeviceProvider {
             'detect-target'      = @($this.TargetControlTool, 'target find', { $Input | ConvertFrom-Yaml | ForEach-Object { $_ | Select-Object *, @{Name = 'IpAddress'; Expression = { $_.Host } } } })
             'register-target'    = @($this.TargetControlTool, 'target add "{0}"')
         }
+    }
+
+    # Override RunApplication to support WorkingDirectory parameter for Unreal apps
+    [hashtable] RunApplication([string]$ExecutablePath, [string[]]$Arguments, [string]$LogFilePath = $null, [string]$WorkingDirectory = $null) {
+        Write-Debug "$($this.Platform): Running application: $ExecutablePath with arguments: $Arguments"
+
+        if (-not ([string]::IsNullOrEmpty($LogFilePath))) {
+            Write-Warning "LogFilePath parameter is not supported on this platform."
+        }
+
+        $argumentsString = $Arguments -join ' '
+
+        if (-not ([string]::IsNullOrEmpty($WorkingDirectory))) {
+            $command = $this.BuildCommand('launch-workdir', @($WorkingDirectory, $ExecutablePath, $argumentsString))
+        } else {
+            $command = $this.BuildCommand('launch', @($ExecutablePath, $argumentsString))
+        }
+
+        return $this.InvokeApplicationCommand($command, $ExecutablePath, $Arguments)
     }
 
     # override GetDeviceLogs to provide PlayStation 5 specific log retrieval

@@ -23,6 +23,11 @@ function Invoke-DeviceApp {
     - iOS: Use bundle format like "@com.example.app:documents/logs/app.log"
     - Android: Use absolute path like "/data/data/com.example.app/files/logs/app.log"
 
+    .PARAMETER WorkingDirectory
+    Optional path to a working directory on the host PC that contains additional files required by the application.
+    This parameter is currently only supported on PlayStation 5 for Unreal Engine applications that need
+    access to cooked content (PAK files, configs, etc.) via the /app0/ virtual path.
+
     .EXAMPLE
     Invoke-DeviceApp -ExecutablePath "MyGame.exe" -Arguments @("--debug", "--level=1")
 
@@ -31,6 +36,9 @@ function Invoke-DeviceApp {
 
     .EXAMPLE
     Invoke-DeviceApp -ExecutablePath "com.example.app" -LogFilePath "@com.example.app:documents/logs/app.log"
+
+    .EXAMPLE
+    Invoke-DeviceApp -ExecutablePath "Game.self" -Arguments @("-unattended") -WorkingDirectory "C:\Build\StagedBuilds\PS5"
     #>
     [CmdletBinding()]
     param(
@@ -42,7 +50,10 @@ function Invoke-DeviceApp {
         [string[]]$Arguments = @(),
 
         [Parameter(Mandatory = $false)]
-        [string]$LogFilePath = $null
+        [string]$LogFilePath = $null,
+
+        [Parameter(Mandatory = $false)]
+        [string]$WorkingDirectory = $null
     )
 
     Assert-DeviceSession
@@ -54,7 +65,7 @@ function Invoke-DeviceApp {
 
     # Use the provider to run the application
     $provider = $script:CurrentSession.Provider
-    $result = $provider.RunApplication($ExecutablePath, $Arguments, $LogFilePath)
+    $result = $provider.RunApplication($ExecutablePath, $Arguments, $LogFilePath, $WorkingDirectory)
 
     Write-GitHub "::endgroup::"
 

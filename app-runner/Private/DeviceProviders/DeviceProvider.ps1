@@ -377,11 +377,15 @@ class DeviceProvider {
         return @{}
     }
 
-    [hashtable] RunApplication([string]$ExecutablePath, [string[]]$Arguments, [string]$LogFilePath = $null) {
+    [hashtable] RunApplication([string]$ExecutablePath, [string[]]$Arguments, [string]$LogFilePath = $null, [string]$WorkingDirectory = $null) {
         Write-Debug "$($this.Platform): Running application: $ExecutablePath with arguments: $Arguments"
 
         if (-not ([string]::IsNullOrEmpty($LogFilePath))) {
             Write-Warning "LogFilePath parameter is not supported on this platform."
+        }
+
+        if (-not ([string]::IsNullOrEmpty($WorkingDirectory))) {
+            Write-Warning "WorkingDirectory parameter is not supported on this platform."
         }
 
         $argumentsString = $Arguments -join ' '
