@@ -289,7 +289,7 @@ function Get-SentryTestLog {
             }
 
             if ($logs.Count -ge $ExpectedCount) {
-                Write-Debug "Found $($logs.Count) log(s) from Sentry" -ForegroundColor Green
+                Write-Host "Found $($logs.Count) log(s) from Sentry" -ForegroundColor Green
 
                 # Save logs to file for debugging
                 $logsJson = $logs | ConvertTo-Json -Depth 10
