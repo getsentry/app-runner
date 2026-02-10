@@ -256,7 +256,10 @@ function Get-SentryTestLog {
         [int]$TimeoutSeconds = 120,
 
         [Parameter()]
-        [string]$StatsPeriod = '24h'
+        [string]$StatsPeriod = '24h',
+
+        [Parameter()]
+        [string[]]$Fields
     )
 
     Write-Host "Fetching Sentry logs by attribute: $AttributeName=$AttributeValue" -ForegroundColor Yellow
@@ -276,7 +279,7 @@ function Get-SentryTestLog {
             Write-Progress -Activity $progressActivity -Status "Elapsed: $elapsedSeconds/$TimeoutSeconds seconds" -PercentComplete $percentComplete
 
             try {
-                $response = Get-SentryLogsByAttribute -AttributeName $AttributeName -AttributeValue $AttributeValue -StatsPeriod $StatsPeriod
+                $response = Get-SentryLogsByAttribute -AttributeName $AttributeName -AttributeValue $AttributeValue -StatsPeriod $StatsPeriod -Fields $Fields
                 if ($response.data -and $response.data.Count -ge $ExpectedCount) {
                     $logs = $response.data
                 }
@@ -286,7 +289,7 @@ function Get-SentryTestLog {
             }
 
             if ($logs.Count -ge $ExpectedCount) {
-                Write-Host "Found $($logs.Count) log(s) from Sentry" -ForegroundColor Green
+                Write-Debug "Found $($logs.Count) log(s) from Sentry" -ForegroundColor Green
 
                 # Save logs to file for debugging
                 $logsJson = $logs | ConvertTo-Json -Depth 10
