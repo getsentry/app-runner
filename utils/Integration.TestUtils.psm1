@@ -307,5 +307,75 @@ function Get-SentryTestLog {
     throw "Expected at least $ExpectedCount log(s) with $AttributeName=$AttributeValue but found $foundCount within $TimeoutSeconds seconds. Last error: $lastError"
 }
 
+function Get-SentryTestMetric {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$MetricName,
+
+        [Parameter(Mandatory = $true)]
+        [string]$AttributeName,
+
+        [Parameter(Mandatory = $true)]
+        [string]$AttributeValue,
+
+        [Parameter()]
+        [int]$ExpectedCount = 1,
+
+        [Parameter()]
+        [int]$TimeoutSeconds = 120,
+
+        [Parameter()]
+        [string]$StatsPeriod = '24h'
+    )
+
+    Write-Host "Fetching Sentry metrics: $MetricName with $AttributeName=$AttributeValue" -ForegroundColor Yellow
+    $progressActivity = "Waiting for Sentry metrics $MetricName with $AttributeName=$AttributeValue"
+
+    $startTime = Get-Date
+    $endTime = $startTime.AddSeconds($TimeoutSeconds)
+    $lastError = $null
+    $elapsedSeconds = 0
+
+    try {
+        do {
+            $metrics = @()
+            $elapsedSeconds = [int]((Get-Date) - $startTime).TotalSeconds
+            $percentComplete = [math]::Min(100, ($elapsedSeconds / $TimeoutSeconds) * 100)
+
+            Write-Progress -Activity $progressActivity -Status "Elapsed: $elapsedSeconds/$TimeoutSeconds seconds" -PercentComplete $percentComplete
+
+            try {
+                $response = Get-SentryMetricsByAttribute -MetricName $MetricName -AttributeName $AttributeName -AttributeValue $AttributeValue -StatsPeriod $StatsPeriod
+                if ($response.data -and $response.data.Count -ge $ExpectedCount) {
+                    $metrics = $response.data
+                }
+            } catch {
+                $lastError = $_.Exception.Message
+                Write-Debug "Metrics $MetricName with $AttributeName=$AttributeValue not found yet: $lastError"
+            }
+
+            if ($metrics.Count -ge $ExpectedCount) {
+                Write-Host "Found $($metrics.Count) metric(s) from Sentry" -ForegroundColor Green
+
+                # Save metrics to file for debugging
+                $metricsJson = $metrics | ConvertTo-Json -Depth 10
+                $metricsJson | Out-File -FilePath (Get-OutputFilePath "metrics-$AttributeName-$AttributeValue.json")
+
+                # Use comma operator to ensure array is preserved (prevents PowerShell unwrapping single item)
+                return , @($metrics)
+            }
+
+            Start-Sleep -Milliseconds 500
+            $currentTime = Get-Date
+        } while ($currentTime -lt $endTime)
+    } finally {
+        Write-Progress -Activity $progressActivity -Completed
+    }
+
+    $foundCount = if ($metrics) { $metrics.Count } else { 0 }
+    throw "Expected at least $ExpectedCount metric(s) $MetricName with $AttributeName=$AttributeValue but found $foundCount within $TimeoutSeconds seconds. Last error: $lastError"
+}
+
 # Export module functions
-Export-ModuleMember -Function Invoke-CMakeConfigure, Invoke-CMakeBuild, Set-OutputDir, Get-OutputFilePath, Get-EventIds, Get-SentryTestEvent, Get-SentryTestLog, Get-PackageAumid
+Export-ModuleMember -Function Invoke-CMakeConfigure, Invoke-CMakeBuild, Set-OutputDir, Get-OutputFilePath, Get-EventIds, Get-SentryTestEvent, Get-SentryTestLog, Get-SentryTestMetric, Get-PackageAumid
