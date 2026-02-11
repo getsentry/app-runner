@@ -326,7 +326,10 @@ function Get-SentryTestMetric {
         [int]$TimeoutSeconds = 120,
 
         [Parameter()]
-        [string]$StatsPeriod = '24h'
+        [string]$StatsPeriod = '24h',
+
+        [Parameter()]
+        [string[]]$Fields
     )
 
     Write-Host "Fetching Sentry metrics: $MetricName with $AttributeName=$AttributeValue" -ForegroundColor Yellow
@@ -346,7 +349,16 @@ function Get-SentryTestMetric {
             Write-Progress -Activity $progressActivity -Status "Elapsed: $elapsedSeconds/$TimeoutSeconds seconds" -PercentComplete $percentComplete
 
             try {
-                $response = Get-SentryMetricsByAttribute -MetricName $MetricName -AttributeName $AttributeName -AttributeValue $AttributeValue -StatsPeriod $StatsPeriod
+                $fetchParams = @{
+                    MetricName     = $MetricName
+                    AttributeName  = $AttributeName
+                    AttributeValue = $AttributeValue
+                    StatsPeriod    = $StatsPeriod
+                }
+                if ($Fields) {
+                    $fetchParams['Fields'] = $Fields
+                }
+                $response = Get-SentryMetricsByAttribute @fetchParams
                 if ($response.data -and $response.data.Count -ge $ExpectedCount) {
                     $metrics = $response.data
                 }
