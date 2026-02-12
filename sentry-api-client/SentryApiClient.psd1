@@ -37,6 +37,8 @@
         'Get-SentryEventsByTag',
         'Get-SentryLogs',
         'Get-SentryLogsByAttribute',
+        'Get-SentryMetrics',
+        'Get-SentryMetricsByAttribute',
         'Invoke-SentryCLI'
     )
 

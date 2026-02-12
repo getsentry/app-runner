@@ -1,0 +1,40 @@
+{
+  "metrics_list": {
+    "data": [
+      {
+        "id": "019bbce4569e7f5f81466757e8f84001",
+        "metric.name": "test.integration.counter",
+        "metric.type": "counter",
+        "value": 42.0,
+        "timestamp": "2025-01-14T14:32:45+00:00",
+        "test_id": "metrics-test-001"
+      },
+      {
+        "id": "019bbce4569e7f5f81466757e8f84002",
+        "metric.name": "test.integration.counter",
+        "metric.type": "counter",
+        "value": 7.0,
+        "timestamp": "2025-01-14T14:32:46+00:00",
+        "test_id": "metrics-test-001"
+      }
+    ],
+    "meta": {
+      "fields": {
+        "id": "string",
+        "metric.name": "string",
+        "metric.type": "string",
+        "value": "number",
+        "timestamp": "date",
+        "test_id": "string"
+      },
+      "units": {}
+    }
+  },
+  "metrics_empty": {
+    "data": [],
+    "meta": {
+      "fields": {},
+      "units": {}
+    }
+  }
+}
