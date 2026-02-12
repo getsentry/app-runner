@@ -20,11 +20,18 @@ function Get-SentryLogsByAttribute {
     .PARAMETER StatsPeriod
     Relative time period (e.g., '24h', '7d'). Default is '24h'.
 
+    .PARAMETER Fields
+    Additional fields to include in the response. These are merged with default fields
+    (id, trace, severity, timestamp, message) and the filter attribute.
+
     .EXAMPLE
     Get-SentryLogsByAttribute -AttributeName 'test_id' -AttributeValue 'integration-test-001'
 
     .EXAMPLE
     Get-SentryLogsByAttribute -AttributeName 'user_id' -AttributeValue '12345' -StatsPeriod '7d'
+
+    .EXAMPLE
+    Get-SentryLogsByAttribute -AttributeName 'test_id' -AttributeValue 'test-001' -Fields @('sentry.environment', 'custom_attr')
     #>
     [CmdletBinding()]
     param(
@@ -38,13 +45,16 @@ function Get-SentryLogsByAttribute {
         [int]$Limit = 100,
 
         [Parameter(Mandatory = $false)]
-        [string]$StatsPeriod = '24h'
+        [string]$StatsPeriod = '24h',
+
+        [Parameter(Mandatory = $false)]
+        [string[]]$Fields
     )
 
     $Query = "$AttributeName`:$AttributeValue"
 
     # Include default fields plus the attribute we're filtering by
-    $Fields = @(
+    $DefaultFields = @(
         'id',
         'trace',
         'severity',
@@ -53,5 +63,11 @@ function Get-SentryLogsByAttribute {
         $AttributeName
     )
 
-    return Get-SentryLogs -Query $Query -Limit $Limit -StatsPeriod $StatsPeriod -Fields $Fields
+    if ($Fields) {
+        $AllFields = @($DefaultFields + $Fields) | Select-Object -Unique
+    } else {
+        $AllFields = $DefaultFields
+    }
+
+    return Get-SentryLogs -Query $Query -Limit $Limit -StatsPeriod $StatsPeriod -Fields $AllFields
 }
