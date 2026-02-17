@@ -392,5 +392,68 @@ function Get-SentryTestMetric {
     throw "Expected at least $ExpectedCount metric(s) $MetricName with $AttributeName=$AttributeValue but found $foundCount within $TimeoutSeconds seconds. Last error: $lastError"
 }
 
+function Get-SentryTestTransaction {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$TraceId,
+
+        [Parameter()]
+        [int]$TimeoutSeconds = 300,
+
+        [Parameter()]
+        [string]$StatsPeriod = '24h'
+    )
+
+    Write-Host "Fetching Sentry transaction by trace ID: $TraceId" -ForegroundColor Yellow
+    $progressActivity = "Waiting for Sentry transaction with trace $TraceId"
+
+    $startTime = Get-Date
+    $endTime = $startTime.AddSeconds($TimeoutSeconds)
+    $lastError = $null
+    $elapsedSeconds = 0
+
+    try {
+        do {
+            $sentryEvent = $null
+            $elapsedSeconds = [int]((Get-Date) - $startTime).TotalSeconds
+            $percentComplete = [math]::Min(100, ($elapsedSeconds / $TimeoutSeconds) * 100)
+
+            Write-Progress -Activity $progressActivity -Status "Elapsed: $elapsedSeconds/$TimeoutSeconds seconds" -PercentComplete $percentComplete
+
+            try {
+                $response = Get-SentrySpans -TraceId $TraceId -Query 'is_transaction:true' -Limit 1 -StatsPeriod $StatsPeriod
+                if ($response.data -and $response.data.Count -ge 1) {
+                    $eventId = $response.data[0].'transaction.event_id'
+                    if ($eventId) {
+                        $sentryEvent = Get-SentryEvent -EventId $eventId
+                    }
+                }
+            } catch {
+                $lastError = $_.Exception.Message
+                Write-Debug "Transaction with trace $TraceId not found yet: $lastError"
+            }
+
+            if ($sentryEvent) {
+                Write-Host "Transaction $($sentryEvent.id) fetched from Sentry" -ForegroundColor Green
+                $entries = $sentryEvent.entries
+                $sentryEvent = $sentryEvent | Select-Object -ExcludeProperty 'entries'
+                foreach ($entry in $entries) {
+                    $sentryEvent | Add-Member -MemberType NoteProperty -Name $entry.type -Value $entry.data -Force
+                }
+                $sentryEvent | ConvertTo-Json -Depth 10 | Out-File -FilePath (Get-OutputFilePath "transaction-$($sentryEvent.id).json")
+                return $sentryEvent
+            }
+
+            Start-Sleep -Milliseconds 500
+            $currentTime = Get-Date
+        } while ($currentTime -lt $endTime)
+    } finally {
+        Write-Progress -Activity $progressActivity -Completed
+    }
+
+    throw "Transaction with trace $TraceId not found in Sentry within $TimeoutSeconds seconds: $lastError"
+}
+
 # Export module functions
-Export-ModuleMember -Function Invoke-CMakeConfigure, Invoke-CMakeBuild, Set-OutputDir, Get-OutputFilePath, Get-EventIds, Get-SentryTestEvent, Get-SentryTestLog, Get-SentryTestMetric, Get-PackageAumid
+Export-ModuleMember -Function Invoke-CMakeConfigure, Invoke-CMakeBuild, Set-OutputDir, Get-OutputFilePath, Get-EventIds, Get-SentryTestEvent, Get-SentryTestLog, Get-SentryTestMetric, Get-SentryTestTransaction, Get-PackageAumid
