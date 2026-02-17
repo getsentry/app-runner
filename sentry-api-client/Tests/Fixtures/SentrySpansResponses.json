@@ -1,0 +1,48 @@
+{
+  "spans_list": {
+    "data": [
+      {
+        "id": "3b17400e50f24a27",
+        "trace": "140df6870c0f406faf87cff1f0d9e280",
+        "span.op": "perform-checkout",
+        "span.description": "Mac checkout",
+        "span.duration": 404.76,
+        "is_transaction": true,
+        "timestamp": "2025-02-17T07:56:06+00:00",
+        "transaction.event_id": "f4a523482c8a427ab7fc831e3ddca6b0"
+      },
+      {
+        "id": "0a7ca53c31b547c6",
+        "trace": "140df6870c0f406faf87cff1f0d9e280",
+        "span.op": "validation",
+        "span.description": "validating shopping cart",
+        "span.duration": 188.99,
+        "is_transaction": false,
+        "timestamp": "2025-02-17T07:56:06+00:00",
+        "transaction.event_id": "f4a523482c8a427ab7fc831e3ddca6b0"
+      }
+    ],
+    "meta": {
+      "fields": {
+        "id": "string",
+        "trace": "string",
+        "span.op": "string",
+        "span.description": "string",
+        "span.duration": "duration",
+        "is_transaction": "boolean",
+        "timestamp": "string",
+        "transaction.event_id": "string"
+      },
+      "units": {
+        "span.duration": "millisecond"
+      }
+    }
+  },
+  "spans_empty": {
+    "data": [],
+    "meta": {
+      "fields": {},
+      "units": {}
+    }
+  }
+}

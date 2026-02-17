@@ -30,6 +30,15 @@ Get-SentryLogs -Query 'severity:error' -StatsPeriod '24h'
 # Get logs by attribute
 Get-SentryLogsByAttribute -AttributeName 'test_id' -AttributeValue 'abc123'
 
+# Get metrics
+Get-SentryMetrics -Query 'metric.name:my.counter'
+
+# Get metrics by attribute
+Get-SentryMetricsByAttribute -MetricName 'my.counter' -AttributeName 'test_id' -AttributeValue 'abc123'
+
+# Get spans by trace ID
+Get-SentrySpans -TraceId 'abc123def456789012345678901234ab'
+
 # Download Sentry CLI
 Get-SentryCLI -Version 'latest' -DownloadDirectory './bin'
 
@@ -132,6 +141,57 @@ Get-SentryLogsByAttribute -AttributeName 'test_id' -AttributeValue 'integration-
 # With custom time period
 Get-SentryLogsByAttribute -AttributeName 'user_id' -AttributeValue '12345' -StatsPeriod '7d'
 ```
+
+### Get-SentryMetrics
+
+Retrieves metrics from Sentry using the `tracemetrics` dataset.
+
+```powershell
+# Query metrics by name
+Get-SentryMetrics -Query 'metric.name:my.counter'
+
+# With custom time period and fields
+Get-SentryMetrics -Query 'metric.name:my.counter' -StatsPeriod '7d' -Fields @('id', 'metric.name', 'value')
+```
+
+Parameters:
+
+- `Query`: Search query using Sentry search syntax
+- `StatsPeriod`: Time period (default: '24h')
+- `Limit`: Maximum metrics to return (default: 100)
+- `Fields`: Fields to include in response (default: id, metric.name, metric.type, value, timestamp)
+
+### Get-SentryMetricsByAttribute
+
+Convenience wrapper for filtering metrics by metric name and a specific attribute.
+
+```powershell
+# Filter by metric name and test ID
+Get-SentryMetricsByAttribute -MetricName 'test.integration.counter' -AttributeName 'test_id' -AttributeValue 'abc-123'
+```
+
+### Get-SentrySpans
+
+Retrieves spans from Sentry using the `spans` dataset. Transactions are spans with `is_transaction=true`.
+
+```powershell
+# Get all spans for a trace
+Get-SentrySpans -TraceId 'abc123def456789012345678901234ab'
+
+# Get only transactions for a trace
+Get-SentrySpans -TraceId 'abc123def456' -Query 'is_transaction:true'
+
+# Query by span operation
+Get-SentrySpans -Query 'span.op:http.client' -StatsPeriod '7d'
+```
+
+Parameters:
+
+- `Query`: Search query using Sentry search syntax
+- `TraceId`: Filter spans by specific trace ID
+- `StatsPeriod`: Time period (default: '24h')
+- `Limit`: Maximum spans to return (default: 100)
+- `Fields`: Fields to include in response (default: id, trace, span.op, span.description, span.duration, is_transaction, timestamp, transaction.event_id)
 
 ### Get-SentryCLI
 
