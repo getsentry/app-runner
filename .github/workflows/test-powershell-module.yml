@@ -55,9 +55,12 @@ jobs:
           Get-Command Invoke-ScriptAnalyzer | Format-Table -AutoSize
 
       - name: Run PowerShell Script Analyzer
+        env:
+          MODULE_NAME: ${{ inputs.module-name }}
+          SETTINGS_PATH: ${{ inputs.settings-path }}
         run: |
-          Write-Host "Running PSScriptAnalyzer on ${{ inputs.module-name }} module..."
-          $settingsPath = Join-Path ".." "${{ inputs.settings-path }}"
+          Write-Host "Running PSScriptAnalyzer on $env:MODULE_NAME module..."
+          $settingsPath = Join-Path ".." "$env:SETTINGS_PATH"
           $analysisResults = Invoke-ScriptAnalyzer -Path . -Recurse -ReportSummary -Settings $settingsPath
           if ($analysisResults) {
             Write-Host "PSScriptAnalyzer found issues:" -ForegroundColor Yellow
@@ -89,23 +92,28 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Run Pester Tests
+        env:
+          MODULE_NAME: ${{ inputs.module-name }}
+          TEST_PATH: ${{ inputs.test-path }}
+          EXCLUDE_TAGS: ${{ inputs.exclude-tags }}
+          EXCLUDE_PATH: ${{ inputs.exclude-path }}
         run: |
-          Write-Host "Running Pester tests for ${{ inputs.module-name }} module..."
+          Write-Host "Running Pester tests for $env:MODULE_NAME module..."
           $config = New-PesterConfiguration
-          $config.Run.Path = "${{ inputs.test-path }}"
+          $config.Run.Path = "$env:TEST_PATH"
           $config.TestResult.Enabled = $true
           $config.TestResult.OutputFormat = "NUnitXml"
           $config.TestResult.OutputPath = "TestResults.xml"
           $config.Output.Verbosity = "Detailed"
 
-          $excludeTags = "${{ inputs.exclude-tags }}"
+          $excludeTags = "$env:EXCLUDE_TAGS"
           if ($excludeTags) {
             $config.Filter.ExcludeTag = $excludeTags.Split(',').Trim()
           }
 
-          $excludePath = "${{ inputs.exclude-path }}"
+          $excludePath = "$env:EXCLUDE_PATH"
           if ($excludePath) {
-            $testPath = "${{ inputs.test-path }}"
+            $testPath = "$env:TEST_PATH"
             $config.Run.ExcludePath = $excludePath.Split(',').Trim() | ForEach-Object {
                 $relativePath = Join-Path $testPath $_
                 # ExcludePath requires absolute paths
@@ -150,10 +158,12 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Validate module manifest
+        env:
+          MODULE_NAME: ${{ inputs.module-name }}
         run: |
           Write-Host "Validating PowerShell module manifest..."
           try {
-            $manifest = Test-ModuleManifest -Path "${{ inputs.module-name }}.psd1"
+            $manifest = Test-ModuleManifest -Path "$env:MODULE_NAME.psd1"
             Write-Host "Module manifest validation passed" -ForegroundColor Green
             Write-Host "Module: $($manifest.Name) v$($manifest.Version)" -ForegroundColor White
             Write-Host "Author: $($manifest.Author)" -ForegroundColor White
@@ -179,11 +189,13 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Test module import
+        env:
+          MODULE_NAME: ${{ inputs.module-name }}
         run: |
           Write-Host "Testing module import..."
           try {
-            Import-Module "./${{ inputs.module-name }}.psd1" -Force
-            $importedModule = Get-Module ${{ inputs.module-name }}
+            Import-Module "./$env:MODULE_NAME.psd1" -Force
+            $importedModule = Get-Module "$env:MODULE_NAME"
             if ($importedModule) {
               Write-Host "Module imported successfully" -ForegroundColor Green
               Write-Host "Exported Functions: $($importedModule.ExportedFunctions.Keys -join ', ')" -ForegroundColor White
