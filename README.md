@@ -23,6 +23,7 @@ Currently supported:
   - Linux
 - **Mobile Platforms:**
   - Android (via ADB or SauceLabs Real Device Cloud)
+  - iOS Simulator (via xcrun simctl on macOS)
   - iOS (via SauceLabs - coming soon)
 
 ## Requirements

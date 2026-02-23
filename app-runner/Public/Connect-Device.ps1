@@ -41,7 +41,7 @@ function Connect-Device {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $true)]
-        [ValidateSet('Xbox', 'PlayStation5', 'Switch', 'Windows', 'MacOS', 'Linux', 'Adb', 'AndroidSauceLabs', 'iOSSauceLabs', 'Local', 'Mock')]
+        [ValidateSet('Xbox', 'PlayStation5', 'Switch', 'Windows', 'MacOS', 'Linux', 'Adb', 'iOSSimulator', 'AndroidSauceLabs', 'iOSSauceLabs', 'Local', 'Mock')]
         [string]$Platform,
 
         [Parameter(Mandatory = $false)]
