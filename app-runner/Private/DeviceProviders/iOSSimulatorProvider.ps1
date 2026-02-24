@@ -329,6 +329,15 @@ class iOSSimulatorProvider : DeviceProvider {
             $simctlArgs += $Arguments
         }
 
+        # Terminate any previous instance to ensure a clean launch.
+        # This prevents stale processes from interfering with console-pty output capture.
+        try {
+            & xcrun simctl terminate $this.SimulatorUUID $bundleId 2>&1 | Out-Null
+        }
+        catch {
+            # App may not be running - that's fine
+        }
+
         Write-Host "Launching: $bundleId" -ForegroundColor Cyan
         if ($Arguments -and $Arguments.Count -gt 0) {
             Write-Host "  Arguments: $($Arguments -join ' ')" -ForegroundColor Cyan
@@ -353,6 +362,18 @@ class iOSSimulatorProvider : DeviceProvider {
             if ($timedOut) {
                 Write-Warning "App timed out after $timeoutSeconds seconds - stopping process"
                 $process | Stop-Process -Force -ErrorAction SilentlyContinue
+
+                # Terminate the app on the simulator to ensure proper cleanup.
+                # This is important after crashes where the app process may have died
+                # but the console-pty connection keeps xcrun alive.
+                try {
+                    & xcrun simctl terminate $this.SimulatorUUID $bundleId 2>&1 | Out-Null
+                }
+                catch {
+                    Write-Debug "$($this.Platform): terminate after timeout failed (app may already be terminated): $_"
+                }
+                Start-Sleep -Seconds 1
+
                 $exitCode = -1
             }
             else {
