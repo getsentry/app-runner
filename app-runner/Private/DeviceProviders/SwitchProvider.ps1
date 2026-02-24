@@ -17,6 +17,7 @@ class SwitchProvider : DeviceProvider {
     [string]$TargetControlTool = 'ControlTarget.exe'
     [string]$ApplicationRunnerTool = 'RunOnTarget.exe'
     [string]$Target = $null  # Stores the target device identifier for commands that need explicit --target
+    [string]$TargetPlatform = $null  # Target Manager platform: 'NX' or 'Ounce', resolved from target serial
 
     SwitchProvider() {
         $this.Platform = 'Switch'
@@ -42,7 +43,7 @@ class SwitchProvider : DeviceProvider {
             'poweroff'           = @($this.TargetControlTool, 'power-off')
             'press-power-button' = @($this.TargetControlTool, 'press-power-button')
             'reset'              = @($this.TargetControlTool, 'reset')
-            'getstatus'          = @($this.TargetControlTool, 'get-default --detail --json', { $input | ConvertFrom-Json })
+            'getstatus'          = @($this.TargetControlTool, 'get-default --detail --platform {0} --json', { $input | ConvertFrom-Json })
             'get-default-target' = @($this.TargetControlTool, 'get-default --json', { $input | ConvertFrom-Json })
             'set-default-target' = @($this.TargetControlTool, 'set-default --target "{0}" --platform {1}')
             'list-target'        = @($this.TargetControlTool, 'list-target --json', { $input | ConvertFrom-Json })
@@ -69,11 +70,36 @@ class SwitchProvider : DeviceProvider {
 
             # Target Manager 2 requires the platform to be specified explicitly.
             # Platform can be inferred from the target name (HAL* targets are Ounce/Switch 2, others are NX/Switch 1).
-            $platform = if ($target -match '^HAL') { 'Ounce' } else { 'NX' }
+            $this.TargetPlatform = if ($target -match '^HAL') { 'Ounce' } else { 'NX' }
+            Write-Debug "$($this.Platform): Using Target Manager platform: $($this.TargetPlatform)"
 
-            $this.InvokeCommand('set-default-target', @($target, $platform))
+            $this.InvokeCommand('set-default-target', @($target, $this.TargetPlatform))
         }
         return $this.Connect()
+    }
+
+    # Override DetectAndSetDefaultTarget to skip auto-detection when target was explicitly set in Connect
+    [void] DetectAndSetDefaultTarget() {
+        if (-not [string]::IsNullOrEmpty($this.Target)) {
+            Write-Debug "$($this.Platform): Target explicitly set to $($this.Target), skipping auto-detection"
+            return
+        }
+        ([DeviceProvider] $this).DetectAndSetDefaultTarget()
+    }
+
+    # Override GetDeviceStatus to include `--platform` arg when querying device status so that it works correctly when multiple platforms are registered
+    [hashtable] GetDeviceStatus() {
+        Write-Debug "$($this.Platform): Getting device status"
+
+        $platform = if ($this.TargetPlatform) { $this.TargetPlatform } else { 'NX' }
+        $result = $this.InvokeCommand('getstatus', @($platform))
+
+        return @{
+            Platform   = $this.Platform
+            Status     = 'Online'
+            StatusData = $result
+            Timestamp  = Get-Date
+        }
     }
 
     # Override Connect to provide Switch specific wakeup
