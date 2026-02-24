@@ -44,7 +44,7 @@ class SwitchProvider : DeviceProvider {
             'reset'              = @($this.TargetControlTool, 'reset')
             'getstatus'          = @($this.TargetControlTool, 'get-default --detail --json', { $input | ConvertFrom-Json })
             'get-default-target' = @($this.TargetControlTool, 'get-default --json', { $input | ConvertFrom-Json })
-            'set-default-target' = @($this.TargetControlTool, 'set-default --target "{0}"')
+            'set-default-target' = @($this.TargetControlTool, 'set-default --target "{0}" --platform {1}')
             'list-target'        = @($this.TargetControlTool, 'list-target --json', { $input | ConvertFrom-Json })
             'detect-target'      = @($this.TargetControlTool, 'detect-target --json', { $input | ConvertFrom-Json })
             'register-target'    = @($this.TargetControlTool, 'register --target "{0}"')
@@ -66,7 +66,12 @@ class SwitchProvider : DeviceProvider {
         if (-not [string]::IsNullOrEmpty($target)) {
             Write-Debug "$($this.Platform): Setting target device: $target"
             $this.Target = $target
-            $this.InvokeCommand('set-default-target', @($target))
+
+            # Target Manager 2 requires the platform to be specified explicitly.
+            # Platform can be inferred from the target name (HAL* targets are Ounce/Switch 2, others are NX/Switch 1).
+            $platform = if ($target -match '^HAL') { 'Ounce' } else { 'NX' }
+
+            $this.InvokeCommand('set-default-target', @($target, $platform))
         }
         return $this.Connect()
     }
