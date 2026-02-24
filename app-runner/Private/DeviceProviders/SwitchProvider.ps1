@@ -102,6 +102,12 @@ class SwitchProvider : DeviceProvider {
         }
     }
 
+    [bool] TestConnection() {
+        Write-Debug "$($this.Platform): Testing connection to device"
+        $this.GetDeviceStatus()
+        return $true
+    }
+
     # Override Connect to provide Switch specific wakeup
     [hashtable] Connect() {
         Write-Debug 'Connecting to Switch Devkit...'
