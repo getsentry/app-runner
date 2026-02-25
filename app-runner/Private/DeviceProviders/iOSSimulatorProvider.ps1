@@ -291,6 +291,7 @@ class iOSSimulatorProvider : DeviceProvider {
                 -RedirectStandardOutput $outFile `
                 -RedirectStandardError $errFile
 
+            $timedOut = $null
             $process | Wait-Process -Timeout $timeoutSeconds -ErrorAction SilentlyContinue -ErrorVariable timedOut
 
             if ($timedOut) {
