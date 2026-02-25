@@ -176,6 +176,12 @@ class SwitchProvider : DeviceProvider {
             throw 'Failed to connect to the Switch Devkit.'
         }
 
+        # Verify the device is actually connected after recovery attempts
+        $finalStatus = $this.GetDeviceStatus().StatusData
+        if ("$($finalStatus.Status)" -ne 'Connected') {
+            throw "Failed to connect to the Switch Devkit. Device status: $($finalStatus.Status)"
+        }
+
         Write-Debug 'Successfully connected to the Switch Devkit.'
         return $this.CreateSessionInfo()
     }
