@@ -146,26 +146,39 @@ class SwitchProvider : DeviceProvider {
                 }
             }
 
+            # Recovery steps are best-effort: if one fails, continue to the next
             switch ($i) {
                 0 {
-                    Write-Warning 'Attempting to wake up the Devkit from sleep...'
-                    $this.InvokeCommand('press-power-button', @())
+                    try {
+                        Write-Warning 'Attempting to wake up the Devkit from sleep...'
+                        $this.InvokeCommand('press-power-button', @())
+                    } catch {
+                        Write-Warning "Failed to wake up Devkit: $_"
+                    }
                 }
                 1 {
-                    Write-Warning 'Attempting to start the Devkit...'
-                    $this.StartDevice()
+                    try {
+                        Write-Warning 'Attempting to start the Devkit...'
+                        $this.StartDevice()
+                    } catch {
+                        Write-Warning "Failed to start Devkit: $_"
+                    }
                 }
                 2 {
-                    Write-Warning 'Attempting to reboot the Devkit...'
-                    $powerOffCmd = $this.BuildCommand('poweroff', @()).Command
-                    $powerOnCmd = $this.BuildCommand('poweron', @()).Command
-                    $job2 = Start-Job {
-                        param($offCmd, $onCmd)
-                        Invoke-Expression $offCmd
-                        Start-Sleep -Seconds 5
-                        Invoke-Expression $onCmd
-                    } -ArgumentList $powerOffCmd, $powerOnCmd
-                    Wait-Job $job2 -Timeout 20 | Out-Null
+                    try {
+                        Write-Warning 'Attempting to reboot the Devkit...'
+                        $powerOffCmd = $this.BuildCommand('poweroff', @()).Command
+                        $powerOnCmd = $this.BuildCommand('poweron', @()).Command
+                        $job2 = Start-Job {
+                            param($offCmd, $onCmd)
+                            Invoke-Expression $offCmd
+                            Start-Sleep -Seconds 5
+                            Invoke-Expression $onCmd
+                        } -ArgumentList $powerOffCmd, $powerOnCmd
+                        Wait-Job $job2 -Timeout 20 | Out-Null
+                    } catch {
+                        Write-Warning "Failed to reboot Devkit: $_"
+                    }
                 }
                 3 {
                     if ($info.IpAddress -ne $null) {
