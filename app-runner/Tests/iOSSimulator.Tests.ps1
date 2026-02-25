@@ -28,35 +28,29 @@ BeforeDiscovery {
     $isCI = $env:CI -eq 'true'
 
     # Check for macOS platform and xcrun availability
-    if ($IsMacOS) {
-        if (Get-Command 'xcrun' -ErrorAction SilentlyContinue) {
-            # Check if any simulators are available
-            $simDevices = xcrun simctl list devices
-            if ($simDevices -match '\(([0-9A-Fa-f\-]{36})\)') {
-                $TestTargets += Get-TestTarget -Platform 'iOSSimulator'
-            }
-            else {
-                $message = "No iOS simulators available"
-                if ($isCI) {
-                    throw "$message. This is required in CI."
-                }
-                else {
-                    Write-Warning "$message. iOSSimulator tests will be skipped."
-                }
-            }
+    if (-not $IsMacOS) {
+        Write-Warning "iOSSimulator tests require macOS. iOSSimulator tests will be skipped."
+    }
+    elseif (-not (Get-Command 'xcrun' -ErrorAction SilentlyContinue)) {
+        $message = "xcrun not found in PATH"
+        if ($isCI) {
+            throw "$message. This is required in CI."
         }
         else {
-            $message = "xcrun not found in PATH"
-            if ($isCI) {
-                throw "$message. This is required in CI."
-            }
-            else {
-                Write-Warning "$message. iOSSimulator tests will be skipped."
-            }
+            Write-Warning "$message. iOSSimulator tests will be skipped."
+        }
+    }
+    elseif (-not ((xcrun simctl list devices) -match '\(([0-9A-Fa-f\-]{36})\)')) {
+        $message = "No iOS simulators available"
+        if ($isCI) {
+            throw "$message. This is required in CI."
+        }
+        else {
+            Write-Warning "$message. iOSSimulator tests will be skipped."
         }
     }
     else {
-        Write-Warning "iOSSimulator tests require macOS. iOSSimulator tests will be skipped."
+        $TestTargets += Get-TestTarget -Platform 'iOSSimulator'
     }
 }
 
