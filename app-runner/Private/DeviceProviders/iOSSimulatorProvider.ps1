@@ -60,10 +60,8 @@ class iOSSimulatorProvider : DeviceProvider {
 
         # Configure timeouts
         $this.Timeouts = @{
-            'boot'                   = 60
-            'install'                = 120
-            'run-timeout'            = 300
-            'process-check-interval' = 2
+            'boot'        = 60
+            'run-timeout' = 300
         }
     }
 
@@ -76,23 +74,7 @@ class iOSSimulatorProvider : DeviceProvider {
             throw "No iOS simulators found. Ensure at least one iOS Simulator runtime is installed via Xcode."
         }
 
-        # Prefer already-booted simulators
-        $booted = @($simulators | Where-Object { $_.State -eq 'Booted' })
-        if ($booted.Count -gt 0) {
-            $selected = $booted[0]
-            Write-Host "Using already-booted simulator: $($selected.Name) ($($selected.UUID))" -ForegroundColor Green
-            $this.SimulatorUUID = $selected.UUID
-            $this.DidBootSimulator = $false
-        }
-        else {
-            # Boot the first available simulator
-            $selected = $simulators[0]
-            Write-Host "Booting simulator: $($selected.Name) ($($selected.UUID))" -ForegroundColor Yellow
-            $this.SimulatorUUID = $selected.UUID
-            $this.BootSimulator()
-        }
-
-        return $this.CreateSessionInfo()
+        return $this.SelectAndConnect($simulators, $null)
     }
 
     [hashtable] Connect([string]$target) {
@@ -130,22 +112,7 @@ class iOSSimulatorProvider : DeviceProvider {
             throw "No simulators found for runtime '$runtimeFilter'. Check installed runtimes with: xcrun simctl list runtimes iOS"
         }
 
-        # Prefer already-booted simulators within the runtime
-        $booted = @($simulators | Where-Object { $_.State -eq 'Booted' })
-        if ($booted.Count -gt 0) {
-            $selected = $booted[0]
-            Write-Host "Using already-booted simulator: $($selected.Name) ($($selected.UUID)) [$runtimeFilter]" -ForegroundColor Green
-            $this.SimulatorUUID = $selected.UUID
-            $this.DidBootSimulator = $false
-        }
-        else {
-            $selected = $simulators[0]
-            Write-Host "Booting simulator: $($selected.Name) ($($selected.UUID)) [$runtimeFilter]" -ForegroundColor Yellow
-            $this.SimulatorUUID = $selected.UUID
-            $this.BootSimulator()
-        }
-
-        return $this.CreateSessionInfo()
+        return $this.SelectAndConnect($simulators, $runtimeFilter)
     }
 
     hidden [hashtable] ConnectWithUUID([string]$uuid) {
@@ -158,19 +125,7 @@ class iOSSimulatorProvider : DeviceProvider {
             throw "No simulator found with UUID '$uuid'. Check available simulators with: xcrun simctl list devices"
         }
 
-        $selected = $matched[0]
-        $this.SimulatorUUID = $selected.UUID
-
-        if ($selected.State -ne 'Booted') {
-            Write-Host "Booting simulator: $($selected.Name) ($($selected.UUID))" -ForegroundColor Yellow
-            $this.BootSimulator()
-        }
-        else {
-            Write-Host "Simulator already booted: $($selected.Name) ($($selected.UUID))" -ForegroundColor Green
-            $this.DidBootSimulator = $false
-        }
-
-        return $this.CreateSessionInfo()
+        return $this.SelectAndConnect($matched, $null)
     }
 
     hidden [hashtable] ConnectWithDeviceName([string]$deviceName) {
@@ -184,27 +139,7 @@ class iOSSimulatorProvider : DeviceProvider {
             throw "No simulator found with name '$deviceName'. Available: $availableNames"
         }
 
-        # Prefer booted instance if there are multiple matches (same name, different runtimes)
-        $booted = @($matched | Where-Object { $_.State -eq 'Booted' })
-        if ($booted.Count -gt 0) {
-            $selected = $booted[0]
-            $this.DidBootSimulator = $false
-        }
-        else {
-            $selected = $matched[0]
-        }
-
-        $this.SimulatorUUID = $selected.UUID
-
-        if ($selected.State -ne 'Booted') {
-            Write-Host "Booting simulator: $($selected.Name) ($($selected.UUID))" -ForegroundColor Yellow
-            $this.BootSimulator()
-        }
-        else {
-            Write-Host "Simulator already booted: $($selected.Name) ($($selected.UUID))" -ForegroundColor Green
-        }
-
-        return $this.CreateSessionInfo()
+        return $this.SelectAndConnect($matched, $null)
     }
 
     [void] Disconnect() {
@@ -356,7 +291,6 @@ class iOSSimulatorProvider : DeviceProvider {
                 -RedirectStandardOutput $outFile `
                 -RedirectStandardError $errFile
 
-            $timedOut = $null
             $process | Wait-Process -Timeout $timeoutSeconds -ErrorAction SilentlyContinue -ErrorVariable timedOut
 
             if ($timedOut) {
@@ -492,6 +426,27 @@ class iOSSimulatorProvider : DeviceProvider {
         $this.BootSimulator()
     }
 
+    # Helper: Select the best simulator from the list (prefer booted), boot if needed, and return session info
+    hidden [hashtable] SelectAndConnect([object[]]$simulators, [string]$context) {
+        $label = if ($context) { " [$context]" } else { '' }
+
+        $booted = @($simulators | Where-Object { $_.State -eq 'Booted' })
+        if ($booted.Count -gt 0) {
+            $selected = $booted[0]
+            Write-Host "Using already-booted simulator: $($selected.Name) ($($selected.UUID))$label" -ForegroundColor Green
+            $this.SimulatorUUID = $selected.UUID
+            $this.DidBootSimulator = $false
+        }
+        else {
+            $selected = $simulators[0]
+            Write-Host "Booting simulator: $($selected.Name) ($($selected.UUID))$label" -ForegroundColor Yellow
+            $this.SimulatorUUID = $selected.UUID
+            $this.BootSimulator()
+        }
+
+        return $this.CreateSessionInfo()
+    }
+
     # Helper: Boot the simulator with graceful handling
     hidden [void] BootSimulator() {
         Write-Debug "$($this.Platform): Booting simulator: $($this.SimulatorUUID)"
@@ -510,7 +465,7 @@ class iOSSimulatorProvider : DeviceProvider {
         }
 
         # Wait for simulator to be ready
-        $maxWait = 30
+        $maxWait = $this.Timeouts['boot']
         $waited = 0
         while ($waited -lt $maxWait) {
             $state = $this.GetSimulatorState()

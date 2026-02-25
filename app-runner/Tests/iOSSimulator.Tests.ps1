@@ -56,13 +56,7 @@ BeforeDiscovery {
         }
     }
     else {
-        $message = "iOSSimulator tests require macOS"
-        if ($isCI -and $IsMacOS) {
-            throw $message
-        }
-        else {
-            Write-Warning "$message. iOSSimulator tests will be skipped."
-        }
+        Write-Warning "iOSSimulator tests require macOS. iOSSimulator tests will be skipped."
     }
 }
 
