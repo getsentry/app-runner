@@ -147,18 +147,25 @@ class SwitchProvider : DeviceProvider {
                 }
                 2 {
                     Write-Warning 'Attempting to reboot the Devkit...'
+                    $powerOffCmd = $this.BuildCommand('poweroff', @()).Command
+                    $powerOnCmd = $this.BuildCommand('poweron', @()).Command
                     $job2 = Start-Job {
-                        ControlTarget power-off
+                        param($offCmd, $onCmd)
+                        Invoke-Expression $offCmd
                         Start-Sleep -Seconds 5
-                        ControlTarget power-on
-                    }
+                        Invoke-Expression $onCmd
+                    } -ArgumentList $powerOffCmd, $powerOnCmd
                     Wait-Job $job2 -Timeout 20 | Out-Null
                 }
                 3 {
                     if ($info.IpAddress -ne $null) {
                         Write-Warning 'Attempting to reboot host bridge...'
-                        Invoke-WebRequest -Uri "http://$($info.IpAddress)/cgi-bin/config?reboot"
-                        $nextTimeout = 300 # This takes a long time so wait longer next time
+                        try {
+                            Invoke-WebRequest -Uri "http://$($info.IpAddress)/cgi-bin/config?reboot"
+                            $nextTimeout = 300 # This takes a long time so wait longer next time
+                        } catch {
+                            Write-Warning "Failed to reboot host bridge: $_"
+                        }
                     }
                 }
             }
