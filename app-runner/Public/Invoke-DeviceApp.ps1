@@ -28,10 +28,6 @@ function Invoke-DeviceApp {
     This parameter is currently only supported on PlayStation 5 for Unreal Engine applications that need
     access to cooked content (PAK files, configs, etc.) via the /app0/ virtual path.
 
-    .PARAMETER Timeout
-    Optional timeout in seconds. Overrides the provider's default run-timeout for this invocation.
-    Useful for crash tests where the app is expected to terminate quickly.
-
     .EXAMPLE
     Invoke-DeviceApp -ExecutablePath "MyGame.exe" -Arguments @("--debug", "--level=1")
 
@@ -44,9 +40,6 @@ function Invoke-DeviceApp {
     .EXAMPLE
     Invoke-DeviceApp -ExecutablePath "Game.self" -Arguments @("-unattended") -WorkingDirectory "C:\Build\StagedBuilds\PS5"
 
-    .EXAMPLE
-    # Use a shorter timeout for crash tests
-    Invoke-DeviceApp -ExecutablePath "com.example.app" -Arguments @("--test", "crash") -Timeout 30
     #>
     [CmdletBinding()]
     param(
@@ -61,10 +54,7 @@ function Invoke-DeviceApp {
         [string]$LogFilePath = $null,
 
         [Parameter(Mandatory = $false)]
-        [string]$WorkingDirectory = $null,
-
-        [Parameter(Mandatory = $false)]
-        [int]$Timeout = 0
+        [string]$WorkingDirectory = $null
     )
 
     Assert-DeviceSession
@@ -76,23 +66,7 @@ function Invoke-DeviceApp {
 
     # Use the provider to run the application
     $provider = $script:CurrentSession.Provider
-
-    # Temporarily override the provider's timeout if specified
-    $originalTimeout = $null
-    if ($Timeout -gt 0 -and $provider.Timeouts.ContainsKey('run-timeout')) {
-        $originalTimeout = $provider.Timeouts['run-timeout']
-        $provider.Timeouts['run-timeout'] = $Timeout
-    }
-
-    try {
-        $result = $provider.RunApplication($ExecutablePath, $Arguments, $LogFilePath, $WorkingDirectory)
-    }
-    finally {
-        # Restore the original timeout
-        if ($null -ne $originalTimeout) {
-            $provider.Timeouts['run-timeout'] = $originalTimeout
-        }
-    }
+    $result = $provider.RunApplication($ExecutablePath, $Arguments, $LogFilePath, $WorkingDirectory)
 
     Write-GitHub "::endgroup::"
 
