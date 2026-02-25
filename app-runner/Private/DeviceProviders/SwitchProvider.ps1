@@ -73,6 +73,16 @@ class SwitchProvider : DeviceProvider {
             $this.TargetPlatform = if ($target -match '^HAL') { 'Ounce' } else { 'NX' }
             Write-Debug "$($this.Platform): Using Target Manager platform: $($this.TargetPlatform)"
 
+            # Update device-control commands to include --target so they operate on the correct device
+            # when multiple targets (NX and Ounce) are registered in Target Manager.
+            $targetArg = " --target `"$target`""
+            $this.Commands['connect'] = @($this.TargetControlTool, "connect --force$targetArg")
+            $this.Commands['disconnect'] = @($this.TargetControlTool, "disconnect$targetArg")
+            $this.Commands['poweron'] = @($this.TargetControlTool, "power-on$targetArg")
+            $this.Commands['poweroff'] = @($this.TargetControlTool, "power-off$targetArg")
+            $this.Commands['press-power-button'] = @($this.TargetControlTool, "press-power-button$targetArg")
+            $this.Commands['reset'] = @($this.TargetControlTool, "reset$targetArg")
+
             $this.InvokeCommand('set-default-target', @($target, $this.TargetPlatform))
         }
         return $this.Connect()
