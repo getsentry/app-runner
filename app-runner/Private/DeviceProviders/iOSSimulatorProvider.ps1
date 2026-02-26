@@ -60,7 +60,7 @@ class iOSSimulatorProvider : DeviceProvider {
 
         # Configure timeouts
         $this.Timeouts = @{
-            'boot'        = 60
+            'boot-timeout' = 60
             'run-timeout' = 300
         }
     }
@@ -466,7 +466,7 @@ class iOSSimulatorProvider : DeviceProvider {
         }
 
         # Wait for simulator to be ready
-        $maxWait = $this.Timeouts['boot']
+        $maxWait = $this.Timeouts['boot-timeout']
         $waited = 0
         while ($waited -lt $maxWait) {
             $state = $this.GetSimulatorState()
