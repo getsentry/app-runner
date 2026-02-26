@@ -105,36 +105,28 @@ Describe '<Platform>' -Tag 'iOSSimulator' -ForEach $TestTargets {
     }
 
     Context 'Application Management' -Tag $TargetName {
+        BeforeDiscovery {
+            $testApp = "$PSScriptRoot/Fixtures/iOS/TestApp.app"
+            $shouldSkip = -not (Test-Path $testApp)
+            if ($shouldSkip) {
+                Write-Warning "Test .app bundle not found at: $testApp. Run Build-SimulatorApp.ps1 first."
+            }
+        }
+
         BeforeAll {
             Connect-Device -Platform $Platform -Target $Target
-
-            # Path to test .app bundle (built by Build-SimulatorApp.ps1)
-            $appPath = Join-Path $PSScriptRoot 'Fixtures' 'iOS' 'TestApp.app'
-            if (-not (Test-Path $appPath)) {
-                Set-ItResult -Skipped -Because "Test .app bundle not found at $appPath. Run Build-SimulatorApp.ps1 first."
-            }
-            $script:appPath = $appPath
+            $script:appPath = Join-Path $PSScriptRoot 'Fixtures' 'iOS' 'TestApp.app'
         }
 
         AfterAll {
             Invoke-TestCleanup
         }
 
-        It 'Install-DeviceApp installs .app bundle' {
-            if (-not (Test-Path $script:appPath)) {
-                Set-ItResult -Skipped -Because "Test .app bundle not found"
-                return
-            }
-
+        It 'Install-DeviceApp installs .app bundle' -Skip:$shouldSkip {
             { Install-DeviceApp -Path $script:appPath } | Should -Not -Throw
         }
 
-        It 'Invoke-DeviceApp executes application' {
-            if (-not (Test-Path $script:appPath)) {
-                Set-ItResult -Skipped -Because "Test .app bundle not found"
-                return
-            }
-
+        It 'Invoke-DeviceApp executes application' -Skip:$shouldSkip {
             $bundleId = 'io.sentry.apprunner.TestApp'
 
             $result = Invoke-DeviceApp -ExecutablePath $bundleId -Arguments @('--test-mode', 'simulator')
