@@ -45,6 +45,7 @@ class PlayStation5Provider : DeviceProvider {
             'ipconfig'           = @($this.TargetControlTool, 'network ip-config')
             'natinfo'            = @($this.TargetControlTool, 'network get-nat-traversal-info')
             'settingsexport'     = @($this.TargetControlTool, 'settings export "{0}"')
+            'settingsimport'     = @($this.TargetControlTool, 'settings import "{0}"')
             'processlist'        = @($this.TargetControlTool, 'process list', { $Input | ConvertFrom-Yaml })
             # Target management commands for DetectAndSetDefaultTarget()
             'get-default-target' = @($this.TargetControlTool, 'target get-default')
