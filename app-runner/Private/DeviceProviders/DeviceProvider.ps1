@@ -555,13 +555,11 @@ SDK Path: $($this.SdkPath)
     }
 
     [void] ExportSettings([string]$OutputFile) {
-        Write-Debug "$($this.Platform): Exporting settings to: $OutputFile"
-        $this.InvokeCommand('settingsexport', @($OutputFile))
+        $this.LogNotImplemented('ExportSettings')
     }
 
     [void] ImportSettings([string]$InputFile) {
-        Write-Debug "$($this.Platform): Importing settings from: $InputFile"
-        $this.InvokeCommand('settingsimport', @($InputFile))
+        $this.LogNotImplemented('ImportSettings')
     }
 
     [bool] TestInternetConnection() {

@@ -148,6 +148,16 @@ class PlayStation5Provider : DeviceProvider {
             })
     }
 
+    [void] ExportSettings([string]$OutputFile) {
+        Write-Debug "$($this.Platform): Exporting settings to: $OutputFile"
+        $this.InvokeCommand('settingsexport', @($OutputFile))
+    }
+
+    [void] ImportSettings([string]$InputFile) {
+        Write-Debug "$($this.Platform): Importing settings from: $InputFile"
+        $this.InvokeCommand('settingsimport', @($InputFile))
+    }
+
     [hashtable] GetDiagnostics([string]$OutputDirectory) {
         # Call base implementation to collect standard diagnostics
         $results = ([DeviceProvider]$this).GetDiagnostics($OutputDirectory)
