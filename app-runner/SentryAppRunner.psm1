@@ -74,5 +74,9 @@ Export-ModuleMember -Function @(
     'Get-DeviceLogs',
     'Get-DeviceScreenshot',
     'Get-DeviceDiagnostics',
-    'Copy-DeviceItem'
+    'Copy-DeviceItem',
+
+    # Settings Management
+    'Export-DeviceSettings',
+    'Import-DeviceSettings'
 )

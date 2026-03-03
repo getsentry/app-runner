@@ -32,6 +32,8 @@
         'Connect-Device',
         'Copy-DeviceItem',
         'Disconnect-Device',
+        'Export-DeviceSettings',
+        'Import-DeviceSettings',
         'Get-DeviceDiagnostics',
         'Get-DeviceLogs',
         'Get-DeviceScreenshot',

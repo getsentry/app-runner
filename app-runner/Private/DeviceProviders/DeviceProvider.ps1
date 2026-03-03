@@ -554,6 +554,14 @@ SDK Path: $($this.SdkPath)
         return "$($this.Platform) ($(Get-Date -Format 'HH:mm:ss'))"
     }
 
+    [void] ExportSettings([string]$OutputFile) {
+        $this.LogNotImplemented('ExportSettings')
+    }
+
+    [void] ImportSettings([string]$InputFile) {
+        $this.LogNotImplemented('ImportSettings')
+    }
+
     [bool] TestInternetConnection() {
         Write-Debug "$($this.Platform): Testing internet connection"
         $this.LogNotImplemented('TestInternetConnection')

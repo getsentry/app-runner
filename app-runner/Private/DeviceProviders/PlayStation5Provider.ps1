@@ -45,6 +45,7 @@ class PlayStation5Provider : DeviceProvider {
             'ipconfig'           = @($this.TargetControlTool, 'network ip-config')
             'natinfo'            = @($this.TargetControlTool, 'network get-nat-traversal-info')
             'settingsexport'     = @($this.TargetControlTool, 'settings export "{0}"')
+            'settingsimport'     = @($this.TargetControlTool, 'settings import "{0}"')
             'processlist'        = @($this.TargetControlTool, 'process list', { $Input | ConvertFrom-Yaml })
             # Target management commands for DetectAndSetDefaultTarget()
             'get-default-target' = @($this.TargetControlTool, 'target get-default')
@@ -147,6 +148,16 @@ class PlayStation5Provider : DeviceProvider {
             })
     }
 
+    [void] ExportSettings([string]$OutputFile) {
+        Write-Debug "$($this.Platform): Exporting settings to: $OutputFile"
+        $this.InvokeCommand('settingsexport', @($OutputFile))
+    }
+
+    [void] ImportSettings([string]$InputFile) {
+        Write-Debug "$($this.Platform): Importing settings from: $InputFile"
+        $this.InvokeCommand('settingsimport', @($InputFile))
+    }
+
     [hashtable] GetDiagnostics([string]$OutputDirectory) {
         # Call base implementation to collect standard diagnostics
         $results = ([DeviceProvider]$this).GetDiagnostics($OutputDirectory)
@@ -190,7 +201,7 @@ class PlayStation5Provider : DeviceProvider {
         # Run prospero-ctrl settings export
         try {
             $settingsFile = Join-Path $OutputDirectory "$datePrefix-settings.xml"
-            $this.InvokeCommand('settingsexport', @($settingsFile))
+            $this.ExportSettings($settingsFile)
             $results.Files += $settingsFile
             Write-Debug "Settings exported to: $settingsFile"
         } catch {
