@@ -191,7 +191,7 @@ class PlayStation5Provider : DeviceProvider {
         # Run prospero-ctrl settings export
         try {
             $settingsFile = Join-Path $OutputDirectory "$datePrefix-settings.xml"
-            $this.InvokeCommand('settingsexport', @($settingsFile))
+            $this.ExportSettings($settingsFile)
             $results.Files += $settingsFile
             Write-Debug "Settings exported to: $settingsFile"
         } catch {
