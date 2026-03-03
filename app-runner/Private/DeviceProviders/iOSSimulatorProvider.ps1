@@ -459,7 +459,6 @@ class iOSSimulatorProvider : DeviceProvider {
             # Check if already booted
             if ("$_" -match 'Unable to boot device in current state: Booted') {
                 Write-Debug "$($this.Platform): Simulator is already booted"
-                $this.DidBootSimulator = $false
                 return
             }
             throw
