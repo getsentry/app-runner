@@ -1,10 +1,20 @@
 name: Release
-permissions: read-all
 
 on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Version to release (or "auto")
+        required: false
+      force:
+        description: Force a release even when there are release-blockers
+        type: boolean
+        default: false
   push:
     branches:
       - 'release/**'
+
+permissions: read-all
 
 jobs:
   app-runner-test:
@@ -29,3 +39,20 @@ jobs:
       module-path: sentry-api-client
       test-path: Tests
       settings-path: PSScriptAnalyzerSettings.psd1
+
+  prepare-release:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GH_RELEASE_PAT }}
+      - uses: getsentry/craft@v2
+        with:
+          version: ${{ inputs.version }}
+          force: ${{ inputs.force }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GH_RELEASE_PAT }}
