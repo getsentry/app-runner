@@ -6,10 +6,16 @@ on:
     branches: ['main']
     paths:
       - 'app-runner/**'
+      - '.github/workflows/app-runner.yml'
+      - '.github/workflows/test-powershell-module.yml'
+      - 'PSScriptAnalyzerSettings.psd1'
   pull_request:
     branches: ['main']
     paths:
       - 'app-runner/**'
+      - '.github/workflows/app-runner.yml'
+      - '.github/workflows/test-powershell-module.yml'
+      - 'PSScriptAnalyzerSettings.psd1'
 
 jobs:
   test:
