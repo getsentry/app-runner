@@ -278,7 +278,7 @@ class iOSSimulatorProvider : DeviceProvider {
             Write-Host "  Arguments: $($Arguments -join ' ')" -ForegroundColor Cyan
         }
 
-        # Use Start-Process with output redirection and timeout (pattern from smoke-test-ios.ps1)
+        # Use Start-Process with output redirection and timeout
         $outFile = New-TemporaryFile
         $errFile = New-TemporaryFile
         $consoleOut = @()
