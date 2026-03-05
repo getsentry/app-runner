@@ -5,6 +5,9 @@ xcuserdata/
 *.xcarchive
 export/
 
+# Build artifacts from Build-SimulatorApp.ps1
+TestApp.app/
+
 # Temporary build files
 build/
 DerivedData/

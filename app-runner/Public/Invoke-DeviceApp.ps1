@@ -39,6 +39,7 @@ function Invoke-DeviceApp {
 
     .EXAMPLE
     Invoke-DeviceApp -ExecutablePath "Game.self" -Arguments @("-unattended") -WorkingDirectory "C:\Build\StagedBuilds\PS5"
+
     #>
     [CmdletBinding()]
     param(

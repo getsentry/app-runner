@@ -1,0 +1,164 @@
+$ErrorActionPreference = 'Stop'
+
+BeforeDiscovery {
+    # Define test targets
+    function Get-TestTarget {
+        param(
+            [string]$Platform,
+            [string]$Target
+        )
+
+        $TargetName = if ($Target) {
+            "$Platform-$Target"
+        }
+        else {
+            $Platform
+        }
+
+        return @{
+            Platform   = $Platform
+            Target     = $Target
+            TargetName = $TargetName
+        }
+    }
+
+    $TestTargets = @()
+
+    # Detect if running in CI environment
+    $isCI = $env:CI -eq 'true'
+
+    # Check for macOS platform and xcrun availability
+    if (-not $IsMacOS) {
+        Write-Warning "iOSSimulator tests require macOS. iOSSimulator tests will be skipped."
+    }
+    elseif (-not (Get-Command 'xcrun' -ErrorAction SilentlyContinue)) {
+        $message = "xcrun not found in PATH"
+        if ($isCI) {
+            throw "$message. This is required in CI."
+        }
+        else {
+            Write-Warning "$message. iOSSimulator tests will be skipped."
+        }
+    }
+    elseif (-not ((xcrun simctl list devices) -match '\(([0-9A-Fa-f\-]{36})\)')) {
+        $message = "No iOS simulators available"
+        if ($isCI) {
+            throw "$message. This is required in CI."
+        }
+        else {
+            Write-Warning "$message. iOSSimulator tests will be skipped."
+        }
+    }
+    else {
+        $TestTargets += Get-TestTarget -Platform 'iOSSimulator'
+    }
+}
+
+BeforeAll {
+    # Import the module
+    Import-Module "$PSScriptRoot\..\SentryAppRunner.psm1" -Force
+
+    # Helper function for cleanup
+    function Invoke-TestCleanup {
+        try {
+            if (Get-DeviceSession) {
+                Disconnect-Device
+            }
+        }
+        catch {
+            # Ignore cleanup errors
+            Write-Debug "Cleanup failed: $_"
+        }
+    }
+}
+
+Describe '<Platform>' -Tag 'iOSSimulator' -ForEach $TestTargets {
+    Context 'Device Connection Management' -Tag $TargetName {
+        AfterEach {
+            Invoke-TestCleanup
+        }
+
+        It 'Connect-Device establishes valid session' {
+            { Connect-Device -Platform $Platform -Target $Target } | Should -Not -Throw
+
+            $session = Get-DeviceSession
+            $session | Should -Not -BeNullOrEmpty
+            $session.Platform | Should -Be $Platform
+            $session.IsConnected | Should -BeTrue
+        }
+
+        It 'Get-DeviceStatus returns status information' {
+            Connect-Device -Platform $Platform -Target $Target
+
+            $status = Get-DeviceStatus
+            $status | Should -Not -BeNullOrEmpty
+            $status.Status | Should -Be 'Online'
+        }
+
+        It 'Connect-Device with "latest" target selects a simulator' {
+            { Connect-Device -Platform $Platform -Target 'latest' } | Should -Not -Throw
+
+            $session = Get-DeviceSession
+            $session | Should -Not -BeNullOrEmpty
+            $session.IsConnected | Should -BeTrue
+        }
+    }
+
+    Context 'Application Management' -Tag $TargetName {
+        BeforeDiscovery {
+            $testApp = "$PSScriptRoot/Fixtures/iOS/TestApp.app"
+            $shouldSkip = -not (Test-Path $testApp)
+            if ($shouldSkip) {
+                Write-Warning "Test .app bundle not found at: $testApp. Run Build-SimulatorApp.ps1 first."
+            }
+        }
+
+        BeforeAll {
+            Connect-Device -Platform $Platform -Target $Target
+            $script:appPath = Join-Path $PSScriptRoot 'Fixtures' 'iOS' 'TestApp.app'
+        }
+
+        AfterAll {
+            Invoke-TestCleanup
+        }
+
+        It 'Install-DeviceApp installs .app bundle' -Skip:$shouldSkip {
+            { Install-DeviceApp -Path $script:appPath } | Should -Not -Throw
+        }
+
+        It 'Invoke-DeviceApp executes application' -Skip:$shouldSkip {
+            $bundleId = 'io.sentry.apprunner.TestApp'
+
+            $result = Invoke-DeviceApp -ExecutablePath $bundleId -Arguments @('--test-mode', 'simulator')
+            $result | Should -Not -BeNullOrEmpty
+            $result.Output | Should -Not -BeNullOrEmpty
+        }
+    }
+
+    Context 'Screenshot Capture' -Tag $TargetName {
+        BeforeAll {
+            Connect-Device -Platform $Platform -Target $Target
+        }
+
+        AfterAll {
+            Invoke-TestCleanup
+        }
+
+        It 'Get-DeviceScreenshot captures screenshot' {
+            $outputPath = Join-Path $TestDrive "test_screenshot_$Platform.png"
+
+            try {
+                { Get-DeviceScreenshot -OutputPath $outputPath } | Should -Not -Throw
+
+                Test-Path $outputPath | Should -Be $true
+                $fileInfo = Get-Item $outputPath
+                $fileInfo.Length | Should -BeGreaterThan 0
+            }
+            finally {
+                if (Test-Path $outputPath) {
+                    Remove-Item $outputPath -Force
+                }
+            }
+        }
+    }
+}

@@ -73,6 +73,31 @@ Get-DeviceLogs -LogType "All" -MaxEntries 1000
 Disconnect-Device
 ```
 
+### iOS Simulator Example
+
+```powershell
+# Connect to iOS Simulator (auto-discovers available simulators)
+Connect-Device -Platform "iOSSimulator"
+
+# Or connect to a specific iOS runtime version
+Connect-Device -Platform "iOSSimulator" -Target "iOS 17.0"
+
+# Or use latest available runtime
+Connect-Device -Platform "iOSSimulator" -Target "latest"
+
+# Install .app bundle (built for simulator)
+Install-DeviceApp -Path "MyApp.app"
+
+# Run app using bundle ID
+Invoke-DeviceApp -ExecutablePath "com.example.app" -Arguments @("--test", "smoke")
+
+# Collect diagnostics
+Get-DeviceScreenshot -OutputPath "screenshot.png"
+
+# Disconnect (shuts down simulator only if it was booted by this session)
+Disconnect-Device
+```
+
 ## Supported Platforms
 
 ### Gaming Consoles
@@ -84,6 +109,7 @@ Disconnect-Device
 ### Mobile Platforms
 
 - **Adb** - Android devices and emulators via Android Debug Bridge
+- **iOSSimulator** - iOS Simulators via xcrun simctl (macOS only)
 - **AndroidSauceLabs** - Android devices on SauceLabs Real Device Cloud
 - **iOSSauceLabs** - iOS devices on SauceLabs Real Device Cloud (coming soon)
 
@@ -96,8 +122,8 @@ Disconnect-Device
 **Notes:**
 - Desktop platforms execute applications locally on the same machine running the module. Device lifecycle operations (power on/off, reboot) are not supported for desktop platforms.
 - Mobile platforms require separate installation and execution steps:
-  - Use `Install-DeviceApp "MyApp.apk"` to install APK files
-  - Use `Invoke-DeviceApp "package.name/.ActivityName"` to run installed apps
+  - Android: Use `Install-DeviceApp "MyApp.apk"` to install APK files, then `Invoke-DeviceApp "package.name/.ActivityName"` to run
+  - iOS Simulator: Use `Install-DeviceApp "MyApp.app"` to install .app bundles, then `Invoke-DeviceApp "com.example.app"` with bundle ID
   - Android Intent extras should be passed as Arguments in the format: `-e key value` or `-ez key true/false`
 
 ## Functions
@@ -188,6 +214,11 @@ Connect-Device -Platform "Xbox" -TimeoutSeconds 300  # 5 minutes
 - Android SDK with ADB (Android Debug Bridge) in PATH
 - USB debugging enabled on physical devices
 - Device connected via USB or emulator running locally
+
+**iOS Simulator:**
+- macOS with Xcode and `xcrun` in PATH
+- At least one iOS Simulator runtime installed
+- `.app` bundles built for simulator (not `.ipa` archives)
 
 **Android/iOS (SauceLabs):**
 - SauceLabs account with Real Device Cloud access
