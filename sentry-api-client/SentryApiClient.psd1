@@ -34,6 +34,7 @@
         'Find-SentryEventByTag',
         'Get-SentryCLI',
         'Get-SentryEvent',
+        'Get-SentryEventAttachments',
         'Get-SentryEventsByTag',
         'Get-SentryLogs',
         'Get-SentryLogsByAttribute',
