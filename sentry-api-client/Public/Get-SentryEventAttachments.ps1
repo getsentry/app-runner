@@ -4,8 +4,8 @@ function Get-SentryEventAttachments {
     Retrieves attachments for a specific event from Sentry.
 
     .DESCRIPTION
-    Fetches the list of attachments associated with a specific Sentry event by its ID.
-    Automatically removes hyphens from GUID-formatted event IDs.
+    Fetches attachment metadata (name, size, type, content type) for a specific Sentry event.
+    Does not download attachment content. Automatically removes hyphens from GUID-formatted event IDs.
 
     .PARAMETER EventId
     The unique identifier of the event whose attachments to retrieve.
