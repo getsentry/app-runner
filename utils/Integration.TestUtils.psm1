@@ -486,7 +486,7 @@ function Get-SentryTestEventAttachments {
 
             try {
                 $response = Get-SentryEventAttachments -EventId $EventId
-                if ($response -and $response.Count -ge $ExpectedCount) {
+                if ($response.Count -ge $ExpectedCount) {
                     $attachments = $response
                 }
             } catch {
