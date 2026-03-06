@@ -25,5 +25,7 @@ function Get-SentryEventAttachments {
 
     $Uri = Get-SentryProjectUrl -Resource "events/$EventId/attachments/"
 
-    return Invoke-SentryApiRequest -Uri $Uri -Method 'GET'
+    # The API returns a top-level JSON array. ConvertFrom-Json -AsHashtable unwraps
+    # single-element arrays into a hashtable, so wrap in @() to ensure array output.
+    return , @(Invoke-SentryApiRequest -Uri $Uri -Method 'GET')
 }
