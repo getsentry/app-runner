@@ -1,0 +1,13 @@
+name: Devkit Power On
+
+on:
+  workflow_dispatch: # Manual trigger only
+
+jobs:
+  power-on:
+    name: Power on devkit
+    runs-on: [self-hosted, playstation, windows, x64, vie]
+    timeout-minutes: 10
+
+    steps:
+      - run: prospero-ctrl power on
