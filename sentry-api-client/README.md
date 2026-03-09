@@ -18,6 +18,9 @@ Connect-SentryApi -ApiToken "your-api-token" -Organization "your-org" -Project "
 # Get specific event
 Get-SentryEvent -EventId "123456"
 
+# Get event attachments
+Get-SentryEventAttachments -EventId "123456"
+
 # Find events by tag
 Get-SentryEventsByTag -TagName 'environment' -TagValue 'production'
 
@@ -73,6 +76,15 @@ Clears the current Sentry API connection and configuration.
 ### Get-SentryEvent
 
 Retrieves a specific event from Sentry by its ID.
+
+### Get-SentryEventAttachments
+
+Retrieves attachment metadata (name, size, type, content type) for a specific event. Does not download attachment content. Returns an array of attachment metadata objects.
+
+```powershell
+# Get attachments for an event
+Get-SentryEventAttachments -EventId "123456"
+```
 
 ### Get-SentryEventsByTag
 

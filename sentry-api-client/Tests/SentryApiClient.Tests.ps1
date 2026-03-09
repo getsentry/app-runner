@@ -18,6 +18,7 @@ Describe 'SentryApiClient Module' {
                 'Connect-SentryApi',
                 'Disconnect-SentryApi',
                 'Get-SentryEvent',
+                'Get-SentryEventAttachments',
                 'Find-SentryEventByTag',
                 'Get-SentryEventsByTag',
                 'Invoke-SentryCLI',
@@ -91,6 +92,31 @@ Describe 'SentryApiClient Module' {
                 # Invoke-WebRequest returns an object with a Content property containing JSON
                 # Order matters - most specific patterns first
                 switch -Regex ($Uri) {
+                    '/events/\w+/attachments/' {
+                        $responseData = @(
+                            @{
+                                id         = '111'
+                                event_id   = '12345678901234567890123456789012'
+                                type       = 'event.attachment'
+                                name       = 'hello.txt'
+                                mimetype   = 'text/plain'
+                                size       = 14
+                                headers    = @{ 'Content-Type' = 'text/plain' }
+                                sha1       = 'abc123'
+                            },
+                            @{
+                                id         = '222'
+                                event_id   = '12345678901234567890123456789012'
+                                type       = 'event.attachment'
+                                name       = 'config.txt'
+                                mimetype   = 'application/octet-stream'
+                                size       = 42
+                                headers    = @{ 'Content-Type' = 'application/octet-stream' }
+                                sha1       = 'def456'
+                            }
+                        )
+                        return @{ Content = ($responseData | ConvertTo-Json -Depth 10) }
+                    }
                     '/issues/[^/]+/events/' {
                         # Handle issues/{id}/events/ endpoint - most specific first
                         $responseData = @(
@@ -269,6 +295,60 @@ Describe 'SentryApiClient Module' {
 
                 # Should have made 3 calls - one for issues, one for events list, one for actual event content
                 Assert-MockCalled -ModuleName SentryApiClient Invoke-WebRequest -Times 3
+            }
+        }
+
+        Context 'Get-SentryEventAttachments' {
+            It 'Should retrieve attachments for an event' {
+                $eventId = '12345678901234567890123456789012'
+                $result = Get-SentryEventAttachments -EventId $eventId
+
+                $result | Should -Not -BeNullOrEmpty
+                $result | Should -HaveCount 2
+                $result[0].name | Should -Be 'hello.txt'
+                $result[1].name | Should -Be 'config.txt'
+            }
+
+            It 'Should remove hyphens from GUID-formatted event ID' {
+                $guidEventId = '12345678-9012-3456-7890-123456789012'
+
+                Get-SentryEventAttachments -EventId $guidEventId
+
+                Assert-MockCalled -ModuleName SentryApiClient Invoke-WebRequest -ParameterFilter {
+                    $Uri -like '*events/12345678901234567890123456789012/attachments/*'
+                }
+            }
+
+            It 'Should construct correct API URL' {
+                $eventId = '12345678901234567890123456789012'
+
+                Get-SentryEventAttachments -EventId $eventId
+
+                Assert-MockCalled -ModuleName SentryApiClient Invoke-WebRequest -ParameterFilter {
+                    $Uri -match 'https://sentry.io/api/0/projects/test-org/test-project/events/\w+/attachments/'
+                }
+            }
+
+            It 'Should return array even with single attachment' {
+                Mock -ModuleName SentryApiClient Invoke-WebRequest {
+                    $responseData = @(
+                        @{
+                            id       = '333'
+                            event_id = 'single'
+                            type     = 'event.attachment'
+                            name     = 'only.txt'
+                            size     = 5
+                            headers  = @{ 'Content-Type' = 'text/plain' }
+                        }
+                    )
+                    return @{ Content = ($responseData | ConvertTo-Json -Depth 10) }
+                }
+
+                $result = Get-SentryEventAttachments -EventId 'single'
+
+                $result -is [Array] | Should -BeTrue
+                $result | Should -HaveCount 1
+                $result[0].name | Should -Be 'only.txt'
             }
         }
     }

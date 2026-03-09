@@ -455,5 +455,64 @@ function Get-SentryTestTransaction {
     throw "Transaction with trace $TraceId not found in Sentry within $TimeoutSeconds seconds: $lastError"
 }
 
+function Get-SentryTestEventAttachments {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$EventId,
+
+        [Parameter()]
+        [int]$ExpectedCount = 1,
+
+        [Parameter()]
+        [int]$TimeoutSeconds = 120
+    )
+
+    Write-Host "Fetching Sentry event attachments for event: $EventId" -ForegroundColor Yellow
+    $progressActivity = "Waiting for attachments on event $EventId"
+
+    $startTime = Get-Date
+    $endTime = $startTime.AddSeconds($TimeoutSeconds)
+    $lastError = $null
+    $elapsedSeconds = 0
+
+    try {
+        do {
+            $attachments = @()
+            $elapsedSeconds = [int]((Get-Date) - $startTime).TotalSeconds
+            $percentComplete = [math]::Min(100, ($elapsedSeconds / $TimeoutSeconds) * 100)
+
+            Write-Progress -Activity $progressActivity -Status "Elapsed: $elapsedSeconds/$TimeoutSeconds seconds" -PercentComplete $percentComplete
+
+            try {
+                $response = Get-SentryEventAttachments -EventId $EventId
+                if ($response.Count -ge $ExpectedCount) {
+                    $attachments = $response
+                }
+            } catch {
+                $lastError = $_.Exception.Message
+                Write-Debug "Attachments for event $EventId not found yet: $lastError"
+            }
+
+            if ($attachments.Count -ge $ExpectedCount) {
+                Write-Host "Found $($attachments.Count) attachment(s) for event $EventId" -ForegroundColor Green
+
+                $attachmentsJson = $attachments | ConvertTo-Json -Depth 10
+                $attachmentsJson | Out-File -FilePath (Get-OutputFilePath "attachments-$EventId.json")
+
+                return , @($attachments)
+            }
+
+            Start-Sleep -Milliseconds 500
+            $currentTime = Get-Date
+        } while ($currentTime -lt $endTime)
+    } finally {
+        Write-Progress -Activity $progressActivity -Completed
+    }
+
+    $foundCount = if ($attachments) { $attachments.Count } else { 0 }
+    throw "Expected at least $ExpectedCount attachment(s) for event $EventId but found $foundCount within $TimeoutSeconds seconds. Last error: $lastError"
+}
+
 # Export module functions
-Export-ModuleMember -Function Invoke-CMakeConfigure, Invoke-CMakeBuild, Set-OutputDir, Get-OutputFilePath, Get-EventIds, Get-SentryTestEvent, Get-SentryTestLog, Get-SentryTestMetric, Get-SentryTestTransaction, Get-PackageAumid
+Export-ModuleMember -Function Invoke-CMakeConfigure, Invoke-CMakeBuild, Set-OutputDir, Get-OutputFilePath, Get-EventIds, Get-SentryTestEvent, Get-SentryTestEventAttachments, Get-SentryTestLog, Get-SentryTestMetric, Get-SentryTestTransaction, Get-PackageAumid
