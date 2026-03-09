@@ -9,7 +9,7 @@ on:
 jobs:
   power-on:
     name: Power on devkit
-    runs-on: [self-hosted, playstation, windows, x64, vie]
+    runs-on: [self-hosted, playstation, windows, x64]
     timeout-minutes: 10
 
     steps:
