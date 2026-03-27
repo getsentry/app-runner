@@ -5,10 +5,16 @@ on:
     branches: ['main']
     paths:
       - 'sentry-api-client/**'
+      - '.github/workflows/sentry-api-client.yml'
+      - '.github/workflows/test-powershell-module.yml'
+      - 'PSScriptAnalyzerSettings.psd1'
   pull_request:
     branches: ['main']
     paths:
       - 'sentry-api-client/**'
+      - '.github/workflows/sentry-api-client.yml'
+      - '.github/workflows/test-powershell-module.yml'
+      - 'PSScriptAnalyzerSettings.psd1'
 
 jobs:
   test:
