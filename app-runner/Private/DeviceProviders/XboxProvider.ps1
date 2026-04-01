@@ -79,7 +79,26 @@ class XboxProvider : DeviceProvider {
     [hashtable] Connect() {
         Write-Debug "$($this.Platform): Connecting to device"
         $this.InvokePowerOn() # Wakes up the device - needs to run before connect.
-        $this.InvokeCommand('connect', @())
+
+        # Retry in case the device SYSTEM is temporarily unreachable (e.g. recovering
+        # from a previous test crash). xbconnect exits non-zero immediately in that case,
+        # which bypasses the timeout-based retry in InvokeCommandWithTimeoutAndRetry.
+        $maxAttempts = 4
+        $retryDelaySeconds = 10
+        for ($attempt = 1; $attempt -le $maxAttempts; $attempt++) {
+            try {
+                $this.InvokeCommand('connect', @())
+                break
+            } catch {
+                if ($attempt -lt $maxAttempts) {
+                    Write-Warning "$($this.Platform): Connect attempt $attempt of $maxAttempts failed, retrying in $retryDelaySeconds seconds... ($_)"
+                    Start-Sleep -Seconds $retryDelaySeconds
+                } else {
+                    throw
+                }
+            }
+        }
+
         return $this.CreateSessionInfo()
     }
 
