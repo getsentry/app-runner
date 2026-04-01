@@ -84,7 +84,7 @@ class XboxProvider : DeviceProvider {
         # from a previous test crash). xbconnect exits non-zero immediately in that case,
         # which bypasses the timeout-based retry in InvokeCommandWithTimeoutAndRetry.
         $maxAttempts = 4
-        $retryDelaySeconds = 10
+        $retryDelaySeconds = 30
         for ($attempt = 1; $attempt -le $maxAttempts; $attempt++) {
             try {
                 $this.InvokeCommand('connect', @())
