@@ -98,6 +98,7 @@ class XboxProvider : DeviceProvider {
                 }
             }
         }
+        throw "Connect failed after $maxAttempts attempts"
     }
 
     # Override Connect to support target parameter
