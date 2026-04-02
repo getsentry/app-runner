@@ -88,7 +88,7 @@ class XboxProvider : DeviceProvider {
         for ($attempt = 1; $attempt -le $maxAttempts; $attempt++) {
             try {
                 $this.InvokeCommand('connect', @())
-                break
+                return $this.CreateSessionInfo()
             } catch {
                 if ($attempt -lt $maxAttempts) {
                     Write-Warning "$($this.Platform): Connect attempt $attempt of $maxAttempts failed, retrying in $retryDelaySeconds seconds... ($_)"
@@ -98,8 +98,6 @@ class XboxProvider : DeviceProvider {
                 }
             }
         }
-
-        return $this.CreateSessionInfo()
     }
 
     # Override Connect to support target parameter
