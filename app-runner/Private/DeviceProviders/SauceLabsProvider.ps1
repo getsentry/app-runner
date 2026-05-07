@@ -314,7 +314,7 @@ class SauceLabsProvider : DeviceProvider {
             $this.InvokeSauceLabsApi('POST', "$baseUri/execute/sync", $body, $false, $null) | Out-Null
         }
         catch {
-            Write-Debug "$($this.Platform): nothing to terminate (app likely not running): $_"
+            Write-Warning "$($this.Platform): Terminate request failed: $_"
         }
     }
 
