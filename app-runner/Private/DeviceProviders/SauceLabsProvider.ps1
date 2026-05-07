@@ -304,6 +304,20 @@ class SauceLabsProvider : DeviceProvider {
         }
     }
 
+    [void] TerminateApp([string]$baseUri, [string]$packageName) {
+        $appParameter = if ($this.MobilePlatform -eq 'Android') { 'appId' } else { 'bundleId' }
+        try {
+            $body = @{
+                script = 'mobile: terminateApp'
+                args = @{ $appParameter = $packageName }
+            }
+            $this.InvokeSauceLabsApi('POST', "$baseUri/execute/sync", $body, $false, $null) | Out-Null
+        }
+        catch {
+            Write-Debug "$($this.Platform): nothing to terminate (app likely not running): $_"
+        }
+    }
+
     [hashtable] RunApplication([string]$ExecutablePath, [string[]]$Arguments, [string]$LogFilePath = $null, [string]$WorkingDirectory = $null) {
         Write-Debug "$($this.Platform): Running application: $ExecutablePath"
 
@@ -326,6 +340,9 @@ class SauceLabsProvider : DeviceProvider {
             $packageName = $parsed.PackageName
             $activityName = $parsed.ActivityName
             $this.CurrentPackageName = $packageName
+
+            # Terminate the app so the next launch starts fresh.
+            $this.TerminateApp($baseUri, $packageName)
 
             # Launch activity with Intent extras
             Write-Host "Launching: $packageName/$activityName" -ForegroundColor Cyan
@@ -361,18 +378,8 @@ class SauceLabsProvider : DeviceProvider {
             $bundleId = $ExecutablePath
             $this.CurrentPackageName = $bundleId
 
-            # Terminate first: without this, mobile: launchApp sometimes
-            # brings the app up without applying the supplied arguments.
-            try {
-                $terminateBody = @{
-                    script = 'mobile: terminateApp'
-                    args = @{ bundleId = $bundleId }
-                }
-                $this.InvokeSauceLabsApi('POST', "$baseUri/execute/sync", $terminateBody, $false, $null) | Out-Null
-            }
-            catch {
-                Write-Debug "$($this.Platform): terminateApp pre-launch failed (app may not be running): $_"
-            }
+            # Terminate the app so the next launch starts fresh.
+            $this.TerminateApp($baseUri, $bundleId)
 
             Write-Host "Launching: $bundleId" -ForegroundColor Cyan
             if ($Arguments) {
