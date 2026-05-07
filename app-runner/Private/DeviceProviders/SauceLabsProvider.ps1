@@ -361,6 +361,19 @@ class SauceLabsProvider : DeviceProvider {
             $bundleId = $ExecutablePath
             $this.CurrentPackageName = $bundleId
 
+            # Terminate first: without this, mobile: launchApp sometimes
+            # brings the app up without applying the supplied arguments.
+            try {
+                $terminateBody = @{
+                    script = 'mobile: terminateApp'
+                    args = @{ bundleId = $bundleId }
+                }
+                $this.InvokeSauceLabsApi('POST', "$baseUri/execute/sync", $terminateBody, $false, $null) | Out-Null
+            }
+            catch {
+                Write-Debug "$($this.Platform): terminateApp pre-launch failed (app may not be running): $_"
+            }
+
             Write-Host "Launching: $bundleId" -ForegroundColor Cyan
             if ($Arguments) {
                 Write-Host "  Arguments: $Arguments" -ForegroundColor Cyan
