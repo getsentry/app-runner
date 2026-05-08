@@ -304,6 +304,20 @@ class SauceLabsProvider : DeviceProvider {
         }
     }
 
+    [void] TerminateApp([string]$baseUri, [string]$packageName) {
+        $appParameter = if ($this.MobilePlatform -eq 'Android') { 'appId' } else { 'bundleId' }
+        try {
+            $body = @{
+                script = 'mobile: terminateApp'
+                args = @{ $appParameter = $packageName }
+            }
+            $this.InvokeSauceLabsApi('POST', "$baseUri/execute/sync", $body, $false, $null) | Out-Null
+        }
+        catch {
+            Write-Warning "$($this.Platform): Terminate request failed: $_"
+        }
+    }
+
     [hashtable] RunApplication([string]$ExecutablePath, [string[]]$Arguments, [string]$LogFilePath = $null, [string]$WorkingDirectory = $null) {
         Write-Debug "$($this.Platform): Running application: $ExecutablePath"
 
@@ -326,6 +340,9 @@ class SauceLabsProvider : DeviceProvider {
             $packageName = $parsed.PackageName
             $activityName = $parsed.ActivityName
             $this.CurrentPackageName = $packageName
+
+            # Terminate the app so the next launch starts fresh.
+            $this.TerminateApp($baseUri, $packageName)
 
             # Launch activity with Intent extras
             Write-Host "Launching: $packageName/$activityName" -ForegroundColor Cyan
@@ -360,6 +377,9 @@ class SauceLabsProvider : DeviceProvider {
             # For iOS, ExecutablePath is typically the Bundle ID
             $bundleId = $ExecutablePath
             $this.CurrentPackageName = $bundleId
+
+            # Terminate the app so the next launch starts fresh.
+            $this.TerminateApp($baseUri, $bundleId)
 
             Write-Host "Launching: $bundleId" -ForegroundColor Cyan
             if ($Arguments) {
