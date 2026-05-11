@@ -1,0 +1,11 @@
+minVersion: '2.21.0'
+changelog:
+  policy: auto
+preReleaseCommand: >-
+  pwsh -Command "
+    @('app-runner/SentryAppRunner.psd1', 'sentry-api-client/SentryApiClient.psd1') | ForEach-Object {
+      (Get-Content $_) -replace \"ModuleVersion = '.*'\", \"ModuleVersion = '$env:CRAFT_NEW_VERSION'\" | Set-Content $_
+    }
+  "
+targets:
+  - name: github
