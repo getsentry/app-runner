@@ -514,5 +514,54 @@ function Get-SentryTestEventAttachments {
     throw "Expected at least $ExpectedCount attachment(s) for event $EventId but found $foundCount within $TimeoutSeconds seconds. Last error: $lastError"
 }
 
+function Get-SentryTestReplay {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ReplayId,
+
+        [Parameter()]
+        [int]$TimeoutSeconds = 300
+    )
+
+    Write-Host "Fetching Sentry replay by ID: $ReplayId" -ForegroundColor Yellow
+    $progressActivity = "Waiting for Sentry replay $ReplayId"
+
+    $startTime = Get-Date
+    $endTime = $startTime.AddSeconds($TimeoutSeconds)
+    $lastError = $null
+    $elapsedSeconds = 0
+
+    try {
+        do {
+            $sentryReplay = $null
+            $elapsedSeconds = [int]((Get-Date) - $startTime).TotalSeconds
+            $percentComplete = [math]::Min(100, ($elapsedSeconds / $TimeoutSeconds) * 100)
+
+            Write-Progress -Activity $progressActivity -Status "Elapsed: $elapsedSeconds/$TimeoutSeconds seconds" -PercentComplete $percentComplete
+
+            try {
+                $sentryReplay = Get-SentryReplay -ReplayId $ReplayId
+            } catch {
+                $lastError = $_.Exception.Message
+                Write-Debug "Replay $ReplayId not found yet: $lastError"
+            }
+
+            if ($sentryReplay) {
+                Write-Host "Replay $($sentryReplay.id) fetched from Sentry" -ForegroundColor Green
+                $sentryReplay | ConvertTo-Json -Depth 10 | Out-File -FilePath (Get-OutputFilePath "replay-$($sentryReplay.id).json")
+                return $sentryReplay
+            }
+
+            Start-Sleep -Milliseconds 500
+            $currentTime = Get-Date
+        } while ($currentTime -lt $endTime)
+    } finally {
+        Write-Progress -Activity $progressActivity -Completed
+    }
+
+    throw "Replay $ReplayId not found in Sentry within $TimeoutSeconds seconds: $lastError"
+}
+
 # Export module functions
-Export-ModuleMember -Function Invoke-CMakeConfigure, Invoke-CMakeBuild, Set-OutputDir, Get-OutputFilePath, Get-EventIds, Get-SentryTestEvent, Get-SentryTestEventAttachments, Get-SentryTestLog, Get-SentryTestMetric, Get-SentryTestTransaction, Get-PackageAumid
+Export-ModuleMember -Function Invoke-CMakeConfigure, Invoke-CMakeBuild, Set-OutputDir, Get-OutputFilePath, Get-EventIds, Get-SentryTestEvent, Get-SentryTestEventAttachments, Get-SentryTestLog, Get-SentryTestMetric, Get-SentryTestTransaction, Get-SentryTestReplay, Get-PackageAumid

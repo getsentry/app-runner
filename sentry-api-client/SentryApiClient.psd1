@@ -40,6 +40,7 @@
         'Get-SentryLogsByAttribute',
         'Get-SentryMetrics',
         'Get-SentryMetricsByAttribute',
+        'Get-SentryReplay',
         'Get-SentrySpans',
         'Invoke-SentryCLI'
     )
