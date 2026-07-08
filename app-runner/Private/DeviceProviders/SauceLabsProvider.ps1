@@ -31,6 +31,10 @@ Requirements:
   - SAUCE_REGION - SauceLabs region (e.g., us-west-1, eu-central-1)
   - SAUCE_DEVICE_NAME - Device name (optional if using -Target parameter)
   - SAUCE_SESSION_NAME - Session name for SauceLabs dashboard (optional, defaults to "App Runner Test")
+  - SAUCE_LOGCAT_FILTER - Android only, optional. Whitespace-separated logcat filterspecs
+    ("tag[:priority]", e.g. "godot:V sentry-native:V *:S") applied to the Appium session via
+    the logcatFilterSpecs capability, trimming the otherwise very noisy system-wide logcat to
+    the given tags at capture time. Unset means the full, unfiltered logcat is returned.
 
 Note: Device name must match a device available in the specified region.
 
@@ -51,6 +55,7 @@ class SauceLabsProvider : DeviceProvider {
     [string]$SessionName = $null
     [string]$CurrentPackageName = $null
     [string]$MobilePlatform = $null # 'Android' or 'iOS'
+    [string[]]$LogcatFilterSpecs = @() # Android only: optional logcat filterspecs to trim noisy system logs
 
     SauceLabsProvider([string]$MobilePlatform) {
         if ($MobilePlatform -notin @('Android', 'iOS')) {
@@ -71,6 +76,12 @@ class SauceLabsProvider : DeviceProvider {
         }
         else {
             "App Runner $MobilePlatform Test"
+        }
+
+        # Read optional logcat filter (Android only). Applied at capture time via the
+        # logcatFilterSpecs session capability to trim the noisy system-wide logcat.
+        if ($MobilePlatform -eq 'Android') {
+            $this.LogcatFilterSpecs = ConvertTo-LogcatFilterSpec -FilterString $env:SAUCE_LOGCAT_FILTER
         }
 
         # Validate required credentials
@@ -280,6 +291,14 @@ class SauceLabsProvider : DeviceProvider {
                     }
                 }
             }
+        }
+
+        # Apply logcat filtering at capture time so the driver's logcat buffer only holds the
+        # requested tags. This keeps app markers from being evicted by the flood of system-wide
+        # log lines on noisy devices (a full logcat buffer can span only a few seconds).
+        if ($this.MobilePlatform -eq 'Android' -and $this.LogcatFilterSpecs.Count -gt 0) {
+            $capabilities.capabilities.alwaysMatch['appium:logcatFilterSpecs'] = $this.LogcatFilterSpecs
+            Write-Host "Applying logcat filter: $($this.LogcatFilterSpecs -join ' ')" -ForegroundColor Cyan
         }
 
         $sessionResponse = $this.InvokeSauceLabsApi('POST', $sessionUri, $capabilities, $false, $null)

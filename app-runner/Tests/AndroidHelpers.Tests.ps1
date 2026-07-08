@@ -168,4 +168,33 @@ Describe 'AndroidHelpers' -Tag 'Unit', 'Android' {
             $result[1] | Should -Be '01-01 12:00:01.000  1234  5678 E Tag: Error with special chars: @#$%^&*()'
         }
     }
+
+    Context 'ConvertTo-LogcatFilterSpec' {
+        It 'Splits a whitespace-separated filter string into filterspecs' {
+            $result = ConvertTo-LogcatFilterSpec -FilterString 'godot:V sentry-native:V *:S'
+
+            $result.Count | Should -Be 3
+            $result[0] | Should -Be 'godot:V'
+            $result[1] | Should -Be 'sentry-native:V'
+            $result[2] | Should -Be '*:S'
+        }
+
+        It 'Collapses runs of whitespace and ignores leading/trailing spaces' {
+            $result = ConvertTo-LogcatFilterSpec -FilterString "  godot:V   *:S  "
+
+            $result.Count | Should -Be 2
+            $result[0] | Should -Be 'godot:V'
+            $result[1] | Should -Be '*:S'
+        }
+
+        It 'Returns an empty array for null input' {
+            $result = @(ConvertTo-LogcatFilterSpec -FilterString $null)
+            $result.Count | Should -Be 0
+        }
+
+        It 'Returns an empty array for whitespace-only input' {
+            $result = @(ConvertTo-LogcatFilterSpec -FilterString '   ')
+            $result.Count | Should -Be 0
+        }
+    }
 }

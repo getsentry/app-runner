@@ -140,3 +140,36 @@ function Format-LogcatOutput {
         }
     } | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
 }
+
+<#
+.SYNOPSIS
+Parses a logcat filter string into an array of filterspec tokens.
+
+.DESCRIPTION
+Splits a whitespace-separated logcat filter string into individual "tag[:priority]"
+filterspec tokens, as accepted by `adb logcat` and by Appium's logcatFilterSpecs
+capability. A tag on its own means "tag:V" (verbose); "*:S" silences everything else.
+Empty tokens are removed.
+
+.PARAMETER FilterString
+The raw logcat filter string. May be null or empty, in which case an empty array is returned.
+
+.EXAMPLE
+ConvertTo-LogcatFilterSpec -FilterString "godot:V sentry-native:V *:S"
+Returns: @('godot:V', 'sentry-native:V', '*:S')
+#>
+function ConvertTo-LogcatFilterSpec {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $false)]
+        [AllowNull()]
+        [AllowEmptyString()]
+        [string]$FilterString
+    )
+
+    if ([string]::IsNullOrWhiteSpace($FilterString)) {
+        return @()
+    }
+
+    return @($FilterString -split '\s+' | Where-Object { $_ -ne '' })
+}
