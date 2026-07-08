@@ -224,6 +224,10 @@ Connect-Device -Platform "Xbox" -TimeoutSeconds 300  # 5 minutes
 - SauceLabs account with Real Device Cloud access
 - Environment variables: `SAUCE_USERNAME`, `SAUCE_ACCESS_KEY`, `SAUCE_REGION`
 - Valid SauceLabs device ID or capabilities for device selection
+- Optional `SAUCE_LOGCAT_FILTER` (Android only): whitespace-separated logcat filterspecs
+  (`tag[:priority]`, e.g. `godot:V sentry-native:V *:S`) applied via the `logcatFilterSpecs`
+  session capability to trim the noisy system-wide logcat down to the given tags at capture
+  time. Unset returns the full logcat.
 
 ### Desktop Platform Requirements
 
