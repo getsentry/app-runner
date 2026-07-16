@@ -41,6 +41,7 @@
         'Get-SentryMetrics',
         'Get-SentryMetricsByAttribute',
         'Get-SentryReplay',
+        'Get-SentryReplayRecordingSegments',
         'Get-SentrySpans',
         'Invoke-SentryCLI'
     )
