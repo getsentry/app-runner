@@ -27,5 +27,17 @@ function Get-SentryReplayRecordingSegments {
 
     $Uri = Get-SentryProjectUrl -Resource "replays/$ReplayId/recording-segments/" -QueryString "download=true"
 
-    return Invoke-SentryApiRequest -Uri $Uri -Method 'GET'
+    $Response = Invoke-SentryApiRequest -Uri $Uri -Method 'GET'
+
+    # The endpoint returns an array with one entry per segment. Pipeline
+    # enumeration collapses a single-segment response into its inner rrweb
+    # event list on the way here, so detect that case (elements are event
+    # dictionaries rather than segment lists) and re-wrap it. The comma
+    # operator prevents the same unwrapping on return.
+    $Segments = @($Response)
+    if ($Segments.Count -gt 0 -and $Segments[0] -is [System.Collections.IDictionary]) {
+        $Segments = , $Segments
+    }
+
+    return , $Segments
 }

@@ -599,7 +599,8 @@ function Get-SentryTestReplayRecordingSegments {
             if ($segments -and @($segments).Count -gt 0) {
                 Write-Host "Recording segments for replay $ReplayId fetched from Sentry" -ForegroundColor Green
                 $segments | ConvertTo-Json -Depth 10 | Out-File -FilePath (Get-OutputFilePath "replay-recording-$ReplayId.json")
-                return $segments
+                # Use comma operator to ensure array is preserved (prevents PowerShell unwrapping single item)
+                return , @($segments)
             }
 
             Start-Sleep -Milliseconds 500
