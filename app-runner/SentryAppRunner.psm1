@@ -64,6 +64,7 @@ Export-ModuleMember -Function @(
     # Application Management
     'Install-DeviceApp',
     'Invoke-DeviceApp',
+    'Stop-DeviceApp',
 
     # Device Lifecycle
     'Start-Device',

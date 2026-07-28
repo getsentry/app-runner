@@ -42,6 +42,18 @@ Context 'Stop-Device' {
     }
 }
 
+Context 'Stop-DeviceApp' {
+    It 'Should require device session' {
+        Disconnect-Device
+        { Stop-DeviceApp } | Should -Throw '*No active device session*'
+    }
+
+    It 'Should work with active session' {
+        Connect-Device -Platform 'Mock'
+        { Stop-DeviceApp } | Should -Not -Throw
+    }
+}
+
 Context 'Get-DeviceStatus' {
     It 'Should require device session' {
         Disconnect-Device
