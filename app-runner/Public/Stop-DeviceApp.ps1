@@ -7,11 +7,6 @@ function Stop-DeviceApp {
     Terminates the application currently running on the connected device, using the
     current device session. Platforms that don't support this write a warning and return.
 
-    This is required after a crash on Nintendo Switch 2 (Ounce) devkits: the crashed
-    process stays held in debug mode and keeps the network use request, which prevents the
-    devkit from uploading the crash report. Terminating it releases the request so the
-    report gets forwarded.
-
     .EXAMPLE
     Connect-Device -Platform Switch
     Invoke-DeviceApp -ExecutablePath "Game.nsp" -Arguments "crash-capture"
