@@ -14,7 +14,9 @@ on:
 jobs:
   test:
     uses: ./.github/workflows/test-powershell-module.yml
-    secrets: inherit
+    secrets:
+      SAUCE_USERNAME: ${{ secrets.SAUCE_USERNAME }}
+      SAUCE_ACCESS_KEY: ${{ secrets.SAUCE_ACCESS_KEY }}
     with:
       module-name: SentryAppRunner
       module-path: app-runner
