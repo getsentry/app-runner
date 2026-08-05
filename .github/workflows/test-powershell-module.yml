@@ -33,6 +33,11 @@ on:
         required: false
         type: string
         default: 'PSScriptAnalyzerSettings.psd1'
+    secrets:
+      SAUCE_USERNAME:
+        required: false
+      SAUCE_ACCESS_KEY:
+        required: false
 
 jobs:
   lint:
