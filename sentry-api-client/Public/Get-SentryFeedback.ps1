@@ -70,7 +70,7 @@ function Get-SentryFeedback {
     $Uri = Get-SentryOrganizationUrl -Resource "issues/" -QueryString $QueryString
 
     try {
-        $Response = Invoke-SentryApiRequest -Uri $Uri -Method 'GET'
+        $Response = @(Invoke-SentryApiRequest -Uri $Uri -Method 'GET')
     }
     catch {
         Write-Error "Failed to retrieve feedback - $_"
@@ -88,7 +88,7 @@ function Get-SentryFeedback {
             catch {
                 Write-Debug "Failed to resolve latest event for feedback $($item.id) - $_"
             }
-            $item | Add-Member -MemberType NoteProperty -Name 'associatedEventId' -Value $associatedEventId -Force
+            $item['associatedEventId'] = $associatedEventId
         }
     }
 
