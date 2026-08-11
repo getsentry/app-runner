@@ -36,6 +36,7 @@
         'Get-SentryEvent',
         'Get-SentryEventAttachments',
         'Get-SentryEventsByTag',
+        'Get-SentryFeedback',
         'Get-SentryLogs',
         'Get-SentryLogsByAttribute',
         'Get-SentryMetrics',

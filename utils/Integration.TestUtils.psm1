@@ -614,5 +614,56 @@ function Get-SentryTestReplayRecordingSegments {
     throw "Recording segments for replay $ReplayId not found in Sentry within $TimeoutSeconds seconds: $lastError"
 }
 
+function Get-SentryTestFeedback {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$MessageContains,
+
+        [Parameter()]
+        [int]$TimeoutSeconds = 300
+    )
+
+    Write-Host "Fetching Sentry feedback matching: $MessageContains" -ForegroundColor Yellow
+    $progressActivity = "Waiting for Sentry feedback matching $MessageContains"
+
+    $startTime = Get-Date
+    $endTime = $startTime.AddSeconds($TimeoutSeconds)
+    $lastError = $null
+
+    try {
+        do {
+            $feedback = $null
+            $elapsedSeconds = [int]((Get-Date) - $startTime).TotalSeconds
+            $percentComplete = [math]::Min(100, ($elapsedSeconds / $TimeoutSeconds) * 100)
+
+            Write-Progress -Activity $progressActivity -Status "Elapsed: $elapsedSeconds/$TimeoutSeconds seconds" -PercentComplete $percentComplete
+
+            try {
+                $result = @(Get-SentryFeedback -Query $MessageContains -IncludeAssociatedEvent |
+                    Where-Object { $_.metadata.message -like "*$MessageContains*" })
+                $result.Count | Should -Be 1
+                $feedback = $result[0]
+            } catch {
+                $lastError = $_.Exception.Message
+                Write-Debug "Feedback matching $MessageContains not found yet: $lastError"
+            }
+
+            if ($feedback) {
+                Write-Host "Feedback $($feedback.id) fetched from Sentry" -ForegroundColor Green
+                $feedback | ConvertTo-Json -Depth 10 | Out-File -FilePath (Get-OutputFilePath "feedback-$($feedback.id).json")
+                return $feedback
+            }
+
+            Start-Sleep -Milliseconds 500
+            $currentTime = Get-Date
+        } while ($currentTime -lt $endTime)
+    } finally {
+        Write-Progress -Activity $progressActivity -Completed
+    }
+
+    throw "Feedback matching $MessageContains not found in Sentry within $TimeoutSeconds seconds: $lastError"
+}
+
 # Export module functions
-Export-ModuleMember -Function Invoke-CMakeConfigure, Invoke-CMakeBuild, Set-OutputDir, Get-OutputFilePath, Get-EventIds, Get-SentryTestEvent, Get-SentryTestEventAttachments, Get-SentryTestLog, Get-SentryTestMetric, Get-SentryTestTransaction, Get-SentryTestReplay, Get-SentryTestReplayRecordingSegments, Get-PackageAumid
+Export-ModuleMember -Function Invoke-CMakeConfigure, Invoke-CMakeBuild, Set-OutputDir, Get-OutputFilePath, Get-EventIds, Get-SentryTestEvent, Get-SentryTestEventAttachments, Get-SentryTestLog, Get-SentryTestMetric, Get-SentryTestTransaction, Get-SentryTestReplay, Get-SentryTestReplayRecordingSegments, Get-SentryTestFeedback, Get-PackageAumid
