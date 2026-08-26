@@ -317,6 +317,7 @@ class iOSDeviceProvider : DeviceProvider {
                 $PSNativeCommandUseErrorActionPreference = $true
             }
 
+            $jsonFile.Refresh()
             $result = if ($jsonFile.Length -gt 0) {
                 Get-Content $jsonFile.FullName -Raw | ConvertFrom-Json
             } else {
