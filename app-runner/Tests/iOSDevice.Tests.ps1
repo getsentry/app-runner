@@ -6,7 +6,7 @@ BeforeDiscovery {
     if ($IsMacOS -and (Get-Command 'xcrun' -ErrorAction SilentlyContinue)) {
         $jsonFile = New-TemporaryFile
         try {
-            & xcrun devicectl list devices --timeout 10 --json-output $jsonFile.FullName --quiet 2>&1 | Out-Null
+            & xcrun devicectl list devices --filter "State == 'connected' OR State BEGINSWITH 'available'" --timeout 10 --json-output $jsonFile.FullName --quiet 2>&1 | Out-Null
             if ($LASTEXITCODE -eq 0) {
                 $devices = @((Get-Content $jsonFile.FullName -Raw | ConvertFrom-Json).result.devices |
                         Where-Object {
@@ -51,5 +51,19 @@ Describe 'iOSDevice' -Tag 'iOSDevice' -ForEach $TestTargets {
 
         (Get-DeviceStatus).Status | Should -Be 'Online'
         Test-DeviceConnection | Should -BeTrue
+    }
+
+    It 'stays online while connected by CoreDevice' {
+        Connect-Device -Platform $Platform -Target $Target | Out-Null
+        $jsonFile = New-TemporaryFile
+        try {
+            & xcrun devicectl device info apps --device $Target --timeout 10 --json-output $jsonFile.FullName --quiet 2>&1 | Out-Null
+            $LASTEXITCODE | Should -Be 0
+
+            (Get-DeviceStatus).Status | Should -Be 'Online'
+            Test-DeviceConnection | Should -BeTrue
+        } finally {
+            Remove-Item $jsonFile.FullName -Force -ErrorAction SilentlyContinue
+        }
     }
 }

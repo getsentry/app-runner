@@ -21,6 +21,7 @@ class iOSDeviceProvider : DeviceProvider {
         $this.SdkPath = $null
         $this.Timeouts = @{
             'command-timeout' = 60
+            'install-timeout' = 300
             'run-timeout'     = 300
         }
 
@@ -44,7 +45,7 @@ class iOSDeviceProvider : DeviceProvider {
     hidden [hashtable] SelectAndConnect([string]$target) {
         $devices = @($this.GetAvailableDevices())
         if ($devices.Count -eq 0) {
-            throw 'No paired physical iOS devices with Developer Mode enabled were found.'
+            throw 'No available paired physical iOS devices with Developer Mode enabled were found.'
         }
 
         if (-not [string]::IsNullOrEmpty($target)) {
@@ -134,7 +135,7 @@ class iOSDeviceProvider : DeviceProvider {
                 'device', 'install', 'app',
                 '--device', $this.DeviceIdentifier,
                 $PackagePath,
-                '--timeout', "$($this.Timeouts['command-timeout'])"
+                '--timeout', "$($this.Timeouts['install-timeout'])"
             )) | Out-Null
 
         $this.CurrentBundleId = $bundleId
@@ -155,6 +156,7 @@ class iOSDeviceProvider : DeviceProvider {
 
         $this.CurrentBundleId = $ExecutablePath
         $timeoutSeconds = $this.Timeouts['run-timeout']
+        $devicectlTimeout = $timeoutSeconds + $this.Timeouts['command-timeout']
         $startTime = Get-Date
 
         $startInfo = [System.Diagnostics.ProcessStartInfo]::new()
@@ -163,14 +165,19 @@ class iOSDeviceProvider : DeviceProvider {
         $startInfo.RedirectStandardOutput = $true
         $startInfo.RedirectStandardError = $true
 
-        @(
+        $launchArguments = @(
             'devicectl', 'device', 'process', 'launch',
             '--device', $this.DeviceIdentifier,
             '--terminate-existing',
             '--console',
-            '--timeout', "$timeoutSeconds",
+            '--timeout', "$devicectlTimeout",
             $ExecutablePath
-        ) + $Arguments | ForEach-Object { $startInfo.ArgumentList.Add($_) }
+        )
+        if ($Arguments -and $Arguments.Count -gt 0) {
+            $launchArguments += '--'
+            $launchArguments += $Arguments
+        }
+        $launchArguments | ForEach-Object { $startInfo.ArgumentList.Add($_) }
 
         Write-Host "Launching on $($this.DeviceName): $ExecutablePath" -ForegroundColor Cyan
         $process = [System.Diagnostics.Process]::new()
@@ -182,8 +189,16 @@ class iOSDeviceProvider : DeviceProvider {
         $timedOut = -not $process.WaitForExit($timeoutSeconds * 1000)
         if ($timedOut) {
             Write-Warning "App timed out after $timeoutSeconds seconds"
-            $process.Kill($true)
-            $process.WaitForExit()
+            try {
+                $this.TerminateApplication($ExecutablePath)
+            } catch {
+                Write-Debug "iOSDevice: Failed to terminate app after timeout: $_"
+            }
+
+            if (-not $process.WaitForExit(5000)) {
+                $process.Kill($true)
+                $process.WaitForExit()
+            }
         }
 
         [System.Threading.Tasks.Task]::WaitAll(@($stdout, $stderr))
@@ -245,6 +260,7 @@ class iOSDeviceProvider : DeviceProvider {
     hidden [object[]] GetAvailableDevices() {
         $result = $this.InvokeDevicectlJson(@(
                 'list', 'devices',
+                '--filter', "State == 'connected' OR State BEGINSWITH 'available'",
                 '--timeout', "$($this.Timeouts['command-timeout'])"
             ))
 
@@ -253,6 +269,39 @@ class iOSDeviceProvider : DeviceProvider {
                 $_.connectionProperties.pairingState -eq 'paired' -and
                 $_.deviceProperties.developerModeStatus -eq 'enabled'
             })
+    }
+
+    hidden [void] TerminateApplication([string]$bundleId) {
+        $installed = $this.InvokeDevicectlJson(@(
+                'device', 'info', 'apps',
+                '--device', $this.DeviceIdentifier,
+                '--bundle-id', $bundleId,
+                '--timeout', "$($this.Timeouts['command-timeout'])"
+            ))
+        $app = @($installed.result.apps) | Select-Object -First 1
+        if (-not $app) {
+            return
+        }
+
+        $appUrl = "$($app.url)".TrimEnd('/') + '/'
+        $processList = $this.InvokeDevicectlJson(@(
+                'device', 'info', 'processes',
+                '--device', $this.DeviceIdentifier,
+                '--timeout', "$($this.Timeouts['command-timeout'])"
+            ))
+        $processes = @($processList.result.runningProcesses | Where-Object {
+                "$($_.executable)".StartsWith($appUrl, [System.StringComparison]::OrdinalIgnoreCase)
+            })
+
+        foreach ($process in $processes) {
+            $this.InvokeDevicectlJson(@(
+                    'device', 'process', 'terminate',
+                    '--device', $this.DeviceIdentifier,
+                    '--pid', "$($process.processIdentifier)",
+                    '--kill',
+                    '--timeout', "$($this.Timeouts['command-timeout'])"
+                )) | Out-Null
+        }
     }
 
     hidden [object] InvokeDevicectlJson([string[]]$arguments) {
