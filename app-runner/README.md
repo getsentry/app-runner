@@ -98,6 +98,22 @@ Get-DeviceScreenshot -OutputPath "screenshot.png"
 Disconnect-Device
 ```
 
+### Physical iOS Device Example
+
+```powershell
+# Connect to the only paired device with Developer Mode enabled
+Connect-Device -Platform "iOSDevice"
+
+# Or select a device by name, CoreDevice identifier, or UDID
+Connect-Device -Platform "iOSDevice" -Target "My iPhone"
+
+# The app must be signed and provisioned for the selected device
+Install-DeviceApp -Path "/path/to/MyApp.app"
+Invoke-DeviceApp -ExecutablePath "com.example.app" -Arguments @("--test", "smoke")
+
+Disconnect-Device
+```
+
 ## Supported Platforms
 
 ### Gaming Consoles
@@ -110,6 +126,7 @@ Disconnect-Device
 
 - **Adb** - Android devices and emulators via Android Debug Bridge
 - **iOSSimulator** - iOS Simulators via xcrun simctl (macOS only)
+- **iOSDevice** - Paired physical iOS devices via xcrun devicectl (macOS only)
 - **AndroidSauceLabs** - Android devices on SauceLabs Real Device Cloud
 - **iOSSauceLabs** - iOS devices on SauceLabs Real Device Cloud (coming soon)
 
@@ -124,6 +141,7 @@ Disconnect-Device
 - Mobile platforms require separate installation and execution steps:
   - Android: Use `Install-DeviceApp "MyApp.apk"` to install APK files, then `Invoke-DeviceApp "package.name/.ActivityName"` to run
   - iOS Simulator: Use `Install-DeviceApp "MyApp.app"` to install .app bundles, then `Invoke-DeviceApp "com.example.app"` with bundle ID
+  - Physical iOS: Use a signed `MyApp.app` bundle provisioned for the selected device
   - Android Intent extras should be passed as Arguments in the format: `-e key value` or `-ez key true/false`
 
 ## Functions
@@ -219,6 +237,11 @@ Connect-Device -Platform "Xbox" -TimeoutSeconds 300  # 5 minutes
 - macOS with Xcode and `xcrun` in PATH
 - At least one iOS Simulator runtime installed
 - `.app` bundles built for simulator (not `.ipa` archives)
+
+**Physical iOS:**
+- macOS with Xcode and `xcrun` in PATH
+- A paired device with Developer Mode enabled
+- A signed `.app` bundle whose provisioning profile includes the device
 
 **Android/iOS (SauceLabs):**
 - SauceLabs account with Real Device Cloud access
