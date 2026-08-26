@@ -85,6 +85,10 @@ class DeviceProviderFactory {
                 Write-Debug "DeviceProviderFactory: Creating iOSSimulatorProvider"
                 return [iOSSimulatorProvider]::new()
             }
+            "iOSDevice" {
+                Write-Debug "DeviceProviderFactory: Creating iOSDeviceProvider"
+                return [iOSDeviceProvider]::new()
+            }
             "AndroidSauceLabs" {
                 Write-Debug "DeviceProviderFactory: Creating SauceLabsProvider (Android)"
                 return [SauceLabsProvider]::new('Android')
@@ -98,7 +102,7 @@ class DeviceProviderFactory {
                 return [MockDeviceProvider]::new()
             }
             default {
-                $errorMessage = "Unsupported platform: $Platform. Supported platforms: Xbox, PlayStation5, Switch, Windows, MacOS, Linux, Adb, iOSSimulator, AndroidSauceLabs, iOSSauceLabs, Local, Mock"
+                $errorMessage = "Unsupported platform: $Platform. Supported platforms: Xbox, PlayStation5, Switch, Windows, MacOS, Linux, Adb, iOSSimulator, iOSDevice, AndroidSauceLabs, iOSSauceLabs, Local, Mock"
                 Write-Error "DeviceProviderFactory: $errorMessage"
                 throw $errorMessage
             }
@@ -116,7 +120,7 @@ class DeviceProviderFactory {
     An array of supported platform names.
     #>
     static [string[]] GetSupportedPlatforms() {
-        return @("Xbox", "PlayStation5", "Switch", "Windows", "MacOS", "Linux", "Adb", "iOSSimulator", "AndroidSauceLabs", "iOSSauceLabs", "Local", "Mock")
+        return @("Xbox", "PlayStation5", "Switch", "Windows", "MacOS", "Linux", "Adb", "iOSSimulator", "iOSDevice", "AndroidSauceLabs", "iOSSauceLabs", "Local", "Mock")
     }
 
     <#

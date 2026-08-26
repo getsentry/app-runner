@@ -8,7 +8,7 @@ function Connect-Device {
     automatically handles devkit selection and IP address resolution.
 
     .PARAMETER Platform
-    The platform to connect to. Valid values: Xbox, PlayStation5, Switch, Windows, MacOS, Linux, Adb, iOSSimulator, AndroidSauceLabs, iOSSauceLabs, Local (auto-detects current OS)
+    The platform to connect to. Valid values: Xbox, PlayStation5, Switch, Windows, MacOS, Linux, Adb, iOSSimulator, iOSDevice, AndroidSauceLabs, iOSSauceLabs, Local (auto-detects current OS)
 
     .PARAMETER Target
     For Xbox platform, specifies the target to connect to. Can be either a name or IP address.
@@ -49,11 +49,19 @@ function Connect-Device {
     .EXAMPLE
     Connect-Device -Platform "iOSSimulator" -Target "iPhone 15 Pro"
     # Connects to a simulator by device name
+
+    .EXAMPLE
+    Connect-Device -Platform "iOSDevice"
+    # Connects to the only available physical iOS device
+
+    .EXAMPLE
+    Connect-Device -Platform "iOSDevice" -Target "00000000-0000000000000000"
+    # Connects to a physical iOS device by UDID
     #>
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $true)]
-        [ValidateSet('Xbox', 'PlayStation5', 'Switch', 'Windows', 'MacOS', 'Linux', 'Adb', 'iOSSimulator', 'AndroidSauceLabs', 'iOSSauceLabs', 'Local', 'Mock')]
+        [ValidateSet('Xbox', 'PlayStation5', 'Switch', 'Windows', 'MacOS', 'Linux', 'Adb', 'iOSSimulator', 'iOSDevice', 'AndroidSauceLabs', 'iOSSauceLabs', 'Local', 'Mock')]
         [string]$Platform,
 
         [Parameter(Mandatory = $false)]
