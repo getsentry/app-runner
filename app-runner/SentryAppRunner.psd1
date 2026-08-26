@@ -44,6 +44,7 @@
         'Restart-Device',
         'Start-Device',
         'Stop-Device',
+        'Stop-DeviceApp',
         'Test-DeviceConnection',
         'Test-DeviceInternetConnection'
     )

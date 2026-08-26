@@ -136,6 +136,7 @@ Disconnect-Device
 
 ### App Execution
 - `Invoke-DeviceApp` - Install and run application (unified command)
+- `Stop-DeviceApp` - Terminate the application running on the device
 
 ### Device Lifecycle
 - `Start-Device` - Power on device

@@ -33,6 +33,7 @@ Context 'Module Loading' {
             'Test-DeviceConnection',
             'Test-DeviceInternetConnection',
             'Invoke-DeviceApp',
+            'Stop-DeviceApp',
 
             # Device Lifecycle
             'Start-Device',

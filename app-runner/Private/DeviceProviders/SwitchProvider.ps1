@@ -49,6 +49,7 @@ class SwitchProvider : DeviceProvider {
             'detect-target'      = @($this.TargetControlTool, 'detect-target --json', { $input | ConvertFrom-Json })
             'register-target'    = @($this.TargetControlTool, 'register --target "{0}"')
             'launch'             = @($this.ApplicationRunnerTool, '"{0}" -- {1}')
+            'stop-app'           = @($this.TargetControlTool, 'terminate{0}')
             'screenshot'         = @($this.TargetControlTool, 'take-screenshot --directory "{0}" --file-name "{1}"')
             'test-internet'      = @($this.TargetControlTool, 'devmenu -- network confirm-internet-connection')
         }
@@ -140,6 +141,19 @@ class SwitchProvider : DeviceProvider {
     [void] StopDevice() {
         ([DeviceProvider] $this).StopDevice();
         Start-Sleep -Seconds 3
+    }
+
+    # Override StopApplication to pass --target when a target is specified.
+    #
+    # This is needed after a crash on Switch 2 (Ounce): the crashed process stays held in
+    # debug mode and keeps the network use request, which stops the devkit from uploading
+    # the crash report. Terminating it releases the request so Nintendo forwards the report.
+    [void] StopApplication() {
+        $targetArg = if (-not [string]::IsNullOrEmpty($this.Target)) { " --target $($this.Target)" } else { '' }
+
+        Write-Debug "$($this.Platform): Terminating application$targetArg"
+
+        $this.InvokeCommand('stop-app', @($targetArg))
     }
 
     # Override TakeScreenshot to pass --target when a target is specified

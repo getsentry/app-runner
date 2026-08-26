@@ -29,6 +29,7 @@ class MockDeviceProvider : DeviceProvider {
             "reset"              = @("echo", "'Mock reset'")
             "getstatus"          = @("echo", "'Mock get status'")
             "launch"             = @("echo", "'Mock launch {0} {1}'")
+            "stop-app"           = @("echo", "'Mock stop app {0}'")
             "screenshot"         = @("echo", "'Mock screenshot'")
             # Target management commands for testing DetectAndSetDefaultTarget()
             "get-default-target" = @("echo", "'Mock get-default-target'")

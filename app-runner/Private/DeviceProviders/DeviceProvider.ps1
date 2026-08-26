@@ -421,6 +421,20 @@ class DeviceProvider {
         }
     }
 
+    # Stops the application currently running on the device.
+    # Platforms that support this configure a 'stop-app' command; the rest log a warning.
+    [void] StopApplication() {
+        Write-Debug "$($this.Platform): Stopping application"
+
+        if (-not $this.Commands.ContainsKey('stop-app')) {
+            $this.LogNotImplemented('StopApplication')
+            return
+        }
+
+        # Not giving an argument stops whatever is in the foreground.
+        $this.InvokeCommand('stop-app', @(''))
+    }
+
     [void] TakeScreenshot([string]$OutputPath) {
         # If the output path includes a directory, split it up, otherwise use current directory
         $directory = Split-Path $OutputPath -Parent
