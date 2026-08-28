@@ -79,5 +79,10 @@ Export-ModuleMember -Function @(
 
     # Settings Management
     'Export-DeviceSettings',
-    'Import-DeviceSettings'
+    'Import-DeviceSettings',
+
+    # Retry Policies
+    'New-RetryPolicy',
+    'Register-RetryPolicy',
+    'Get-RetryPolicy'
 )
