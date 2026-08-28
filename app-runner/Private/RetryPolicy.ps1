@@ -1,9 +1,8 @@
 # Retry Policies
-# Structured, extensible retry configuration shared by the module's HTTP callers.
+# Named, reusable retry settings for the module's HTTP callers.
 #
-# A policy is a [pscustomobject] rather than a class because PowerShell classes defined in
-# dot-sourced private files are unreachable outside the module, which would stop callers from
-# defining policies of their own.
+# A policy is a [pscustomobject], not a class: PowerShell classes in dot-sourced private files
+# are invisible outside the module, so callers could not define their own.
 
 $script:RetryPolicyRegistry = @{}
 
@@ -171,8 +170,7 @@ function Get-RetryPolicy {
 
 Register-RetryPolicy -Name 'default' -Policy (New-RetryPolicy -Name 'default')
 
-# Session creation is the failure this whole mechanism exists for, so it gets the largest budget.
-# A transport failure is never retried: the POST may have landed and allocating a second device
+# A transport failure is never retried: the POST may have landed, and allocating a second device
 # would leak the first one.
 Register-RetryPolicy -Name 'session' -Policy (New-RetryPolicy -Name 'session' `
         -MaxAttempts 5 -BaseDelaySeconds 3.0 -MaxDelaySeconds 30.0 -MaxRetryAfterSeconds 120.0 `
@@ -193,16 +191,14 @@ Register-RetryPolicy -Name 'session' -Policy (New-RetryPolicy -Name 'session' `
             }
         }
 
-        # Every session-creation failure is a 500, so the status code carries no information and
-        # an unrecognised body has to be assumed transient. Refusing to retry here would
-        # reintroduce the failure this policy exists for.
+        # Session creation always fails with a 500, so only the body tells us anything. Treat an
+        # unrecognised message as transient, or we are back to the failure this policy exists for.
         return $true
     })
 
-# Each upload attempt burns a slot against Sauce Labs' documented 100-per-15-minutes limit.
-# Transport failures are retried here, unlike for session and launch, because a landed-but-lost
-# upload only orphans a storage version that expires on its own, while refusing to retry would
-# hard-fail the job on a blip during the multi-megabyte transfer most likely to see one.
+# Each attempt burns a slot against Sauce Labs' 100-per-15-minutes limit, so keep the budget small.
+# Transport failures still retry, unlike session and launch: a lost upload only orphans a storage
+# version, while not retrying would fail the job on a blip during a large transfer.
 Register-RetryPolicy -Name 'upload' -Policy (New-RetryPolicy -Name 'upload' `
         -MaxAttempts 3 -BaseDelaySeconds 5.0 -MaxDelaySeconds 30.0 -MaxRetryAfterSeconds 120.0)
 

@@ -248,7 +248,7 @@ class SauceLabsProvider : DeviceProvider {
         if ($this.SessionId) {
             try {
                 $baseUri = "https://ondemand.$($this.Region).saucelabs.com/wd/hub/session/$($this.SessionId)"
-                # No retry: this is a fast health probe that callers may poll themselves.
+                # A fast health probe that callers may poll themselves.
                 $response = $this.InvokeSauceLabsApi('GET', $baseUri, $null, $false, $null, (Get-RetryPolicy 'none'))
                 return $null -ne $response
             }
@@ -458,8 +458,8 @@ class SauceLabsProvider : DeviceProvider {
             }
 
             try {
-                # No retry: the loop is already the retry. Backing off underneath it would
-                # stretch the poll interval and burn the run timeout during an outage.
+                # The loop is already the retry. Backing off underneath it would stretch the
+                # poll interval and burn the run timeout during an outage.
                 $stateResponse = $this.InvokeSauceLabsApi('POST', "$baseUri/execute/sync", $body, $false, $null, (Get-RetryPolicy 'none'))
                 $appState = $stateResponse.value
 

@@ -126,21 +126,20 @@ function New-RetryContext {
         try { $parsed = $raw | ConvertFrom-Json -ErrorAction Stop } catch { $parsed = $null }
     }
 
-    # The body may be a WebDriver error, a gateway HTML page, plain text or empty, because the
-    # 500 comes from the Sauce Labs broker upstream of Appium.
+    # The 500 comes from the Sauce Labs broker, upstream of Appium, so the body may be a
+    # WebDriver error, an HTML page, plain text, or empty.
     $detail = if ($parsed.value.message) { [string]$parsed.value.message }
     elseif ($raw) { $raw }
     else { '' }
 
-    # A WebDriver message carries a multi-line Build/System/Driver info suffix and an error page
-    # arrives with its own line breaks, so collapse both and keep one failure on one log line.
+    # WebDriver appends Build/System/Driver info on its own lines, so keep one failure to one line.
     $detail = ($detail -replace '\s+', ' ').Trim()
     if (-not $detail) {
         $detail = '<empty body>'
     }
 
-    # A gateway page runs to kilobytes and would flood the log once per attempt. The whole body
-    # stays available as Body for a policy that needs to match on more than the opening line.
+    # An HTML error page runs to kilobytes and would flood the log on every attempt. Policies
+    # that need to match deeper than this can read the untruncated Body.
     if ($detail.Length -gt 500) {
         $detail = $detail.Substring(0, 500) + '...'
     }
@@ -167,10 +166,9 @@ function Test-RetryableError {
         $Context
     )
 
-    # Classify by exception type, never by probing for a .Response property: on a transport
-    # failure it does not exist at all, and under the module's Stop preference an incidental
-    # error would then masquerade as a retryable fault. HttpResponseException derives from
-    # HttpRequestException, so it has to be tested first.
+    # Classify by exception type, not by probing for a .Response property: a transport failure
+    # has no such property, so probing would misread it as retryable.
+    # HttpResponseException derives from HttpRequestException, so check it first.
     if ($Context.Exception -is [Microsoft.PowerShell.Commands.HttpResponseException]) {
         return $Context.StatusCode -in $Policy.RetryStatusCodes
     }
