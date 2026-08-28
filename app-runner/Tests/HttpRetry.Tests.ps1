@@ -339,12 +339,12 @@ Describe 'Invoke-HttpWithRetry' -Tag 'Unit' {
             $context.Detail | Should -Be '500 Gateway Error'
         }
 
-        It 'Truncates a body too long to log' {
+        It 'Keeps a long body intact for policies to match against' {
             $record = New-HttpErrorRecord -StatusCode 500 -Body ('x' * 900)
 
             $context = New-RetryContext -Attempt 1 -ErrorRecord $record -Policy (Get-RetryPolicy 'default')
 
-            $context.Detail | Should -Be (('x' * 500) + '...')
+            $context.Detail.Length | Should -Be 900
             $context.Body.Length | Should -Be 900
         }
 
@@ -393,6 +393,20 @@ Describe 'Invoke-HttpWithRetry' -Tag 'Unit' {
             } | Should -Throw
 
             $script:attempts | Should -Be 5
+        }
+
+        It 'Does not retry a device query that matches nothing past the log cutoff' {
+            $script:attempts = 0
+            $padded = 'context ' * 80
+
+            {
+                Invoke-HttpWithRetry -Operation 'POST /session' -Policy (Get-RetryPolicy 'session') -SleepAction {} -ScriptBlock {
+                    $script:attempts++
+                    throw (New-HttpErrorRecord -StatusCode 500 -Body ('{"value":{"message":"' + $padded + 'No device matching the query was found"}}'))
+                }
+            } | Should -Throw
+
+            $script:attempts | Should -Be 1
         }
 
         It 'Does not retry a device query that matches nothing' {

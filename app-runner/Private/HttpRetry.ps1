@@ -55,6 +55,10 @@ function Invoke-HttpWithRetry {
             $status = if ($null -ne $context.StatusCode) { $context.StatusCode } else { $context.Exception.GetType().Name }
             $label = "policy=$($Policy.Name) status=$status"
 
+            # An HTML error page runs to kilobytes, so shorten it for the log only. Policies match
+            # against the whole message.
+            $logged = if ($context.Detail.Length -gt 500) { $context.Detail.Substring(0, 500) + '...' } else { $context.Detail }
+
             $retry = if ($Policy.ShouldRetry) {
                 # Only the last object is the verdict. A scriptblock that incidentally writes to
                 # the output stream would otherwise cast to $true and retry against its own answer.
@@ -67,7 +71,7 @@ function Invoke-HttpWithRetry {
             if (-not $retry -or $attempt -ge $Policy.MaxAttempts) {
                 # A policy that never retries leaves reporting to the caller's own error handling.
                 if ($Policy.MaxAttempts -gt 1) {
-                    Write-Host "${Operation}: giving up after $attempt attempt(s) [$label] $($context.Detail)"
+                    Write-Host "${Operation}: giving up after $attempt attempt(s) [$label] $logged"
                 }
                 throw
             }
@@ -84,7 +88,7 @@ function Invoke-HttpWithRetry {
                 $delay = Get-RetryBackoffDelay -Policy $Policy -Attempt $attempt
             }
 
-            Write-Host "${Operation}: attempt $attempt/$($Policy.MaxAttempts) failed [$label] $($context.Detail). Retrying in $([Math]::Round($delay, 1)) s."
+            Write-Host "${Operation}: attempt $attempt/$($Policy.MaxAttempts) failed [$label] $logged. Retrying in $([Math]::Round($delay, 1)) s."
             & $SleepAction $delay
         }
     }
@@ -136,12 +140,6 @@ function New-RetryContext {
     $detail = ($detail -replace '\s+', ' ').Trim()
     if (-not $detail) {
         $detail = '<empty body>'
-    }
-
-    # An HTML error page runs to kilobytes and would flood the log on every attempt. Policies
-    # that need to match deeper than this can read the untruncated Body.
-    if ($detail.Length -gt 500) {
-        $detail = $detail.Substring(0, 500) + '...'
     }
 
     return [pscustomobject]@{
