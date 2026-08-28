@@ -121,10 +121,18 @@ class SauceLabsProvider : DeviceProvider {
     .DESCRIPTION
     Helper method for making authenticated HTTP requests to SauceLabs API.
     Follows app-runner pattern: Invoke-WebRequest + explicit ConvertFrom-Json.
+
+    RetryPolicy has no default, so every call site has to state its intent. Pass
+    (Get-RetryPolicy 'name') to resolve it at the call, where a re-registered policy takes effect.
     #>
-    [hashtable] InvokeSauceLabsApi([string]$Method, [string]$Uri, [hashtable]$Body, [bool]$IsMultipart, [string]$FilePath) {
+    [hashtable] InvokeSauceLabsApi([string]$Method, [string]$Uri, [hashtable]$Body, [bool]$IsMultipart, [string]$FilePath, [object]$RetryPolicy) {
         if (-not $this.Username -or -not $this.AccessKey) {
             throw "SauceLabs credentials not set"
+        }
+
+        # Class method parameters cannot carry [PSTypeName()], so the tag is checked by hand.
+        if ($RetryPolicy.PSObject.TypeNames -notcontains 'SentryAppRunner.RetryPolicy') {
+            throw "SauceLabs API request ($Method $Uri): RetryPolicy must come from New-RetryPolicy or Get-RetryPolicy"
         }
 
         $base64Auth = [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes("$($this.Username):$($this.AccessKey)"))
@@ -132,35 +140,39 @@ class SauceLabsProvider : DeviceProvider {
             'Authorization' = "Basic $base64Auth"
         }
 
+        # The retry helper classifies failures by exception type, so the request runs bare inside
+        # the scriptblock and the catch below stays outside it.
         try {
-            if ($IsMultipart) {
-                # Use -Form parameter for multipart uploads (PowerShell Core 7+)
-                $form = @{
-                    payload = Get-Item -Path $FilePath
-                    name    = (Split-Path $FilePath -Leaf)
+            return Invoke-HttpWithRetry -Operation "$Method $Uri" -Policy $RetryPolicy -ScriptBlock {
+                if ($IsMultipart) {
+                    # Use -Form parameter for multipart uploads (PowerShell Core 7+)
+                    $form = @{
+                        payload = Get-Item -Path $FilePath
+                        name    = (Split-Path $FilePath -Leaf)
+                    }
+                    $webResponse = Invoke-WebRequest -Uri $Uri -Method $Method -Headers $headers -Form $form
                 }
-                $webResponse = Invoke-WebRequest -Uri $Uri -Method $Method -Headers $headers -Form $form
-            }
-            else {
-                $params = @{
-                    Uri     = $Uri
-                    Method  = $Method
-                    Headers = $headers
+                else {
+                    $params = @{
+                        Uri     = $Uri
+                        Method  = $Method
+                        Headers = $headers
+                    }
+
+                    if ($Body) {
+                        $params['Body'] = ($Body | ConvertTo-Json -Depth 10)
+                        $params['ContentType'] = 'application/json'
+                    }
+
+                    $webResponse = Invoke-WebRequest @params
                 }
 
-                if ($Body) {
-                    $params['Body'] = ($Body | ConvertTo-Json -Depth 10)
-                    $params['ContentType'] = 'application/json'
+                # Explicit JSON parsing for better error visibility
+                if ($webResponse.Content) {
+                    return $webResponse.Content | ConvertFrom-Json -AsHashtable
                 }
-
-                $webResponse = Invoke-WebRequest @params
+                return $null
             }
-
-            # Explicit JSON parsing for better error visibility
-            if ($webResponse.Content) {
-                return $webResponse.Content | ConvertFrom-Json -AsHashtable
-            }
-            return $null
         }
         catch {
             $ErrorMessage = "SauceLabs API request ($Method $Uri) failed: $($_.Exception.Message)"
@@ -215,7 +227,7 @@ class SauceLabsProvider : DeviceProvider {
             Write-Host "Ending SauceLabs session..." -ForegroundColor Yellow
             try {
                 $sessionUri = "https://ondemand.$($this.Region).saucelabs.com/wd/hub/session/$($this.SessionId)"
-                $this.InvokeSauceLabsApi('DELETE', $sessionUri, $null, $false, $null)
+                $this.InvokeSauceLabsApi('DELETE', $sessionUri, $null, $false, $null, (Get-RetryPolicy 'quick'))
                 Write-Host "Session ended successfully" -ForegroundColor Green
             }
             catch {
@@ -236,7 +248,8 @@ class SauceLabsProvider : DeviceProvider {
         if ($this.SessionId) {
             try {
                 $baseUri = "https://ondemand.$($this.Region).saucelabs.com/wd/hub/session/$($this.SessionId)"
-                $response = $this.InvokeSauceLabsApi('GET', $baseUri, $null, $false, $null)
+                # No retry: this is a fast health probe that callers may poll themselves.
+                $response = $this.InvokeSauceLabsApi('GET', $baseUri, $null, $false, $null, (Get-RetryPolicy 'none'))
                 return $null -ne $response
             }
             catch {
@@ -268,7 +281,7 @@ class SauceLabsProvider : DeviceProvider {
         Write-Host "Uploading App to SauceLabs Storage..." -ForegroundColor Yellow
         $uploadUri = "https://api.$($this.Region).saucelabs.com/v1/storage/upload"
 
-        $uploadResponse = $this.InvokeSauceLabsApi('POST', $uploadUri, $null, $true, $PackagePath)
+        $uploadResponse = $this.InvokeSauceLabsApi('POST', $uploadUri, $null, $true, $PackagePath, (Get-RetryPolicy 'upload'))
 
         if (-not $uploadResponse.item.id) {
             throw "Failed to upload App: No storage ID in response"
@@ -306,7 +319,7 @@ class SauceLabsProvider : DeviceProvider {
             Write-Host "Applying logcat filter: $($this.LogcatFilterSpecs -join ' ')" -ForegroundColor Cyan
         }
 
-        $sessionResponse = $this.InvokeSauceLabsApi('POST', $sessionUri, $capabilities, $false, $null)
+        $sessionResponse = $this.InvokeSauceLabsApi('POST', $sessionUri, $capabilities, $false, $null, (Get-RetryPolicy 'session'))
 
         # Extract session ID (response format varies)
         $this.SessionId = $sessionResponse.value.sessionId
@@ -335,7 +348,7 @@ class SauceLabsProvider : DeviceProvider {
                 script = 'mobile: terminateApp'
                 args = @{ $appParameter = $packageName }
             }
-            $this.InvokeSauceLabsApi('POST', "$baseUri/execute/sync", $body, $false, $null) | Out-Null
+            $this.InvokeSauceLabsApi('POST', "$baseUri/execute/sync", $body, $false, $null, (Get-RetryPolicy 'quick')) | Out-Null
         }
         catch {
             Write-Warning "$($this.Platform): Terminate request failed: $_"
@@ -390,7 +403,7 @@ class SauceLabsProvider : DeviceProvider {
 
             try {
                 Write-Debug "Launching activity with arguments: $argumentsString"
-                $launchResponse = $this.InvokeSauceLabsApi('POST', "$baseUri/appium/device/start_activity", $launchBody, $false, $null)
+                $launchResponse = $this.InvokeSauceLabsApi('POST', "$baseUri/appium/device/start_activity", $launchBody, $false, $null, (Get-RetryPolicy 'launch'))
                 Write-Debug "Launch response: $($launchResponse | ConvertTo-Json)"
             }
             catch {
@@ -418,7 +431,7 @@ class SauceLabsProvider : DeviceProvider {
                         arguments = $Arguments
                     }
                 }
-                $launchResponse = $this.InvokeSauceLabsApi('POST', "$baseUri/execute/sync", $body, $false, $null)
+                $launchResponse = $this.InvokeSauceLabsApi('POST', "$baseUri/execute/sync", $body, $false, $null, (Get-RetryPolicy 'launch'))
                 Write-Debug "Launch response: $($launchResponse | ConvertTo-Json)"
             }
             catch {
@@ -445,7 +458,9 @@ class SauceLabsProvider : DeviceProvider {
             }
 
             try {
-                $stateResponse = $this.InvokeSauceLabsApi('POST', "$baseUri/execute/sync", $body, $false, $null)
+                # No retry: the loop is already the retry. Backing off underneath it would
+                # stretch the poll interval and burn the run timeout during an outage.
+                $stateResponse = $this.InvokeSauceLabsApi('POST', "$baseUri/execute/sync", $body, $false, $null, (Get-RetryPolicy 'none'))
                 $appState = $stateResponse.value
 
                 Write-Debug "App state: $appState (elapsed: $([int]((Get-Date) - $startTime).TotalSeconds)s)"
@@ -502,7 +517,7 @@ class SauceLabsProvider : DeviceProvider {
         # Fallback to system logs if log file not retrieved
         if (-not $formattedLogs) {
             $logType = if ($this.MobilePlatform -eq 'iOS') { 'syslog' } else { 'logcat' }
-            $logResponse = $this.InvokeSauceLabsApi('POST', "$baseUri/log", @{ type = $logType }, $false, $null)
+            $logResponse = $this.InvokeSauceLabsApi('POST', "$baseUri/log", @{ type = $logType }, $false, $null, (Get-RetryPolicy 'default'))
 
             if ($logResponse.value) {
                 Write-Host "Retrieved $($logResponse.value.Count) system log lines" -ForegroundColor Cyan
@@ -554,7 +569,7 @@ class SauceLabsProvider : DeviceProvider {
         }
 
         $logBody = @{ type = $LogType }
-        $response = $this.InvokeSauceLabsApi('POST', "$baseUri/log", $logBody, $false, $null)
+        $response = $this.InvokeSauceLabsApi('POST', "$baseUri/log", $logBody, $false, $null, (Get-RetryPolicy 'default'))
 
         [array]$logs = @()
         if ($response.value -and $response.value.Count -gt 0) {
@@ -588,7 +603,7 @@ class SauceLabsProvider : DeviceProvider {
         }
 
         $baseUri = "https://ondemand.$($this.Region).saucelabs.com/wd/hub/session/$($this.SessionId)"
-        $response = $this.InvokeSauceLabsApi('GET', "$baseUri/screenshot", $null, $false, $null)
+        $response = $this.InvokeSauceLabsApi('GET', "$baseUri/screenshot", $null, $false, $null, (Get-RetryPolicy 'default'))
 
         # Validate response before decoding
         if (-not $response) {
@@ -688,7 +703,7 @@ class SauceLabsProvider : DeviceProvider {
             $baseUri = "https://ondemand.$($this.Region).saucelabs.com/wd/hub/session/$($this.SessionId)"
             $body = @{ script = 'mobile: listApps'; args = @() }
 
-            $response = $this.InvokeSauceLabsApi('POST', "$baseUri/execute/sync", $body, $false, $null)
+            $response = $this.InvokeSauceLabsApi('POST', "$baseUri/execute/sync", $body, $false, $null, (Get-RetryPolicy 'default'))
 
             if ($response -and $response.value) {
                 $apps = $response.value
@@ -765,7 +780,7 @@ class SauceLabsProvider : DeviceProvider {
         try {
             # Pull file from device via Appium API
             $baseUri = "https://ondemand.$($this.Region).saucelabs.com/wd/hub/session/$($this.SessionId)"
-            $response = $this.InvokeSauceLabsApi('POST', "$baseUri/appium/device/pull_file", @{ path = $DevicePath }, $false, $null)
+            $response = $this.InvokeSauceLabsApi('POST', "$baseUri/appium/device/pull_file", @{ path = $DevicePath }, $false, $null, (Get-RetryPolicy 'default'))
 
             if (-not $response -or -not $response.value) {
                 throw "No file content returned from device"

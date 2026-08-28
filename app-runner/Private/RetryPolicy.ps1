@@ -200,6 +200,9 @@ Register-RetryPolicy -Name 'session' -Policy (New-RetryPolicy -Name 'session' `
     })
 
 # Each upload attempt burns a slot against Sauce Labs' documented 100-per-15-minutes limit.
+# Transport failures are retried here, unlike for session and launch, because a landed-but-lost
+# upload only orphans a storage version that expires on its own, while refusing to retry would
+# hard-fail the job on a blip during the multi-megabyte transfer most likely to see one.
 Register-RetryPolicy -Name 'upload' -Policy (New-RetryPolicy -Name 'upload' `
         -MaxAttempts 3 -BaseDelaySeconds 5.0 -MaxDelaySeconds 30.0 -MaxRetryAfterSeconds 120.0)
 
