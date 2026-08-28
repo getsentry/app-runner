@@ -128,10 +128,16 @@ function New-RetryContext {
 
     # The body may be a WebDriver error, a gateway HTML page, plain text or empty, because the
     # 500 comes from the Sauce Labs broker upstream of Appium.
-    $collapsed = if ($raw) { ($raw -replace '\s+', ' ').Trim() } else { '' }
     $detail = if ($parsed.value.message) { [string]$parsed.value.message }
-    elseif ($collapsed) { $collapsed }
-    else { '<empty body>' }
+    elseif ($raw) { $raw }
+    else { '' }
+
+    # A WebDriver message carries a multi-line Build/System/Driver info suffix and an error page
+    # arrives with its own line breaks, so collapse both and keep one failure on one log line.
+    $detail = ($detail -replace '\s+', ' ').Trim()
+    if (-not $detail) {
+        $detail = '<empty body>'
+    }
 
     # A gateway page runs to kilobytes and would flood the log once per attempt. The whole body
     # stays available as Body for a policy that needs to match on more than the opening line.
