@@ -71,7 +71,7 @@ function Invoke-HttpWithRetry {
             if (-not $retry -or $attempt -ge $Policy.MaxAttempts) {
                 # A policy that never retries leaves reporting to the caller's own error handling.
                 if ($Policy.MaxAttempts -gt 1) {
-                    Write-Host "${Operation}: giving up after $attempt attempt(s) [$label] $logged"
+                    Write-Warning "${Operation}: giving up after $attempt attempt(s) [$label] $logged"
                 }
                 throw
             }
@@ -88,7 +88,7 @@ function Invoke-HttpWithRetry {
                 $delay = Get-RetryBackoffDelay -Policy $Policy -Attempt $attempt
             }
 
-            Write-Host "${Operation}: attempt $attempt/$($Policy.MaxAttempts) failed [$label] $logged. Retrying in $([Math]::Round($delay, 1)) s."
+            Write-Warning "${Operation}: attempt $attempt/$($Policy.MaxAttempts) failed [$label] $logged. Retrying in $([Math]::Round($delay, 1)) s."
             & $SleepAction $delay
         }
     }
