@@ -1,8 +1,15 @@
 $ErrorActionPreference = 'Stop'
 $PSNativeCommandUseErrorActionPreference = $true
 
-# Import Android helpers first (used by Android providers)
-. "$PSScriptRoot\Private\AndroidHelpers.ps1"
+# Import private functions
+$Private = @(Get-ChildItem -Path $PSScriptRoot\Private\*.ps1 -ErrorAction SilentlyContinue)
+foreach ($import in $Private) {
+    try {
+        . $import.FullName
+    } catch {
+        Write-Error "Failed to import function $($import.FullName): $($_.Exception.Message)"
+    }
+}
 
 # Import device providers in the correct order (base provider first, then implementations, then factory)
 $ProviderFiles = @(
@@ -28,16 +35,6 @@ foreach ($import in $ProviderFiles) {
         } catch {
             Write-Error "Failed to import provider $import`: $($_.Exception.Message)"
         }
-    }
-}
-
-# Import private functions
-$Private = @(Get-ChildItem -Path $PSScriptRoot\Private\*.ps1 -ErrorAction SilentlyContinue)
-foreach ($import in $Private) {
-    try {
-        . $import.FullName
-    } catch {
-        Write-Error "Failed to import function $($import.FullName): $($_.Exception.Message)"
     }
 }
 
@@ -79,5 +76,10 @@ Export-ModuleMember -Function @(
 
     # Settings Management
     'Export-DeviceSettings',
-    'Import-DeviceSettings'
+    'Import-DeviceSettings',
+
+    # Retry Policies
+    'New-RetryPolicy',
+    'Register-RetryPolicy',
+    'Get-RetryPolicy'
 )
