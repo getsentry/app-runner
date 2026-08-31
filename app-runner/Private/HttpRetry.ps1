@@ -76,7 +76,7 @@ function Invoke-HttpWithRetry {
 
             if ($null -ne $context.RetryAfterSeconds) {
                 if ($context.RetryAfterSeconds -gt $Policy.MaxRetryAfterSeconds) {
-                    throw "${Operation}: server asked to retry after $([Math]::Round($context.RetryAfterSeconds)) s, above the '$($Policy.Name)' policy cap of $($Policy.MaxRetryAfterSeconds) s. $($_.Exception.Message)"
+                    throw "Server asked to retry after $([Math]::Round($context.RetryAfterSeconds)) s, above the '$($Policy.Name)' policy cap of $($Policy.MaxRetryAfterSeconds) s. $($_.Exception.Message)"
                 }
                 $delay = [Math]::Max(0.0, $context.RetryAfterSeconds)
             }
