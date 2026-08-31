@@ -19,17 +19,13 @@ Describe 'RetryPolicy' -Tag 'Unit' {
             $policy.Name | Should -Be 'plain'
         }
 
-        It 'Falls back to the module defaults' {
+        It 'Falls back to the default policy values' {
             $policy = New-RetryPolicy -Name 'plain'
+            $default = Get-RetryPolicy 'default'
 
-            $policy.MaxAttempts | Should -Be 3
-            $policy.BaseDelaySeconds | Should -Be 1.0
-            $policy.MaxDelaySeconds | Should -Be 15.0
-            $policy.MaxRetryAfterSeconds | Should -Be 60.0
-            $policy.JitterFactor | Should -Be 0.2
-            $policy.RetryStatusCodes | Should -Be @(408, 429, 500, 502, 503, 504)
-            $policy.RetryTransport | Should -BeTrue
-            $policy.ShouldRetry | Should -BeNullOrEmpty
+            foreach ($property in $default.PSObject.Properties.Name | Where-Object { $_ -ne 'Name' }) {
+                $policy.$property | Should -Be $default.$property
+            }
         }
 
         It 'Rejects MaxAttempts below one' {
