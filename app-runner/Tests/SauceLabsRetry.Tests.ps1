@@ -105,7 +105,7 @@ Describe 'SauceLabsProvider retry wiring' -Tag 'Unit' {
             Mock Invoke-WebRequest { throw (New-HttpErrorRecord -StatusCode 401) }
 
             {
-                $provider.InvokeSauceLabsApi('GET', 'https://ondemand.example/x', $null, $false, $null, (Get-RetryPolicy 'session'))
+                $provider.InvokeSauceLabsApi('GET', 'https://ondemand.example/x', $null, $false, $null, (Get-RetryPolicy 'sauce-session'))
             } | Should -Throw
 
             Should -Invoke Invoke-WebRequest -Times 1 -Exactly
@@ -150,7 +150,7 @@ Describe 'SauceLabsProvider retry wiring' -Tag 'Unit' {
         It 'Names a registered policy at every call site' {
             $source = Get-Content "$PSScriptRoot\..\Private\DeviceProviders\SauceLabsProvider.ps1" -Raw
             $calls = [regex]::Matches($source, '\$this\.InvokeSauceLabsApi\(')
-            $resolved = [regex]::Matches($source, "InvokeSauceLabsApi\([^\r\n]*Get-RetryPolicy '(?<name>\w+)'")
+            $resolved = [regex]::Matches($source, "InvokeSauceLabsApi\([^\r\n]*Get-RetryPolicy '(?<name>[\w-]+)'")
 
             $resolved.Count | Should -Be $calls.Count
             foreach ($call in $resolved) {

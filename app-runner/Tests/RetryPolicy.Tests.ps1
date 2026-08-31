@@ -81,7 +81,7 @@ Describe 'RetryPolicy' -Tag 'Unit' {
         }
 
         It 'Throws listing the known names on an unknown name' {
-            { Get-RetryPolicy 'nope' } | Should -Throw "*Unknown retry policy 'nope'. Known: *session*"
+            { Get-RetryPolicy 'nope' } | Should -Throw "*Unknown retry policy 'nope'. Known: *sauce-session*"
         }
 
         It 'Lets a registration override a built-in' {
@@ -97,7 +97,7 @@ Describe 'RetryPolicy' -Tag 'Unit' {
         }
 
         It 'Registers every built-in policy' {
-            foreach ($name in 'default', 'session', 'upload', 'launch', 'quick', 'none') {
+            foreach ($name in 'default', 'quick', 'none', 'sauce-session', 'sauce-upload', 'sauce-launch') {
                 (Get-RetryPolicy $name).Name | Should -Be $name
             }
         }
@@ -106,9 +106,9 @@ Describe 'RetryPolicy' -Tag 'Unit' {
             (Get-RetryPolicy 'none').MaxAttempts | Should -Be 1
         }
 
-        It 'Never retries a transport failure for session or launch' {
-            (Get-RetryPolicy 'session').RetryTransport | Should -BeFalse
-            (Get-RetryPolicy 'launch').RetryTransport | Should -BeFalse
+        It 'Never retries a transport failure for Sauce session or launch' {
+            (Get-RetryPolicy 'sauce-session').RetryTransport | Should -BeFalse
+            (Get-RetryPolicy 'sauce-launch').RetryTransport | Should -BeFalse
         }
     }
 }

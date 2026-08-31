@@ -26,7 +26,7 @@ Labels the operation in log lines.
 Invoked with the delay in seconds. Overridable so tests need not sleep.
 
 .EXAMPLE
-Invoke-HttpWithRetry -ScriptBlock { Invoke-WebRequest -Uri $uri } -Policy (Get-RetryPolicy 'session') -Operation "POST $uri"
+Invoke-HttpWithRetry -ScriptBlock { Invoke-WebRequest -Uri $uri } -Policy (Get-RetryPolicy 'sauce-session') -Operation "POST $uri"
 #>
 function Invoke-HttpWithRetry {
     [CmdletBinding()]

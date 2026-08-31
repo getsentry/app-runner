@@ -165,11 +165,11 @@ Built-in policies:
 name | used for
 --- | ---
 `default` | short reads against an established session
-`session` | Appium session creation, the largest budget and a body-aware classifier
-`upload` | app upload, kept modest because each attempt burns a Sauce Labs upload slot
-`launch` | app launch, never retried on a transport failure that may have landed
 `quick` | best-effort teardown, small budget so an outage does not stall cleanup
 `none` | calls whose caller already retries, or fast health probes
+`sauce-session` | Appium session creation, the largest budget and a body-aware classifier
+`sauce-upload` | app upload, kept modest because each attempt burns a Sauce Labs upload slot
+`sauce-launch` | app launch, never retried on a transport failure that may have landed
 
 Policy fields:
 
@@ -188,14 +188,14 @@ field | meaning
 Derive from a built-in rather than restating every field:
 
 ```powershell
-$patient = New-RetryPolicy -Name "patient-session" -BasedOn (Get-RetryPolicy "session") -MaxAttempts 10
+$patient = New-RetryPolicy -Name "patient-session" -BasedOn (Get-RetryPolicy "sauce-session") -MaxAttempts 10
 ```
 
 Registering under an existing name overrides it for every call site that resolves that name, which
 is how a whole test run is retuned:
 
 ```powershell
-Register-RetryPolicy -Name "session" -Policy $patient
+Register-RetryPolicy -Name "sauce-session" -Policy $patient
 ```
 
 `ShouldRetry` is the extension point for decisions the status code cannot express. It receives a
@@ -203,7 +203,7 @@ context object with `Attempt`, `Exception`, `StatusCode`, `Body`, `ParsedBody`, 
 `RetryAfterSeconds` and `Policy`, and returns whether to retry:
 
 ```powershell
-New-RetryPolicy -Name "capacity-only" -BasedOn (Get-RetryPolicy "session") -ShouldRetry {
+New-RetryPolicy -Name "capacity-only" -BasedOn (Get-RetryPolicy "sauce-session") -ShouldRetry {
     param($Context)
     $Context.StatusCode -eq 500 -and $Context.Detail -like "*was Cancelled before a Sauce Labs Virtual Machine was Found*"
 }

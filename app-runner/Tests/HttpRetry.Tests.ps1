@@ -386,7 +386,7 @@ Describe 'Invoke-HttpWithRetry' -Tag 'Unit' {
             $script:attempts = 0
 
             {
-                Invoke-HttpWithRetry -Operation 'POST /session' -Policy (Get-RetryPolicy 'session') -SleepAction {} -ScriptBlock {
+                Invoke-HttpWithRetry -Operation 'POST /session' -Policy (Get-RetryPolicy 'sauce-session') -SleepAction {} -ScriptBlock {
                     $script:attempts++
                     throw (New-HttpErrorRecord -StatusCode 500 -Body '{"value":{"message":"We couldn''t find an available device in our data center that matches your requested capabilities."}}')
                 }
@@ -400,7 +400,7 @@ Describe 'Invoke-HttpWithRetry' -Tag 'Unit' {
             $padded = 'context ' * 80
 
             {
-                Invoke-HttpWithRetry -Operation 'POST /session' -Policy (Get-RetryPolicy 'session') -SleepAction {} -ScriptBlock {
+                Invoke-HttpWithRetry -Operation 'POST /session' -Policy (Get-RetryPolicy 'sauce-session') -SleepAction {} -ScriptBlock {
                     $script:attempts++
                     throw (New-HttpErrorRecord -StatusCode 500 -Body ('{"value":{"message":"' + $padded + 'We couldn''t find a matching device in our data center that matches your requested capabilities."}}'))
                 }
@@ -413,7 +413,7 @@ Describe 'Invoke-HttpWithRetry' -Tag 'Unit' {
             $script:attempts = 0
 
             {
-                Invoke-HttpWithRetry -Operation 'POST /session' -Policy (Get-RetryPolicy 'session') -SleepAction {} -ScriptBlock {
+                Invoke-HttpWithRetry -Operation 'POST /session' -Policy (Get-RetryPolicy 'sauce-session') -SleepAction {} -ScriptBlock {
                     $script:attempts++
                     throw (New-HttpErrorRecord -StatusCode 500 -Body '{"value":{"message":"The Sauce Labs Virtual Machine Failed to Start the Browser or Device"}}')
                 }
@@ -426,7 +426,7 @@ Describe 'Invoke-HttpWithRetry' -Tag 'Unit' {
             $script:attempts = 0
 
             {
-                Invoke-HttpWithRetry -Operation 'POST /session' -Policy (Get-RetryPolicy 'session') -SleepAction {} -ScriptBlock {
+                Invoke-HttpWithRetry -Operation 'POST /session' -Policy (Get-RetryPolicy 'sauce-session') -SleepAction {} -ScriptBlock {
                     $script:attempts++
                     throw (New-TransportErrorRecord)
                 }
@@ -437,7 +437,7 @@ Describe 'Invoke-HttpWithRetry' -Tag 'Unit' {
 
         It 'Honours RetryTransport when a derived policy turns it back on' {
             $script:attempts = 0
-            $policy = New-RetryPolicy -Name 'derived' -BasedOn (Get-RetryPolicy 'session') `
+            $policy = New-RetryPolicy -Name 'derived' -BasedOn (Get-RetryPolicy 'sauce-session') `
                 -MaxAttempts 3 -BaseDelaySeconds 0 -JitterFactor 0 -RetryTransport $true
 
             {
@@ -454,7 +454,7 @@ Describe 'Invoke-HttpWithRetry' -Tag 'Unit' {
             $script:attempts = 0
 
             {
-                Invoke-HttpWithRetry -Operation 'POST /session' -Policy (Get-RetryPolicy 'session') -SleepAction {} -ScriptBlock {
+                Invoke-HttpWithRetry -Operation 'POST /session' -Policy (Get-RetryPolicy 'sauce-session') -SleepAction {} -ScriptBlock {
                     $script:attempts++
                     throw (New-HttpErrorRecord -StatusCode 401 -Body 'Unauthorized')
                 }

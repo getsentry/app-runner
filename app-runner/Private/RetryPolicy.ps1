@@ -52,7 +52,7 @@ Exception, StatusCode, Body, ParsedBody, Detail, RetryAfterSeconds and Policy, a
 whether to retry.
 
 .EXAMPLE
-New-RetryPolicy -Name 'patient-session' -BasedOn (Get-RetryPolicy 'session') -MaxAttempts 10
+New-RetryPolicy -Name 'patient-session' -BasedOn (Get-RetryPolicy 'sauce-session') -MaxAttempts 10
 #>
 function New-RetryPolicy {
     [CmdletBinding()]
@@ -125,7 +125,7 @@ Overriding a built-in name changes the behaviour of every call site that resolve
 which is how a test run tunes retrying without touching the providers.
 
 .EXAMPLE
-Register-RetryPolicy -Name 'session' -Policy (New-RetryPolicy -Name 'session' -BasedOn (Get-RetryPolicy 'session') -MaxAttempts 10)
+Register-RetryPolicy -Name 'sauce-session' -Policy (New-RetryPolicy -Name 'sauce-session' -BasedOn (Get-RetryPolicy 'sauce-session') -MaxAttempts 10)
 #>
 function Register-RetryPolicy {
     [CmdletBinding()]
@@ -148,7 +148,7 @@ Resolves a registered retry policy by name.
 Throws an error listing the known names when the name is not registered.
 
 .EXAMPLE
-Get-RetryPolicy 'session'
+Get-RetryPolicy 'sauce-session'
 #>
 function Get-RetryPolicy {
     [CmdletBinding()]
@@ -167,10 +167,16 @@ function Get-RetryPolicy {
 
 Register-RetryPolicy -Name 'default' -Policy (New-RetryPolicy -Name 'default')
 
+# Best-effort teardown: a generous budget would add minutes to cleanup during an outage.
+Register-RetryPolicy -Name 'quick' -Policy (New-RetryPolicy -Name 'quick' `
+        -MaxAttempts 2 -BaseDelaySeconds 1.0 -MaxDelaySeconds 5.0 -MaxRetryAfterSeconds 10.0)
+
+Register-RetryPolicy -Name 'none' -Policy (New-RetryPolicy -Name 'none' -MaxAttempts 1)
+
 # Do not retry transport failures because the session may have been created before its response was lost.
 # Another attempt could allocate a second device and leave the first session orphaned.
 # Known permanent failures are not retried; unknown messages are retried.
-Register-RetryPolicy -Name 'session' -Policy (New-RetryPolicy -Name 'session' `
+Register-RetryPolicy -Name 'sauce-session' -Policy (New-RetryPolicy -Name 'sauce-session' `
         -MaxAttempts 5 -BaseDelaySeconds 3.0 -MaxDelaySeconds 30.0 -MaxRetryAfterSeconds 120.0 `
         -JitterFactor 0.3 -RetryTransport $false -ShouldRetry {
         param($Context)
@@ -195,15 +201,9 @@ Register-RetryPolicy -Name 'session' -Policy (New-RetryPolicy -Name 'session' `
 # Each attempt burns a slot against Sauce Labs' 100-per-15-minutes limit, so keep the budget small.
 # Transport failures still retry, unlike session and launch: a lost upload only orphans a storage
 # version, while not retrying would fail the job on a blip during a large transfer.
-Register-RetryPolicy -Name 'upload' -Policy (New-RetryPolicy -Name 'upload' `
+Register-RetryPolicy -Name 'sauce-upload' -Policy (New-RetryPolicy -Name 'sauce-upload' `
         -MaxAttempts 3 -BaseDelaySeconds 5.0 -MaxDelaySeconds 30.0 -MaxRetryAfterSeconds 120.0)
 
 # A transport retry after a launch that landed would run the test app twice and rewrite its log.
-Register-RetryPolicy -Name 'launch' -Policy (New-RetryPolicy -Name 'launch' `
+Register-RetryPolicy -Name 'sauce-launch' -Policy (New-RetryPolicy -Name 'sauce-launch' `
         -MaxAttempts 3 -BaseDelaySeconds 2.0 -RetryTransport $false)
-
-# Best-effort teardown: a generous budget would add minutes to cleanup during an outage.
-Register-RetryPolicy -Name 'quick' -Policy (New-RetryPolicy -Name 'quick' `
-        -MaxAttempts 2 -BaseDelaySeconds 1.0 -MaxDelaySeconds 5.0 -MaxRetryAfterSeconds 10.0)
-
-Register-RetryPolicy -Name 'none' -Policy (New-RetryPolicy -Name 'none' -MaxAttempts 1)

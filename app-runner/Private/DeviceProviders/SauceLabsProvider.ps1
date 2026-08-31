@@ -281,7 +281,7 @@ class SauceLabsProvider : DeviceProvider {
         Write-Host "Uploading App to SauceLabs Storage..." -ForegroundColor Yellow
         $uploadUri = "https://api.$($this.Region).saucelabs.com/v1/storage/upload"
 
-        $uploadResponse = $this.InvokeSauceLabsApi('POST', $uploadUri, $null, $true, $PackagePath, (Get-RetryPolicy 'upload'))
+        $uploadResponse = $this.InvokeSauceLabsApi('POST', $uploadUri, $null, $true, $PackagePath, (Get-RetryPolicy 'sauce-upload'))
 
         if (-not $uploadResponse.item.id) {
             throw "Failed to upload App: No storage ID in response"
@@ -319,7 +319,7 @@ class SauceLabsProvider : DeviceProvider {
             Write-Host "Applying logcat filter: $($this.LogcatFilterSpecs -join ' ')" -ForegroundColor Cyan
         }
 
-        $sessionResponse = $this.InvokeSauceLabsApi('POST', $sessionUri, $capabilities, $false, $null, (Get-RetryPolicy 'session'))
+        $sessionResponse = $this.InvokeSauceLabsApi('POST', $sessionUri, $capabilities, $false, $null, (Get-RetryPolicy 'sauce-session'))
 
         # Extract session ID (response format varies)
         $this.SessionId = $sessionResponse.value.sessionId
@@ -403,7 +403,7 @@ class SauceLabsProvider : DeviceProvider {
 
             try {
                 Write-Debug "Launching activity with arguments: $argumentsString"
-                $launchResponse = $this.InvokeSauceLabsApi('POST', "$baseUri/appium/device/start_activity", $launchBody, $false, $null, (Get-RetryPolicy 'launch'))
+                $launchResponse = $this.InvokeSauceLabsApi('POST', "$baseUri/appium/device/start_activity", $launchBody, $false, $null, (Get-RetryPolicy 'sauce-launch'))
                 Write-Debug "Launch response: $($launchResponse | ConvertTo-Json)"
             }
             catch {
@@ -431,7 +431,7 @@ class SauceLabsProvider : DeviceProvider {
                         arguments = $Arguments
                     }
                 }
-                $launchResponse = $this.InvokeSauceLabsApi('POST', "$baseUri/execute/sync", $body, $false, $null, (Get-RetryPolicy 'launch'))
+                $launchResponse = $this.InvokeSauceLabsApi('POST', "$baseUri/execute/sync", $body, $false, $null, (Get-RetryPolicy 'sauce-launch'))
                 Write-Debug "Launch response: $($launchResponse | ConvertTo-Json)"
             }
             catch {
