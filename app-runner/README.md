@@ -156,15 +156,14 @@ Disconnect-Device
 
 ## Retry Policies
 
-Cloud device APIs fail transiently. HTTP calls run under a named retry policy, resolved from a
-registry at the point of the call, so a test run can change retry behaviour without touching the
-providers.
+Sauce Labs API calls resolve named retry policies from a registry. A test run can replace a policy
+without changing provider code.
 
 Built-in policies:
 
 name | used for
 --- | ---
-`default` | short reads against an established session
+`default` | general API calls against an established session
 `quick` | best-effort teardown, small budget so an outage does not stall cleanup
 `none` | calls whose caller already retries, or fast health probes
 `sauce-session` | Appium session creation, the largest budget and a body-aware classifier
