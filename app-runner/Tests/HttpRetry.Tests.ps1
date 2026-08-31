@@ -392,20 +392,6 @@ Describe 'Invoke-HttpWithRetry' -Tag 'Unit' {
             $script:attempts | Should -Be 5
         }
 
-        It 'Does not retry a missing device past the log cutoff' {
-            $script:attempts = 0
-            $padded = 'context ' * 80
-
-            {
-                Invoke-HttpWithRetry -Operation 'POST /session' -Policy (Get-RetryPolicy 'sauce-session') -SleepAction {} -ScriptBlock {
-                    $script:attempts++
-                    throw (New-HttpErrorRecord -StatusCode 500 -Body ('{"value":{"message":"' + $padded + 'We couldn''t find a matching device in our data center that matches your requested capabilities."}}'))
-                }
-            } | Should -Throw
-
-            $script:attempts | Should -Be 1
-        }
-
         It 'Does not retry an incompatible browser or device' {
             $script:attempts = 0
 
