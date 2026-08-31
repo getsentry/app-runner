@@ -297,13 +297,13 @@ Describe 'Invoke-HttpWithRetry' -Tag 'Unit' {
             $script:attempts | Should -Be 4
         }
 
-        It 'Takes the last object when ShouldRetry also writes to the output stream' {
+        It 'Uses the final ShouldRetry output as the retry decision' {
             $script:attempts = 0
             $policy = New-RetryPolicy -Name 'noisy' -MaxAttempts 3 -BaseDelaySeconds 0 -JitterFactor 0 -ShouldRetry {
                 param($Context)
-                $stray = [System.Collections.ArrayList]::new()
-                $stray.Add($Context)
-                return $false
+                $items = [System.Collections.ArrayList]::new()
+                $items.Add($Context) # Emits the inserted index to PowerShell's success output stream.
+                return $false        # Uses this as decision.
             }
 
             {
