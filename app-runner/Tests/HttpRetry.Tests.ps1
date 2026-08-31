@@ -92,7 +92,7 @@ Describe 'Invoke-HttpWithRetry' -Tag 'Unit' {
         }
     }
 
-    Context 'Declarative classification' {
+    Context 'Status and transport classification' {
         It 'Fails in one attempt on a status the policy does not retry' {
             $script:attempts = 0
 

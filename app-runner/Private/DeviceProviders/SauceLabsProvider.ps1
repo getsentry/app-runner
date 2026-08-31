@@ -7,11 +7,6 @@
 # Load Android helpers (conditionally needed, but safe to load)
 . "$PSScriptRoot\..\AndroidHelpers.ps1"
 
-# Load the retry helpers. A class method resolves functions from the session state its file was
-# dot-sourced into, so relying on the psm1 glob alone would break tests that dot-source this file.
-. "$PSScriptRoot\..\RetryPolicy.ps1"
-. "$PSScriptRoot\..\HttpRetry.ps1"
-
 <#
 .SYNOPSIS
 Device provider for mobile devices on SauceLabs Real Device Cloud.

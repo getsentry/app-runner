@@ -4,7 +4,9 @@ BeforeAll {
     $ModulePath = Join-Path $PSScriptRoot '..' 'SentryAppRunner.psd1'
     Import-Module $ModulePath -Force
 
-    # Dot-source the provider for direct testing of the class, which the module does not export
+    # Load the provider and its dependencies into the test session because the module does not export the class.
+    . "$PSScriptRoot\..\Private\RetryPolicy.ps1"
+    . "$PSScriptRoot\..\Private\HttpRetry.ps1"
     . "$PSScriptRoot\..\Private\DeviceProviders\SauceLabsProvider.ps1"
 
     function New-TestProvider {
