@@ -210,9 +210,10 @@ Describe 'Invoke-HttpWithRetry' -Tag 'Unit' {
             $slept | Should -Be @(10, 20, 25, 25)
         }
 
-        It 'Keeps a jittered delay within JitterFactor of the backoff' {
+        It 'Applies jitter to the backoff' {
+            Mock Get-Random { 0.25 }
             $slept = [System.Collections.Generic.List[double]]::new()
-            $policy = New-RetryPolicy -Name 'test' -MaxAttempts 8 -BaseDelaySeconds 10 -MaxDelaySeconds 10 -JitterFactor 0.5
+            $policy = New-RetryPolicy -Name 'test' -MaxAttempts 2 -BaseDelaySeconds 10 -MaxDelaySeconds 10 -JitterFactor 0.5
 
             {
                 Invoke-HttpWithRetry -Operation 'GET /x' -Policy $policy `
@@ -221,11 +222,7 @@ Describe 'Invoke-HttpWithRetry' -Tag 'Unit' {
                 }
             } | Should -Throw
 
-            $slept.Count | Should -Be 7
-            foreach ($delay in $slept) {
-                $delay | Should -BeGreaterOrEqual 5
-                $delay | Should -BeLessOrEqual 10
-            }
+            $slept | Should -Be @(7.5)
         }
     }
 
