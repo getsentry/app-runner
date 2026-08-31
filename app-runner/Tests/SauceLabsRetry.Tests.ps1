@@ -4,14 +4,13 @@ BeforeAll {
     $ModulePath = Join-Path $PSScriptRoot '..' 'SentryAppRunner.psd1'
     Import-Module $ModulePath -Force
 
-    # Load the provider and its dependencies into the test session because the module does not export the class.
     . "$PSScriptRoot\..\Private\RetryPolicy.ps1"
     . "$PSScriptRoot\..\Private\HttpRetry.ps1"
     . "$PSScriptRoot\..\Private\DeviceProviders\SauceLabsProvider.ps1"
 
     function New-TestProvider {
-        # Only fill in credentials that are missing, so a CI run carrying real SAUCE_* secrets is
-        # left untouched. Invoke-WebRequest is mocked, so no request leaves the machine either way.
+        # Preserve any real SAUCE_* values supplied by CI. Tests provide defaults only when
+        # credentials are absent, and Invoke-WebRequest is mocked so no network call is made.
         $savedUsername = $env:SAUCE_USERNAME
         $savedAccessKey = $env:SAUCE_ACCESS_KEY
         $savedRegion = $env:SAUCE_REGION
