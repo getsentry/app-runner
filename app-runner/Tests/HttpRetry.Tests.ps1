@@ -262,7 +262,7 @@ Describe 'Invoke-HttpWithRetry' -Tag 'Unit' {
 
         It 'Passes a populated context to ShouldRetry' {
             $seen = [System.Collections.Generic.List[object]]::new()
-            $body = '{"value":{"error":"session not created","message":"No device matching the query was found"}}'
+            $body = '{"value":{"error":"session not created","message":"WebDriver session failed"}}'
             $policy = New-RetryPolicy -Name 'inspector' -MaxAttempts 3 -ShouldRetry {
                 param($Context)
                 $seen.Add($Context)
@@ -280,7 +280,7 @@ Describe 'Invoke-HttpWithRetry' -Tag 'Unit' {
             $seen[0].StatusCode | Should -Be 500
             $seen[0].Body | Should -Be $body
             $seen[0].ParsedBody.value.error | Should -Be 'session not created'
-            $seen[0].Detail | Should -Be 'No device matching the query was found'
+            $seen[0].Detail | Should -Be 'WebDriver session failed'
             $seen[0].Exception | Should -BeOfType [Microsoft.PowerShell.Commands.HttpResponseException]
             $seen[0].Policy.Name | Should -Be 'inspector'
         }
@@ -322,11 +322,11 @@ Describe 'Invoke-HttpWithRetry' -Tag 'Unit' {
 
     Context 'Response body unpacking' {
         It 'Extracts the WebDriver message' {
-            $record = New-HttpErrorRecord -StatusCode 500 -Body '{"value":{"error":"session not created","message":"No device matching the query was found"}}'
+            $record = New-HttpErrorRecord -StatusCode 500 -Body '{"value":{"error":"session not created","message":"WebDriver session failed"}}'
 
             $context = New-RetryContext -Attempt 1 -ErrorRecord $record -Policy (Get-RetryPolicy 'default')
 
-            $context.Detail | Should -Be 'No device matching the query was found'
+            $context.Detail | Should -Be 'WebDriver session failed'
         }
 
         It 'Collapses the whitespace of an HTML error page' {
@@ -382,40 +382,40 @@ Describe 'Invoke-HttpWithRetry' -Tag 'Unit' {
     }
 
     Context 'Session policy classification' {
-        It 'Retries a session failure whose message is not recognised' {
+        It 'Retries a temporary device availability failure' {
             $script:attempts = 0
 
             {
                 Invoke-HttpWithRetry -Operation 'POST /session' -Policy (Get-RetryPolicy 'session') -SleepAction {} -ScriptBlock {
                     $script:attempts++
-                    throw (New-HttpErrorRecord -StatusCode 500 -Body '{"value":{"message":"something nobody has seen yet"}}')
+                    throw (New-HttpErrorRecord -StatusCode 500 -Body '{"value":{"message":"We couldn''t find an available device in our data center that matches your requested capabilities."}}')
                 }
             } | Should -Throw
 
             $script:attempts | Should -Be 5
         }
 
-        It 'Does not retry a device query that matches nothing past the log cutoff' {
+        It 'Does not retry a missing device past the log cutoff' {
             $script:attempts = 0
             $padded = 'context ' * 80
 
             {
                 Invoke-HttpWithRetry -Operation 'POST /session' -Policy (Get-RetryPolicy 'session') -SleepAction {} -ScriptBlock {
                     $script:attempts++
-                    throw (New-HttpErrorRecord -StatusCode 500 -Body ('{"value":{"message":"' + $padded + 'No device matching the query was found"}}'))
+                    throw (New-HttpErrorRecord -StatusCode 500 -Body ('{"value":{"message":"' + $padded + 'We couldn''t find a matching device in our data center that matches your requested capabilities."}}'))
                 }
             } | Should -Throw
 
             $script:attempts | Should -Be 1
         }
 
-        It 'Does not retry a device query that matches nothing' {
+        It 'Does not retry an incompatible browser or device' {
             $script:attempts = 0
 
             {
                 Invoke-HttpWithRetry -Operation 'POST /session' -Policy (Get-RetryPolicy 'session') -SleepAction {} -ScriptBlock {
                     $script:attempts++
-                    throw (New-HttpErrorRecord -StatusCode 500 -Body '{"value":{"message":"No device matching the query was found"}}')
+                    throw (New-HttpErrorRecord -StatusCode 500 -Body '{"value":{"message":"The Sauce Labs Virtual Machine Failed to Start the Browser or Device"}}')
                 }
             } | Should -Throw
 

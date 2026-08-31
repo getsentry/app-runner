@@ -1,17 +1,14 @@
 # Retry Policies
 # Named, reusable retry settings for the module's HTTP callers.
-#
-# A policy is a [pscustomobject], not a class: PowerShell classes in dot-sourced private files
-# are invisible outside the module, so callers could not define their own.
 
 $script:RetryPolicyRegistry = @{}
 
-# Sauce Labs session-creation failures that are configuration errors rather than transient faults.
-# https://docs.saucelabs.com/dev/error-messages/
+# Sauce Labs documents these as configuration errors that retries cannot resolve.
+# See <https://docs.saucelabs.com/dev/error-messages/> for the complete error catalog.
+# Only fatal: add a message only after confirming that retrying cannot resolve it.
 $script:SauceLabsFatalSessionMessages = @(
-    'No device matching the query',
-    'desired capabilities are invalid',
-    'Failed to Start the Browser or Device'
+    "we couldn't find a matching device in our data center",
+    "sauce labs virtual machine failed to start the browser or device"
 )
 
 <#
@@ -38,7 +35,7 @@ The first backoff step. Each further attempt doubles it.
 Upper bound on the computed backoff.
 
 .PARAMETER MaxRetryAfterSeconds
-Upper bound on a server-requested Retry-After delay. A longer request fails immediately.
+Maximum server-requested Retry-After delay to honor. A response requesting a longer delay fails without another attempt.
 
 .PARAMETER JitterFactor
 Fraction of the backoff, 0 to 1, randomly shaved off each delay.
@@ -170,8 +167,9 @@ function Get-RetryPolicy {
 
 Register-RetryPolicy -Name 'default' -Policy (New-RetryPolicy -Name 'default')
 
-# A transport failure is never retried: the POST may have landed, and allocating a second device
-# would leak the first one.
+# Do not retry transport failures because the session may have been created before its response was lost.
+# Another attempt could allocate a second device and leave the first session orphaned.
+# Known permanent failures are not retried; unknown messages are retried.
 Register-RetryPolicy -Name 'session' -Policy (New-RetryPolicy -Name 'session' `
         -MaxAttempts 5 -BaseDelaySeconds 3.0 -MaxDelaySeconds 30.0 -MaxRetryAfterSeconds 120.0 `
         -JitterFactor 0.3 -RetryTransport $false -ShouldRetry {
@@ -186,13 +184,11 @@ Register-RetryPolicy -Name 'session' -Policy (New-RetryPolicy -Name 'session' `
         }
 
         foreach ($pattern in $script:SauceLabsFatalSessionMessages) {
-            if ($Context.Detail -like "*$pattern*") {
+            if ($Context.Detail -ilike "*$pattern*") {
                 return $false
             }
         }
 
-        # Session creation always fails with a 500, so only the body tells us anything. Treat an
-        # unrecognised message as transient, or we are back to the failure this policy exists for.
         return $true
     })
 
