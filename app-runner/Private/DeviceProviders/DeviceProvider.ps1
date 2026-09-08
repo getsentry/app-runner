@@ -19,6 +19,10 @@ class BuiltCommand {
         $this.ProcessingCommand = $processingCommand
     }
 
+    static [BuiltCommand] NoOp() {
+        return [BuiltCommand]::new($null, $null)
+    }
+
     [bool] IsNoOp() {
         return [string]::IsNullOrEmpty($this.Command)
     }
@@ -91,11 +95,12 @@ class DeviceProvider {
 
         $commandObj = $this.Commands[$action]
         if ($null -eq $commandObj) {
-            # Special case: disconnect is a no-op for some platforms but users should still call it to unlock resources.
-            if ($action -ne 'disconnect') {
-                Write-Warning "Command '$action' is not available for platform '$($this.Platform)'"
-            }
-            return [BuiltCommand]::new($null, $null)
+            Write-Warning "Command '$action' is not available for platform '$($this.Platform)'"
+            return [BuiltCommand]::NoOp()
+        }
+
+        if ($commandObj -is [BuiltCommand]) {
+            return $commandObj
         }
 
         # Format executable path if it contains format strings (e.g., {0})

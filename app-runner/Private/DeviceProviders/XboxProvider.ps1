@@ -38,7 +38,7 @@ class XboxProvider : DeviceProvider {
         $this.Commands = @{
             'connect'            = @($this.ConnectTool, '')
             'setTarget'          = @($this.ConnectTool, '/N "{0}"')
-            'disconnect'         = $null
+            'disconnect'         = [BuiltCommand]::NoOp()
             # Xbox has two "powermode" values: "energysaving" which is basically always on or "instanton" which support sleep/wakeup
             'powerState'         = @($this.PowerTool, '/Q')
             'wakeup'             = @($this.PowerTool, '/W') # Wake up
