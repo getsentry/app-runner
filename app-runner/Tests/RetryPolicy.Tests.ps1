@@ -106,9 +106,8 @@ Describe 'RetryPolicy' -Tag 'Unit' {
             (Get-RetryPolicy 'none').MaxAttempts | Should -Be 1
         }
 
-        It 'Never retries a transport failure for Sauce session or launch' {
-            (Get-RetryPolicy 'sauce-session').RetryTransport | Should -BeFalse
-            (Get-RetryPolicy 'sauce-launch').RetryTransport | Should -BeFalse
+        It 'Enables transport retries for Sauce session creation' {
+            (Get-RetryPolicy 'sauce-session').RetryTransport | Should -BeTrue
         }
     }
 }

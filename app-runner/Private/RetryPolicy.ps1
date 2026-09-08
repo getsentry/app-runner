@@ -173,12 +173,13 @@ Register-RetryPolicy -Name 'quick' -Policy (New-RetryPolicy -Name 'quick' `
 
 Register-RetryPolicy -Name 'none' -Policy (New-RetryPolicy -Name 'none' -MaxAttempts 1)
 
-# Do not retry transport failures because the session may have been created before its response was lost.
-# Another attempt could allocate a second device and leave the first session orphaned.
+# A lost response may leave a device allocated without giving us its session ID for cleanup.
+# Stopping cannot clean up that session; so transport retries favor recovery despite the risk of allocating additional
+# devices whose sessions we cannot clean up if their responses are also lost.
 # Known permanent failures are not retried; unknown messages are retried.
 Register-RetryPolicy -Name 'sauce-session' -Policy (New-RetryPolicy -Name 'sauce-session' `
-        -MaxAttempts 5 -BaseDelaySeconds 3.0 -MaxDelaySeconds 30.0 -MaxRetryAfterSeconds 120.0 `
-        -JitterFactor 0.3 -RetryTransport $false -ShouldRetry {
+        -MaxAttempts 3 -BaseDelaySeconds 10.0 -MaxDelaySeconds 40.0 -MaxRetryAfterSeconds 300.0 `
+        -JitterFactor 0.3 -ShouldRetry {
         param($Context)
 
         if ($null -eq $Context.StatusCode) {
@@ -199,11 +200,11 @@ Register-RetryPolicy -Name 'sauce-session' -Policy (New-RetryPolicy -Name 'sauce
     })
 
 # Each attempt burns a slot against Sauce Labs' 100-per-15-minutes limit, so keep the budget small.
-# Transport failures still retry, unlike session and launch: a lost upload only orphans a storage
+# Transport failures retry: a lost upload only orphans a storage
 # version, while not retrying would fail the job on a blip during a large transfer.
 Register-RetryPolicy -Name 'sauce-upload' -Policy (New-RetryPolicy -Name 'sauce-upload' `
         -MaxAttempts 3 -BaseDelaySeconds 5.0 -MaxDelaySeconds 30.0 -MaxRetryAfterSeconds 120.0)
 
-# A transport retry after a launch that landed would run the test app twice and rewrite its log.
+# Retries favor recovery despite possible duplicate execution when a launch response is lost.
 Register-RetryPolicy -Name 'sauce-launch' -Policy (New-RetryPolicy -Name 'sauce-launch' `
-        -MaxAttempts 3 -BaseDelaySeconds 2.0 -RetryTransport $false)
+        -MaxAttempts 3 -BaseDelaySeconds 2.0)

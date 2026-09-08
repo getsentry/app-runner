@@ -159,6 +159,9 @@ Disconnect-Device
 Sauce Labs API calls resolve named retry policies from a registry. A test run can replace a policy
 without changing provider code.
 
+All built-in policies except `none` retry HTTP 408, 429, 500, 502, 503, and 504, plus transport
+failures. `sauce-session` also checks response bodies to exclude known permanent failures.
+
 Built-in policies:
 
 name | used for
@@ -166,9 +169,12 @@ name | used for
 `default` | general API calls against an established session
 `quick` | best-effort teardown, small budget so an outage does not stall cleanup
 `none` | calls whose caller already retries, or fast health probes
-`sauce-session` | Appium session creation, the largest budget and a body-aware classifier
+`sauce-session` | Appium session creation, longer delays and response-body checks for permanent failures
 `sauce-upload` | app upload, kept modest because each attempt burns a Sauce Labs upload slot
-`sauce-launch` | app launch, never retried on a transport failure that may have landed
+`sauce-launch` | app launch
+
+Launch retries favor recovery from transient HTTP and transport failures, accepting that an earlier attempt may
+already have started the app. Repeating a launch can overwrite its log or duplicate test events.
 
 Policy fields:
 

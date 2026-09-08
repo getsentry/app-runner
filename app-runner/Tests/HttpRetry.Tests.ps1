@@ -378,6 +378,34 @@ Describe 'Invoke-HttpWithRetry' -Tag 'Unit' {
         }
     }
 
+    Context 'Launch transport retries' {
+        It 'Returns the successful launch after transient transport failures' {
+            $script:attempts = 0
+
+            $result = Invoke-HttpWithRetry -Operation 'POST /launch' -Policy (Get-RetryPolicy 'sauce-launch') -SleepAction {} -ScriptBlock {
+                $script:attempts++
+                if ($script:attempts -lt 3) { throw (New-TransportErrorRecord) }
+                'launched'
+            }
+
+            $result | Should -Be 'launched'
+            $script:attempts | Should -Be 3
+        }
+
+        It 'Stops after three attempts when transport failures persist' {
+            $script:attempts = 0
+
+            {
+                Invoke-HttpWithRetry -Operation 'POST /launch' -Policy (Get-RetryPolicy 'sauce-launch') -SleepAction {} -ScriptBlock {
+                    $script:attempts++
+                    throw (New-TransportErrorRecord)
+                }
+            } | Should -Throw
+
+            $script:attempts | Should -Be 3
+        }
+    }
+
     Context 'Session policy classification' {
         It 'Retries a temporary device availability failure' {
             $script:attempts = 0
@@ -389,7 +417,7 @@ Describe 'Invoke-HttpWithRetry' -Tag 'Unit' {
                 }
             } | Should -Throw
 
-            $script:attempts | Should -Be 5
+            $script:attempts | Should -Be 3
         }
 
         It 'Does not retry an incompatible browser or device' {
@@ -405,7 +433,7 @@ Describe 'Invoke-HttpWithRetry' -Tag 'Unit' {
             $script:attempts | Should -Be 1
         }
 
-        It 'Does not retry a transport failure' {
+        It 'Stops after three attempts when session transport failures persist' {
             $script:attempts = 0
 
             {
@@ -415,13 +443,26 @@ Describe 'Invoke-HttpWithRetry' -Tag 'Unit' {
                 }
             } | Should -Throw
 
-            $script:attempts | Should -Be 1
+            $script:attempts | Should -Be 3
         }
 
-        It 'Honours RetryTransport when a derived policy turns it back on' {
+        It 'Returns the session ID after a transient transport failure' {
+            $script:attempts = 0
+
+            $result = Invoke-HttpWithRetry -Operation 'POST /session' -Policy (Get-RetryPolicy 'sauce-session') -SleepAction {} -ScriptBlock {
+                $script:attempts++
+                if ($script:attempts -eq 1) { throw (New-TransportErrorRecord) }
+                @{ value = @{ sessionId = 'recovered-session' } }
+            }
+
+            $result.value.sessionId | Should -Be 'recovered-session'
+            $script:attempts | Should -Be 2
+        }
+
+        It 'Honours RetryTransport when a derived policy turns it off' {
             $script:attempts = 0
             $policy = New-RetryPolicy -Name 'derived' -BasedOn (Get-RetryPolicy 'sauce-session') `
-                -MaxAttempts 3 -BaseDelaySeconds 0 -JitterFactor 0 -RetryTransport $true
+                -MaxAttempts 3 -BaseDelaySeconds 0 -JitterFactor 0 -RetryTransport $false
 
             {
                 Invoke-HttpWithRetry -Operation 'POST /session' -Policy $policy -SleepAction {} -ScriptBlock {
@@ -430,7 +471,7 @@ Describe 'Invoke-HttpWithRetry' -Tag 'Unit' {
                 }
             } | Should -Throw
 
-            $script:attempts | Should -Be 3
+            $script:attempts | Should -Be 1
         }
 
         It 'Does not retry an authentication failure' {
