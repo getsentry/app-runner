@@ -149,6 +149,71 @@ Disconnect-Device
 - `Get-DeviceScreenshot` - Capture screenshot
 - `Get-DeviceDiagnostics` - Collect diagnostics and performance metrics
 
+### Retry Policies
+- `New-RetryPolicy` - Build a retry policy, optionally deriving from an existing one
+- `Register-RetryPolicy` - Register a policy under a name, replacing any policy already there
+- `Get-RetryPolicy` - Resolve a registered policy by name
+
+## Retry Policies
+
+Sauce Labs API calls resolve named retry policies from a registry. A test run can replace a policy
+without changing provider code.
+
+All built-in policies except `none` retry HTTP 408, 429, 500, 502, 503, and 504, plus transport
+failures. `sauce-session` also checks response bodies to exclude known permanent failures.
+
+Built-in policies:
+
+name | used for
+--- | ---
+`default` | general API calls against an established session
+`quick` | best-effort teardown, small budget so an outage does not stall cleanup
+`none` | calls whose caller already retries, or fast health probes
+`sauce-session` | Appium session creation, longer delays and response-body checks for permanent failures
+`sauce-upload` | app upload, kept modest because each attempt burns a Sauce Labs upload slot
+`sauce-launch` | app launch
+
+Launch retries favor recovery from transient HTTP and transport failures, accepting that an earlier attempt may
+already have started the app. Repeating a launch can overwrite its log or duplicate test events.
+
+Policy fields:
+
+field | meaning
+--- | ---
+`Name` | identifies the policy in log lines and error messages
+`MaxAttempts` | total attempts including the first; 1 disables retrying
+`BaseDelaySeconds` | the first backoff step, doubled on each further attempt
+`MaxDelaySeconds` | upper bound on the computed backoff
+`MaxRetryAfterSeconds` | upper bound on a server-requested `Retry-After`; a longer request fails immediately
+`JitterFactor` | fraction of the backoff, 0 to 1, randomly shaved off each delay
+`RetryStatusCodes` | HTTP status codes to retry
+`RetryTransport` | whether to retry a transport failure, which carries no response and may have landed
+`ShouldRetry` | optional scriptblock replacing the declarative classification entirely
+
+Derive from a built-in rather than restating every field:
+
+```powershell
+$patient = New-RetryPolicy -Name "patient-session" -BasedOn (Get-RetryPolicy "sauce-session") -MaxAttempts 10
+```
+
+Registering under an existing name overrides it for every call site that resolves that name, which
+is how a whole test run is retuned:
+
+```powershell
+Register-RetryPolicy -Name "sauce-session" -Policy $patient
+```
+
+`ShouldRetry` is the extension point for decisions the status code cannot express. It receives a
+context object with `Attempt`, `Exception`, `StatusCode`, `Body`, `ParsedBody`, `Detail`,
+`RetryAfterSeconds` and `Policy`, and returns whether to retry:
+
+```powershell
+New-RetryPolicy -Name "capacity-only" -BasedOn (Get-RetryPolicy "sauce-session") -ShouldRetry {
+    param($Context)
+    $Context.StatusCode -eq 500 -and $Context.Detail -like "*was Cancelled before a Sauce Labs Virtual Machine was Found*"
+}
+```
+
 ## Architecture
 
 Session-based workflow where all operations use an active device session:
