@@ -137,9 +137,12 @@ class SwitchProvider : DeviceProvider {
     }
 
     # override StopDevice because it exits immediately but actually takes a while to finish
-    [void] StopDevice() {
-        ([DeviceProvider] $this).StopDevice();
-        Start-Sleep -Seconds 3
+    [DevicePowerResult] StopDevice() {
+        $result = ([DeviceProvider] $this).StopDevice()
+        if ($result -eq [DevicePowerResult]::PoweredOff) {
+            Start-Sleep -Seconds 3
+        }
+        return $result
     }
 
     # Override TakeScreenshot to pass --target when a target is specified

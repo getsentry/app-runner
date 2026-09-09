@@ -91,18 +91,20 @@ class XboxProvider : DeviceProvider {
     }
 
     # Override StartDevice to support connected standby
-    [void] StartDevice() {
+    [DevicePowerResult] StartDevice() {
         Write-Debug "$($this.Platform): Starting device"
         $this.InvokePowerOn()
+        return [DevicePowerResult]::PoweredOn
     }
 
     # Override StopDevice to support connected standby
-    [void] StopDevice() {
+    [DevicePowerResult] StopDevice() {
         $powerState = $this.InvokeCommand('powerState', @())
         if ($powerState -match 'Allows Instant On') {
             $this.InvokeCommand('sleep', @())
+            return [DevicePowerResult]::PoweredOff
         } else {
-            $this.InvokeCommand('poweroff', @())
+            return ([DeviceProvider] $this).StopDevice()
         }
     }
 

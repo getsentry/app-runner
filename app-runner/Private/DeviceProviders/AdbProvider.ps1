@@ -420,12 +420,12 @@ class AdbProvider : DeviceProvider {
         return $this.DeviceSerial
     }
 
-    [void] StartDevice() {
-        Write-Warning "$($this.Platform): StartDevice is not supported for ADB devices"
+    [DevicePowerResult] StartDevice() {
+        return [DevicePowerResult]::NotSupported
     }
 
-    [void] StopDevice() {
-        Write-Warning "$($this.Platform): StopDevice is not supported for ADB devices"
+    [DevicePowerResult] StopDevice() {
+        return [DevicePowerResult]::NotSupported
     }
 
     [void] RestartDevice() {
