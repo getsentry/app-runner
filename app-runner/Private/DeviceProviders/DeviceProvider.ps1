@@ -100,6 +100,9 @@ class DeviceProvider {
         }
 
         if ($commandObj -is [BuiltCommand]) {
+            if ($commandObj.IsNoOp()) {
+                Write-Debug "$($this.Platform): '$action' is a no-op"
+            }
             return $commandObj
         }
 
