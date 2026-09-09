@@ -34,13 +34,12 @@ class WindowsProvider : LocalComputerProvider {
 
         # Define Windows-specific commands
         $this.Commands = @{
-            # Local execution operations (all no-ops)
-            'connect'    = $null
-            'disconnect' = $null
-            'poweron'    = $null
-            'poweroff'   = $null
-            'reset'      = $null
-            'getstatus'  = $null
+            'connect'    = [BuiltCommand]::NoOp()
+            'disconnect' = [BuiltCommand]::NoOp()
+            'poweron'    = [BuiltCommand]::NoOp()
+            'poweroff'   = [BuiltCommand]::NoOp()
+            'reset'      = [BuiltCommand]::NoOp()
+            'getstatus'  = [BuiltCommand]::NoOp()
 
             # Windows-specific implementations
             'launch'     = @('{0}', '{1}')
