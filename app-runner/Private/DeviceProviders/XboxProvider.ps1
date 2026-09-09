@@ -102,7 +102,7 @@ class XboxProvider : DeviceProvider {
         $powerState = $this.InvokeCommand('powerState', @())
         if ($powerState -match 'Allows Instant On') {
             $this.InvokeCommand('sleep', @())
-            return [DevicePowerResult]::Sleeping
+            return [DevicePowerResult]::PoweredOff
         } else {
             return ([DeviceProvider] $this).StopDevice()
         }

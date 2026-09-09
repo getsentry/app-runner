@@ -78,7 +78,7 @@ Describe 'Device power reporting' -Tag 'Unit' {
         Get-DeviceSession | Should -BeNullOrEmpty
     }
 
-    It 'Reports Xbox sleep instead of power-off' {
+    It 'Reports Xbox sleep as successful power-off' {
         & (Get-Module SentryAppRunner) {
             $provider = & { [XboxProvider]::new() } 3>$null
             $provider.TimeoutSeconds = 0
@@ -88,7 +88,7 @@ Describe 'Device power reporting' -Tag 'Unit' {
         }
 
         $output = @(Disconnect-Device -PowerOff 3>&1)
-        $output | Should -Be @('Device put to sleep', 'Disconnected from device')
+        $output | Should -Be @('Device powered off', 'Disconnected from device')
     }
 
     It 'Reports unsupported Xbox power-off when Instant On is unavailable' {
@@ -107,6 +107,7 @@ Describe 'Device power reporting' -Tag 'Unit' {
     It 'Reports unsupported ADB power operations from its method overrides' {
         & (Get-Module SentryAppRunner) {
             $provider = [AdbProvider]::new()
+            # Let Start-Device's session health check pass without invoking real ADB.
             $provider.Commands['getstatus'] = [BuiltCommand]::NoOp()
             $script:CurrentSession.Provider = $provider
         }

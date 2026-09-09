@@ -39,7 +39,6 @@ function Disconnect-Device {
             Write-Debug "Powering off device before disconnect"
             switch ($provider.StopDevice()) {
                 ([DevicePowerResult]::PoweredOff) { Write-Output "Device powered off" }
-                ([DevicePowerResult]::Sleeping) { Write-Output "Device put to sleep" }
                 ([DevicePowerResult]::NotSupported) { Write-Output "Device power off not supported. Skipped." }
                 ([DevicePowerResult]::Failed) { Write-Warning "Device power off failed." }
             }

@@ -5,7 +5,6 @@ enum DevicePowerResult {
     NotSupported
     PoweredOn
     PoweredOff
-    Sleeping
     Failed
 }
 
