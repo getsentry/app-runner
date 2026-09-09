@@ -1,6 +1,13 @@
 # Device Provider Base Class
 # Provides shared functionality for all device providers
 
+enum DevicePowerResult {
+    NotSupported
+    PoweredOn
+    PoweredOff
+    Sleeping
+    Failed
+}
 
 <#
 .SYNOPSIS
@@ -234,8 +241,11 @@ class DeviceProvider {
     }
 
     [object] InvokeCommand([string]$action, [object[]]$parameters) {
-        # Build command once and check if it's a no-op
         $builtCommand = $this.BuildCommand($action, $parameters)
+        return $this.InvokeBuiltCommand($action, $builtCommand)
+    }
+
+    [object] InvokeBuiltCommand([string]$action, [BuiltCommand]$builtCommand) {
         if ($builtCommand.IsNoOp()) {
             return $null
         }
@@ -348,16 +358,32 @@ class DeviceProvider {
     }
 
     # Device lifecycle management (shared implementation)
-    [void] StartDevice() {
+    [DevicePowerResult] StartDevice() {
         Write-Debug "$($this.Platform): Starting device"
 
-        $this.InvokeCommand('poweron', @())
+        if ($this.Commands.ContainsKey('poweron') -and $null -eq $this.Commands['poweron']) {
+            return [DevicePowerResult]::NotSupported
+        }
+        $command = $this.BuildCommand('poweron', @())
+        if ($command.IsNoOp()) {
+            return [DevicePowerResult]::NotSupported
+        }
+        $this.InvokeBuiltCommand('poweron', $command)
+        return [DevicePowerResult]::PoweredOn
     }
 
-    [void] StopDevice() {
+    [DevicePowerResult] StopDevice() {
         Write-Debug "$($this.Platform): Stopping device"
 
-        Write-Output $this.InvokeCommand('poweroff', @())
+        if ($this.Commands.ContainsKey('poweroff') -and $null -eq $this.Commands['poweroff']) {
+            return [DevicePowerResult]::NotSupported
+        }
+        $command = $this.BuildCommand('poweroff', @())
+        if ($command.IsNoOp()) {
+            return [DevicePowerResult]::NotSupported
+        }
+        $this.InvokeBuiltCommand('poweroff', $command)
+        return [DevicePowerResult]::PoweredOff
     }
 
     [void] RestartDevice() {

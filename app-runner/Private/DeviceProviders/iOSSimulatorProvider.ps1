@@ -398,26 +398,32 @@ class iOSSimulatorProvider : DeviceProvider {
         return $this.SimulatorUUID
     }
 
-    [void] StartDevice() {
+    [DevicePowerResult] StartDevice() {
         Write-Debug "$($this.Platform): Starting simulator"
         if ($this.SimulatorUUID) {
             $this.BootSimulator()
+            return [DevicePowerResult]::PoweredOn
         }
         else {
             Write-Warning "$($this.Platform): No simulator selected. Call Connect() first."
+            return [DevicePowerResult]::Failed
         }
     }
 
-    [void] StopDevice() {
+    [DevicePowerResult] StopDevice() {
         Write-Debug "$($this.Platform): Stopping simulator"
         if ($this.SimulatorUUID) {
             try {
                 $this.InvokeCommand('shutdown', @($this.SimulatorUUID))
+                return [DevicePowerResult]::PoweredOff
             }
             catch {
                 Write-Warning "Failed to shutdown simulator: $_"
             }
+        } else {
+            Write-Warning "$($this.Platform): No simulator selected. Call Connect() first."
         }
+        return [DevicePowerResult]::Failed
     }
 
     [void] RestartDevice() {

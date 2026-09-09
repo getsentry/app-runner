@@ -137,15 +137,17 @@ class MockDeviceProvider : DeviceProvider {
         return $this.IsConnected
     }
 
-    [void] StartDevice() {
+    [DevicePowerResult] StartDevice() {
         Write-Debug "Mock: Starting device"
         $this.MockConfig.PowerState = "On"
+        return [DevicePowerResult]::PoweredOn
     }
 
-    [void] StopDevice() {
+    [DevicePowerResult] StopDevice() {
         Write-Debug "Mock: Stopping device"
         $this.MockConfig.PowerState = "Off"
         $this.MockConfig.AppRunning = $false
+        return [DevicePowerResult]::PoweredOff
     }
 
     [void] RestartDevice() {

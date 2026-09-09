@@ -639,12 +639,12 @@ class SauceLabsProvider : DeviceProvider {
         return $this.DeviceName
     }
 
-    [void] StartDevice() {
-        Write-Warning "$($this.Platform): StartDevice is not applicable for SauceLabs cloud devices"
+    [DevicePowerResult] StartDevice() {
+        return [DevicePowerResult]::NotSupported
     }
 
-    [void] StopDevice() {
-        Write-Warning "$($this.Platform): StopDevice is not applicable for SauceLabs cloud devices"
+    [DevicePowerResult] StopDevice() {
+        return [DevicePowerResult]::NotSupported
     }
 
     [void] RestartDevice() {

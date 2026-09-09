@@ -21,7 +21,9 @@ function Start-Device {
 
     # Use the provider to start the device
     $provider = $script:CurrentSession.Provider
-    $provider.StartDevice()
-
-    Write-Output "Device started successfully"
+    switch ($provider.StartDevice()) {
+        ([DevicePowerResult]::PoweredOn) { Write-Output "Device started successfully" }
+        ([DevicePowerResult]::NotSupported) { Write-Output "Device power on not supported. Skipped." }
+        ([DevicePowerResult]::Failed) { Write-Warning "Device power on failed." }
+    }
 }
