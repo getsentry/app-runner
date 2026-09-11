@@ -407,13 +407,40 @@ Describe 'Invoke-HttpWithRetry' -Tag 'Unit' {
     }
 
     Context 'Session policy classification' {
-        It 'Retries a temporary device availability failure' {
+        It 'Does not retry a missing matching device in <DataCenter>' -TestCases @(
+            @{ DataCenter = 'our data center' }
+            @{ DataCenter = 'our US-West data center' }
+            @{ DataCenter = 'our US-East data center' }
+            @{ DataCenter = 'our EU-Central data center' }
+        ) {
+            param($DataCenter)
+
             $script:attempts = 0
+            $body = @{ value = @{ message = "We couldn't find a MATCHING device in $DataCenter that matches your requested capabilities: - deviceName: iPhone_17_*_real_sjc1 - platformName: iOS" } } | ConvertTo-Json -Compress
 
             {
                 Invoke-HttpWithRetry -Operation 'POST /session' -Policy (Get-RetryPolicy 'sauce-session') -SleepAction {} -ScriptBlock {
                     $script:attempts++
-                    throw (New-HttpErrorRecord -StatusCode 500 -Body '{"value":{"message":"We couldn''t find an available device in our data center that matches your requested capabilities."}}')
+                    throw (New-HttpErrorRecord -StatusCode 500 -Body $body)
+                }
+            } | Should -Throw
+
+            $script:attempts | Should -Be 1
+        }
+
+        It 'Retries a temporary device availability failure in <DataCenter>' -TestCases @(
+            @{ DataCenter = 'our data center' }
+            @{ DataCenter = 'our US-West data center' }
+        ) {
+            param($DataCenter)
+
+            $script:attempts = 0
+            $body = @{ value = @{ message = "We couldn't find an available device in $DataCenter that matches your requested capabilities." } } | ConvertTo-Json -Compress
+
+            {
+                Invoke-HttpWithRetry -Operation 'POST /session' -Policy (Get-RetryPolicy 'sauce-session') -SleepAction {} -ScriptBlock {
+                    $script:attempts++
+                    throw (New-HttpErrorRecord -StatusCode 500 -Body $body)
                 }
             } | Should -Throw
 
