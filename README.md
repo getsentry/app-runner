@@ -24,6 +24,7 @@ Currently supported:
 - **Mobile Platforms:**
   - Android (via ADB or SauceLabs Real Device Cloud)
   - iOS Simulator (via xcrun simctl on macOS)
+  - Physical iOS devices (via xcrun devicectl on macOS)
   - iOS (via SauceLabs - coming soon)
 
 ## Requirements
