@@ -7,7 +7,7 @@ $script:RetryPolicyRegistry = @{}
 # See <https://docs.saucelabs.com/dev/error-messages/> for the complete error catalog.
 # Only fatal: add a message only after confirming that retrying cannot resolve it.
 $script:SauceLabsFatalSessionMessages = @(
-    "we couldn't find a matching device in our data center",
+    "we couldn't find a matching device in our* data center",
     "sauce labs virtual machine failed to start the browser or device"
 )
 
