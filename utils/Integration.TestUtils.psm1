@@ -121,6 +121,22 @@ function Get-EventIds {
     return , $eventIds  # Comma operator ensures array is returned
 }
 
+# Lifts each entry (exception, breadcrumbs, ...) to a top-level property named after its type.
+function ConvertTo-SentryTestEvent {
+    param($SentryEvent)
+
+    if (-not $SentryEvent) {
+        return $null
+    }
+
+    $entries = $SentryEvent.entries
+    $converted = $SentryEvent | Select-Object -ExcludeProperty 'entries'
+    foreach ($entry in $entries) {
+        $converted | Add-Member -MemberType NoteProperty -Name $entry.type -Value $entry.data -Force
+    }
+    return $converted
+}
+
 function Get-SentryTestEvent {
     [CmdletBinding()]
     param(
@@ -133,9 +149,17 @@ function Get-SentryTestEvent {
         [Parameter()]
         [string]$TagValue,
 
+        # Applied to tag lookup results before the single-event check, e.g. to skip unrelated events carrying the same tag.
+        [Parameter()]
+        [scriptblock]$Filter,
+
         [Parameter()]
         [int]$TimeoutSeconds = 300
     )
+
+    if ($EventId -and $Filter) {
+        throw 'Filter is only supported with TagName and TagValue'
+    }
 
     if ($EventId) {
         Write-Host "Fetching Sentry event by ID: $EventId" -ForegroundColor Yellow
@@ -163,10 +187,13 @@ function Get-SentryTestEvent {
             try {
                 if ($EventId) {
                     # Find by event ID
-                    $sentryEvent = Get-SentryEvent -EventId $EventId
+                    $sentryEvent = ConvertTo-SentryTestEvent (Get-SentryEvent -EventId $EventId)
                 } else {
                     # Find by tag
-                    $result = Find-SentryEventByTag -TagName $TagName -TagValue $TagValue
+                    $result = @((Find-SentryEventByTag -TagName $TagName -TagValue $TagValue) | ForEach-Object { ConvertTo-SentryTestEvent $_ })
+                    if ($Filter) {
+                        $result = @($result | Where-Object -FilterScript $Filter)
+                    }
                     $result.Count | Should -Be 1
                     $sentryEvent = $result[0]
                 }
@@ -182,11 +209,6 @@ function Get-SentryTestEvent {
 
             if ($sentryEvent) {
                 Write-Host "Event $($sentryEvent.id) fetched from Sentry" -ForegroundColor Green
-                $entries = $sentryEvent.entries
-                $sentryEvent = $sentryEvent | Select-Object -ExcludeProperty 'entries'
-                foreach ($entry in $entries) {
-                    $sentryEvent | Add-Member -MemberType NoteProperty -Name $entry.type -Value $entry.data -Force
-                }
                 $sentryEvent | ConvertTo-Json -Depth 10 | Out-File -FilePath (Get-OutputFilePath "event-$($sentryEvent.id).json")
                 return $sentryEvent
             }
@@ -436,11 +458,7 @@ function Get-SentryTestTransaction {
 
             if ($sentryEvent) {
                 Write-Host "Transaction $($sentryEvent.id) fetched from Sentry" -ForegroundColor Green
-                $entries = $sentryEvent.entries
-                $sentryEvent = $sentryEvent | Select-Object -ExcludeProperty 'entries'
-                foreach ($entry in $entries) {
-                    $sentryEvent | Add-Member -MemberType NoteProperty -Name $entry.type -Value $entry.data -Force
-                }
+                $sentryEvent = ConvertTo-SentryTestEvent $sentryEvent
                 $sentryEvent | ConvertTo-Json -Depth 10 | Out-File -FilePath (Get-OutputFilePath "transaction-$($sentryEvent.id).json")
                 return $sentryEvent
             }
