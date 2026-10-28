@@ -12,7 +12,7 @@ BeforeAll {
 class FakeiOSSimulatorProvider : iOSSimulatorProvider {
     [System.Collections.Generic.List[string]]$Calls = [System.Collections.Generic.List[string]]::new()
     [bool]$TerminateHangs = $false
-    [bool]$AlreadyBooted = $false
+    [bool]$Booted = $false
 
     FakeiOSSimulatorProvider() : base() {
         $this.SimulatorUUID = 'E952A9B0-CC78-435C-BF08-06AD47FE1076'
@@ -26,8 +26,15 @@ class FakeiOSSimulatorProvider : iOSSimulatorProvider {
     [object] InvokeCommand([string]$action, [object[]]$parameters) {
         $this.Calls.Add($action)
         switch ($action) {
-            'boot' { if ($this.AlreadyBooted) { throw 'Unable to boot device in current state: Booted' } }
-            'list-devices' { return "    iPhone 17 Pro ($($this.SimulatorUUID)) (Booted)" }
+            'boot' {
+                if ($this.Booted) { throw 'Unable to boot device in current state: Booted' }
+                $this.Booted = $true
+            }
+            'shutdown' { $this.Booted = $false }
+            'list-devices' {
+                $state = if ($this.Booted) { 'Booted' } else { 'Shutdown' }
+                return @('-- iOS 26.0 --', "    iPhone 17 Pro ($($this.SimulatorUUID)) ($state)")
+            }
         }
         return $null
     }
@@ -63,9 +70,19 @@ Describe 'iOSSimulatorProvider.PrepareLaunch' -Tag 'Unit' -Skip:$skip {
         $provider.TerminateCount() | Should -Be 1
     }
 
+    It 'Keeps the fresh boot when the simulator is started again' {
+        $provider = [FakeiOSSimulatorProvider]::new()
+        $provider.StartDevice() | Out-Null
+        $provider.StartDevice() | Out-Null
+
+        $provider.PrepareLaunch('com.example.app') | Out-Null
+
+        $provider.TerminateCount() | Should -Be 0
+    }
+
     It 'Terminates on the first launch when the simulator was already booted' {
         $provider = [FakeiOSSimulatorProvider]::new()
-        $provider.AlreadyBooted = $true
+        $provider.Booted = $true
         $provider.StartDevice() | Out-Null
 
         $provider.PrepareLaunch('com.example.app') | Out-Null

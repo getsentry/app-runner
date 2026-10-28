@@ -496,19 +496,19 @@ class iOSSimulatorProvider : DeviceProvider {
     # Helper: Boot the simulator with graceful handling
     hidden [void] BootSimulator() {
         Write-Debug "$($this.Platform): Booting simulator: $($this.SimulatorUUID)"
-        $this.FreshlyBooted = $false
 
         try {
             $this.InvokeCommand('boot', @($this.SimulatorUUID))
         }
         catch {
-            # Check if already booted
+            # Check if already booted (keeps whatever an earlier boot recorded in FreshlyBooted)
             if ("$_" -match 'Unable to boot device in current state: Booted') {
                 Write-Debug "$($this.Platform): Simulator is already booted"
                 return
             }
             throw
         }
+        $this.FreshlyBooted = $false
 
         # Wait for simulator to be ready
         $maxWait = $this.Timeouts['boot-timeout']
