@@ -83,7 +83,7 @@ Describe 'iOSSimulatorProvider.PrepareLaunch' -Tag 'Unit' -Skip:$skip {
     It 'Terminates on the first launch when the simulator was already booted' {
         $provider = [FakeiOSSimulatorProvider]::new()
         $provider.Booted = $true
-        $provider.StartDevice() | Out-Null
+        $provider.Connect($provider.SimulatorUUID) | Out-Null
 
         $provider.PrepareLaunch('com.example.app') | Out-Null
 
