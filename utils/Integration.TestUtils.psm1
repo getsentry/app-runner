@@ -192,9 +192,12 @@ function Get-SentryTestEvent {
                     # Find by tag
                     $result = @((Find-SentryEventByTag -TagName $TagName -TagValue $TagValue) | ForEach-Object { ConvertTo-SentryTestEvent $_ })
                     if ($Filter) {
+                        $total = $result.Count
                         $result = @($result | Where-Object -FilterScript $Filter)
+                        $result.Count | Should -Be 1 -Because "$total event(s) carry the tag, $($result.Count) passed -Filter"
+                    } else {
+                        $result.Count | Should -Be 1
                     }
-                    $result.Count | Should -Be 1
                     $sentryEvent = $result[0]
                 }
             } catch {
