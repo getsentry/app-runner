@@ -30,6 +30,7 @@ class iOSSimulatorProvider : DeviceProvider {
     [string]$SimulatorUUID = $null
     [string]$CurrentBundleId = $null
     [bool]$DidBootSimulator = $false
+    [bool]$FreshlyBooted = $false
 
     iOSSimulatorProvider() {
         $this.Platform = 'iOSSimulator'
@@ -61,6 +62,7 @@ class iOSSimulatorProvider : DeviceProvider {
         # Configure timeouts
         $this.Timeouts = @{
             'boot-timeout' = 60
+            'terminate-timeout' = 60
             'run-timeout' = 300
         }
     }
@@ -161,6 +163,7 @@ class iOSSimulatorProvider : DeviceProvider {
         $this.SimulatorUUID = $null
         $this.CurrentBundleId = $null
         $this.DidBootSimulator = $false
+        $this.FreshlyBooted = $false
     }
 
     [bool] TestConnection() {
@@ -258,19 +261,14 @@ class iOSSimulatorProvider : DeviceProvider {
 
         $startTime = Get-Date
 
-        # Build argument list for simctl launch
-        $simctlArgs = @("simctl", "launch", "--console-pty", $this.SimulatorUUID, $bundleId)
-        if ($Arguments -and $Arguments.Count -gt 0) {
-            $simctlArgs += $Arguments
-        }
-
         # Terminate any previous instance to ensure a clean launch.
         # This prevents stale processes from interfering with console-pty output capture.
-        try {
-            & xcrun simctl terminate $this.SimulatorUUID $bundleId 2>&1 | Out-Null
-        }
-        catch {
-            # App may not be running - that's fine
+        $launchOptions = $this.PrepareLaunch($bundleId)
+
+        # Build argument list for simctl launch
+        $simctlArgs = @("simctl", "launch", "--console-pty") + $launchOptions + @($this.SimulatorUUID, $bundleId)
+        if ($Arguments -and $Arguments.Count -gt 0) {
+            $simctlArgs += $Arguments
         }
 
         Write-Host "Launching: $bundleId" -ForegroundColor Cyan
@@ -301,11 +299,8 @@ class iOSSimulatorProvider : DeviceProvider {
                 # Terminate the app on the simulator to ensure proper cleanup.
                 # This is important after crashes where the app process may have died
                 # but the console-pty connection keeps xcrun alive.
-                try {
-                    & xcrun simctl terminate $this.SimulatorUUID $bundleId 2>&1 | Out-Null
-                }
-                catch {
-                    Write-Debug "$($this.Platform): terminate after timeout failed (app may already be terminated): $_"
+                if (-not $this.TerminateApp($bundleId)) {
+                    Write-Warning "$($this.Platform): terminate after timeout did not finish within $($this.Timeouts['terminate-timeout']) seconds"
                 }
                 Start-Sleep -Seconds 1
 
@@ -454,6 +449,50 @@ class iOSSimulatorProvider : DeviceProvider {
         return $this.CreateSessionInfo()
     }
 
+    # Helper: Return the extra `simctl launch` options that guarantee a fresh app process
+    hidden [string[]] PrepareLaunch([string]$bundleId) {
+        # Nothing of ours runs on a simulator we just booted, and terminating right after boot can stall for minutes.
+        if ($this.FreshlyBooted) {
+            $this.FreshlyBooted = $false
+            return @()
+        }
+
+        if ($this.TerminateApp($bundleId)) {
+            return @()
+        }
+
+        Write-Warning "$($this.Platform): simctl terminate did not finish within $($this.Timeouts['terminate-timeout']) seconds, letting launch terminate the app instead"
+        return @('--terminate-running-process')
+    }
+
+    # Helper: Terminate the app; returns $false if simctl did not finish in time (a not-running app is fine)
+    hidden [bool] TerminateApp([string]$bundleId) {
+        return $this.InvokeXcrun(@('simctl', 'terminate', $this.SimulatorUUID, $bundleId), $this.Timeouts['terminate-timeout'])
+    }
+
+    # Helper: Run xcrun, discarding its output; returns $false and kills it if it does not exit within $timeoutSeconds
+    hidden [bool] InvokeXcrun([string[]]$arguments, [int]$timeoutSeconds) {
+        $outFile = New-TemporaryFile
+        $errFile = New-TemporaryFile
+        try {
+            $process = Start-Process 'xcrun' `
+                -ArgumentList $arguments `
+                -NoNewWindow -PassThru `
+                -RedirectStandardOutput $outFile `
+                -RedirectStandardError $errFile
+
+            if ($process.WaitForExit($timeoutSeconds * 1000)) {
+                return $true
+            }
+            $process | Stop-Process -Force -ErrorAction SilentlyContinue
+            return $false
+        }
+        finally {
+            Remove-Item $outFile -ErrorAction SilentlyContinue
+            Remove-Item $errFile -ErrorAction SilentlyContinue
+        }
+    }
+
     # Helper: Boot the simulator with graceful handling
     hidden [void] BootSimulator() {
         Write-Debug "$($this.Platform): Booting simulator: $($this.SimulatorUUID)"
@@ -462,13 +501,17 @@ class iOSSimulatorProvider : DeviceProvider {
             $this.InvokeCommand('boot', @($this.SimulatorUUID))
         }
         catch {
-            # Check if already booted
-            if ("$_" -match 'Unable to boot device in current state: Booted') {
+            # Check if already booted (keeps whatever an earlier boot recorded in FreshlyBooted).
+            # The boot error only carries simctl's exit code, so ask for the state instead.
+            $bootError = $_
+            $state = try { $this.GetSimulatorState() } catch { 'Unknown' }
+            if ($state -eq 'Booted') {
                 Write-Debug "$($this.Platform): Simulator is already booted"
                 return
             }
-            throw
+            throw $bootError
         }
+        $this.FreshlyBooted = $false
 
         # Wait for simulator to be ready
         $maxWait = $this.Timeouts['boot-timeout']
@@ -478,6 +521,7 @@ class iOSSimulatorProvider : DeviceProvider {
             if ($state -eq 'Booted') {
                 Write-Host "Simulator booted successfully" -ForegroundColor Green
                 $this.DidBootSimulator = $true
+                $this.FreshlyBooted = $true
                 return
             }
             Start-Sleep -Seconds 1
