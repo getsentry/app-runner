@@ -220,7 +220,7 @@ class AdbProvider : DeviceProvider {
         $startTime = Get-Date
 
         # Otherwise `am start` brings a still-running (possibly hung) instance to the front instead of starting a new one.
-        $this.StopApp($packageName)
+        $this.TerminateApp($packageName)
 
         # Clear logcat before launch
         Write-Debug "$($this.Platform): Clearing logcat"
@@ -294,7 +294,7 @@ class AdbProvider : DeviceProvider {
             Write-Host "Retrieved $($logCache.Count) log lines" -ForegroundColor Cyan
 
             if (-not $processExited) {
-                $this.StopApp($packageName)
+                $this.TerminateApp($packageName)
             }
 
             Write-Host "Android doesn't report exit codes via adb so exit code is always NULL"
@@ -316,7 +316,7 @@ class AdbProvider : DeviceProvider {
         }
     }
 
-    [void] StopApp([string]$packageName) {
+    [void] TerminateApp([string]$packageName) {
         try {
             $this.InvokeCommand('force-stop', @($this.DeviceSerial, $packageName)) | Out-Null
         }
