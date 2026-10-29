@@ -53,6 +53,7 @@ class AdbProvider : DeviceProvider {
             # App execution
             'launch'        = @('adb', '-s {0} shell am start -n {1} {2} -W')
             'pidof'         = @('adb', '-s {0} shell pidof {1}')
+            'force-stop'    = @('adb', '-s {0} shell am force-stop {1}')
 
             # Logging
             'logcat'        = @('adb', '-s {0} logcat -d')
@@ -218,6 +219,9 @@ class AdbProvider : DeviceProvider {
 
         $startTime = Get-Date
 
+        # Otherwise `am start` brings a still-running (possibly hung) instance to the front instead of starting a new one.
+        $this.TerminateApp($packageName)
+
         # Clear logcat before launch
         Write-Debug "$($this.Platform): Clearing logcat"
         $this.InvokeCommand('logcat-clear', @($this.DeviceSerial))
@@ -289,6 +293,10 @@ class AdbProvider : DeviceProvider {
             $logCache = @($this.InvokeCommand('logcat-pid', @($this.DeviceSerial, $appPID)))
             Write-Host "Retrieved $($logCache.Count) log lines" -ForegroundColor Cyan
 
+            if (-not $processExited) {
+                $this.TerminateApp($packageName)
+            }
+
             Write-Host "Android doesn't report exit codes via adb so exit code is always NULL"
             $exitCode = $null
         }
@@ -305,6 +313,15 @@ class AdbProvider : DeviceProvider {
             FinishedAt     = Get-Date
             Output         = $formattedLogs
             ExitCode       = $exitCode
+        }
+    }
+
+    [void] TerminateApp([string]$packageName) {
+        try {
+            $this.InvokeCommand('force-stop', @($this.DeviceSerial, $packageName)) | Out-Null
+        }
+        catch {
+            Write-Warning "$($this.Platform): Failed to force-stop ${packageName}: $_"
         }
     }
 
