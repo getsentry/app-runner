@@ -27,7 +27,7 @@ class FakeiOSSimulatorProvider : iOSSimulatorProvider {
         $this.Calls.Add($action)
         switch ($action) {
             'boot' {
-                if ($this.Booted) { throw 'Unable to boot device in current state: Booted' }
+                if ($this.Booted) { throw 'Command (boot) failed with exit code 149' }
                 $this.Booted = $true
             }
             'shutdown' { $this.Booted = $false }

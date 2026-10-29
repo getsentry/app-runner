@@ -501,12 +501,15 @@ class iOSSimulatorProvider : DeviceProvider {
             $this.InvokeCommand('boot', @($this.SimulatorUUID))
         }
         catch {
-            # Check if already booted (keeps whatever an earlier boot recorded in FreshlyBooted)
-            if ("$_" -match 'Unable to boot device in current state: Booted') {
+            # Check if already booted (keeps whatever an earlier boot recorded in FreshlyBooted).
+            # The boot error only carries simctl's exit code, so ask for the state instead.
+            $bootError = $_
+            $state = try { $this.GetSimulatorState() } catch { 'Unknown' }
+            if ($state -eq 'Booted') {
                 Write-Debug "$($this.Platform): Simulator is already booted"
                 return
             }
-            throw
+            throw $bootError
         }
         $this.FreshlyBooted = $false
 
